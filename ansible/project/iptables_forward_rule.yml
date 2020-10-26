@@ -1,0 +1,68 @@
+---
+
+- name: Add iptables port forward rule
+  gather_facts: false
+  hosts: "{{ hosts | default('web') }}"
+  tasks:
+  - name: Get interfaces
+    shell: ip route show | grep default | awk '{print $5}'
+    register: iface
+
+  - name: Get inet
+    shell: ip address show {{ iface.stdout }} scope global |  awk '/inet / {split($2,var,"/"); print var[1]}'
+    register: inet
+
+  - name: Delete old filter table rules
+    shell: iptables -S | grep '{{ local_port }}->' | awk '{$1="";$COMMEND="iptables -D "$0; system($COMMEND)}'
+  - name: Delete old nat table rules
+    shell: iptables -t nat -S | grep '{{ local_port }}->' | awk '{$1="";$COMMEND="iptables -t nat -D "$0; system($COMMEND)}'
+
+  - name: Insert forward rule
+    iptables:
+      action: insert
+      state: present
+      chain: PREROUTING
+      protocol: "{{ item }}"
+      table: nat
+      jump: DNAT
+      to_destination: "{{ remote_ip }}:{{ remote_port }}"
+      destination_port: "{{ local_port }}"
+      comment: "FORWARD{{ '-UDP' if item == 'udp' }} {{ local_port }}->{{ remote_ip }}:{{ remote_port }}"
+    with_items: "{{ protocols }}"
+
+  - name: Insert backward rule
+    iptables:
+      action: insert
+      state: present
+      chain: POSTROUTING
+      protocol: "{{ item }}"
+      table: nat
+      jump: SNAT
+      destination: "{{ remote_ip }}"
+      destination_port: "{{ remote_port }}"
+      to_source: "{{ inet.stdout }}"
+      comment: "BACKWARD{{ '-UDP' if item == 'udp' }} {{ local_port }}->{{ remote_ip }}:{{ remote_port }}"
+    with_items: "{{ protocols }}"
+
+  - name: Insert forward download monitor rule
+    iptables:
+      action: insert
+      state: present
+      chain: FORWARD
+      protocol: "{{ item }}"
+      jump: ACCEPT
+      source: "{{ remote_ip }}"
+      comment: "DOWNLOAD{{ '-UDP' if item == 'udp' }} {{ local_port }}->{{ remote_ip }}:{{ remote_port }}"
+    with_items: "{{ protocols }}"
+
+  - name: Insert forward upload monitor rule
+    iptables:
+      action: insert
+      state: present
+      chain: FORWARD
+      protocol: "{{ item }}"
+      jump: ACCEPT
+      destination: "{{ remote_ip }}"
+      destination_port: "{{ remote_port }}"
+      comment: "UPLOAD{{ '-UDP' if item == 'udp' }} {{ local_port }}->{{ remote_ip }}:{{ remote_port }}"
+    with_items: "{{ protocols }}"
