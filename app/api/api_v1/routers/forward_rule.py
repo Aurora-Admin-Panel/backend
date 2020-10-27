@@ -65,10 +65,11 @@ async def forward_rule_create(
     """
     Create a port forward rule
     """
-    if not is_ip(forward_rule.remote_address):
-        forward_rule.remote_ip = dns_query(forward_rule.remote_address)
-    else:
-        forward_rule.remote_ip = forward_rule.remote_address
+    if not forward_rule.remote_ip:
+        if not is_ip(forward_rule.remote_address):
+            forward_rule.remote_ip = dns_query(forward_rule.remote_address)
+        else:
+            forward_rule.remote_ip = forward_rule.remote_address
     forward_rule = create_forward_rule(db, port_id, forward_rule, current_user)
 
     trigger_forward_rule(forward_rule, new = forward_rule)
@@ -90,10 +91,14 @@ async def forward_rule_edit(
     """
     Edit a port forward rule
     """
+    if not forward_rule.remote_ip:
+        if not is_ip(forward_rule.remote_address):
+            forward_rule.remote_ip = dns_query(forward_rule.remote_address)
+        else:
+            forward_rule.remote_ip = forward_rule.remote_address
     old, updated = edit_forward_rule(
         db, server_id, port_id, forward_rule, current_user
     )
-    print(updated.port.allowed_users)
     trigger_forward_rule(updated, old, updated)
     return updated
 
