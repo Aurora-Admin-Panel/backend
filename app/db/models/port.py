@@ -2,6 +2,8 @@ from .base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, UniqueConstraint
 
+from app.db.models.port_forward import PortForwardRule
+
 
 class Port(Base):
     __tablename__ = "port"

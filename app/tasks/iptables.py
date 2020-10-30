@@ -43,7 +43,7 @@ def forward_rule_runner(
     protocols: str,
 ):
     extra_vars = {
-        "hosts": host,
+        "host": host,
         "local_port": local_port,
         "remote_ip": remote_ip,
         "remote_port": remote_port,

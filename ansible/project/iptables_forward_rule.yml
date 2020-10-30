@@ -2,7 +2,8 @@
 
 - name: Add iptables port forward rule
   gather_facts: false
-  hosts: "{{ hosts | default('web') }}"
+  hosts: "{{ host | default('web') }}"
+  become: yes
   tasks:
   - name: Get interfaces
     shell: ip route show | grep default | awk '{print $5}'
