@@ -1,3 +1,4 @@
+import json
 import ansible_runner
 
 from . import celery_app
@@ -6,19 +7,21 @@ from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
+from app.api.utils.gost import get_gost_config
 
 
 @celery_app.task()
-def forward_rule_finished_handler(stdout_name: str):
+def gost_finished_handler(stdout_name: str):
     pass
     # with open(stdout_name, 'r') as f:
     # return f.read()
 
 
 @celery_app.task()
-def forward_rule_status_handler(rule_id: int, status_data: dict, update_status: bool):
+def gost_status_handler(rule_id: int, status_data: dict, update_status: bool):
     if not update_status:
         return status_data
+
     db = SessionLocal()
     rule = (
         db.query(PortForwardRule).filter(PortForwardRule.id == rule_id).first()
@@ -36,33 +39,30 @@ def forward_rule_status_handler(rule_id: int, status_data: dict, update_status: 
 
 
 @celery_app.task()
-def iptables_runner(
+def gost_runner(
     rule_id: int,
     host: str,
-    local_port: int,
-    protocols: str,
-    remote_ip: str = None,
-    remote_port: int = None,
+    update_gost: bool = False,
     update_status: bool = False
 ):
     extra_vars = {
         "host": host,
-        "local_port": local_port,
-        "remote_ip": remote_ip,
-        "remote_port": remote_port,
-        "protocols": protocols,
+        "update_gost": update_gost
     }
+    config = get_gost_config()
+    with open('ansible/project/roles/gost/files/config.json', 'w') as f:
+        f.write(json.dumps(config, indent=4))
 
     t = ansible_runner.run_async(
         private_data_dir="ansible",
-        artifact_dir=f"ansible/{rule_id}/iptables",
-        playbook="iptables.yml",
+        artifact_dir=f"ansible/{rule_id}/gost",
+        playbook="gost.yml",
         extravars=extra_vars,
-        status_handler=lambda s, **k: forward_rule_status_handler.delay(
+        status_handler=lambda s, **k: gost_status_handler.delay(
             rule_id, s, update_status
         ),
-        finished_callback=lambda r: forward_rule_finished_handler.delay(
+        finished_callback=lambda r: gost_finished_handler.delay(
             r.stdout.name
         ),
     )
-    return t[1].config.artifact_dir
+    return config, t[1].config.artifact_dir

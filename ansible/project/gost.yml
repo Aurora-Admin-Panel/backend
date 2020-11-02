@@ -1,0 +1,47 @@
+---
+- name: Download latest gost
+  hosts: 127.0.0.1
+  connection: local
+  tasks:
+    - name: Get latest gost download url
+      when: update_gost is defined and update_gost
+      shell: curl -Lso- https://api.github.com/repos/ginuerzh/gost/releases/latest | grep -E "browser_download_url.*gost-linux-amd64" | awk '{print $2}' | xargs echo
+      register: gost_latest_download_url
+
+    - name: Download latest gost from Github and unarchive gost
+      when: update_gost is defined and update_gost
+      get_url:
+        url: "{{ gost_latest_download_url.stdout }}"
+        dest: roles/gost/files/gost.gz
+
+    - name: Remote old gost binary
+      when: update_gost is defined and update_gost
+      file:
+        path: roles/gost/files/gost
+        state: absent
+    
+    - name: Unzip gost binary
+      when: update_gost is defined and update_gost
+      shell: gunzip roles/gost/files/gost.gz
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  pre_tasks:
+    - name: Sync gost binary
+      when: update_gost is defined and update_gost
+      copy:
+        src: roles/gost/files/gost
+        dest: /usr/local/bin/gost
+        mode: +x
+        owner: root
+        group: root
+    - name: Sync gost.service
+      when: update_gost is defined and update_gost
+      copy:
+        src: roles/gost/files/gost.service
+        dest: /usr/lib/systemd/system/gost.service
+        owner: root
+        group: root
+
+  roles:
+    - gost

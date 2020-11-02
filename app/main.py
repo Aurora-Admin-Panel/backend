@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.utils.gost import get_gost_config
 from app.api.api_v1.routers.auth import auth_router
 from app.api.api_v1.routers.users import users_router
 from app.api.api_v1.routers.servers import servers_router
@@ -43,14 +44,12 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task("app.tasks.iptables.forward_rule_runner", kwargs={
-        'host': 'cn2',
-        'local_port': 30001,
-        'old_remote_ip': '1.1.1.1',
-        'old_remote_port': 8888
+    celery_app.send_task("app.tasks.gost.gost_runner", kwargs={
+        'rule_id': 2,
+        'host': 'sj2',
+        'update_gost': True
     })
-
-    return {"message": "success"}
+    return {"message": "ok"}
 
 
 # Routers

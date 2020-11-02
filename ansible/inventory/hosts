@@ -1,5 +1,4 @@
 # Add you ansible hosts here
-localhost     ansible_host=localhost ansible_port=22 ansible_user=root
 
 [all:vars]
 ansible_python_interpreter=/usr/bin/python3

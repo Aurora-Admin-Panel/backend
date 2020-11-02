@@ -1,19 +1,16 @@
 import typing as t
 from pydantic import BaseModel
 
-from app.db.models.port_forward import TypeEnum, MethodEnum
+from app.db.models.port_forward import MethodEnum
 
 
 class PortForwardRuleBase(BaseModel):
-    type: TypeEnum
+    config: t.Dict
     method: MethodEnum
-    remote_address: str
-    remote_port: int
 
 
 class PortForwardRuleOut(PortForwardRuleBase):
     id: int
-    remote_ip: str
     status: str = None
 
     class Config:
@@ -21,18 +18,14 @@ class PortForwardRuleOut(PortForwardRuleBase):
 
 
 class PortForwardRuleCreate(PortForwardRuleBase):
-    remote_ip: t.Optional[str] = None
 
     class Config:
         orm_mode = True
 
 
 class PortForwardRuleEdit(BaseModel):
-    type: t.Optional[TypeEnum]
+    config: t.Optional[t.Dict]
     method: t.Optional[MethodEnum]
-    remote_address: t.Optional[str]
-    remote_ip: t.Optional[str]
-    remote_port: t.Optional[int]
 
     class Config:
         orm_mode = True

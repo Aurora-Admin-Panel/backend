@@ -1,0 +1,7 @@
+---
+- name: Add iptables port forward rule
+  gather_facts: false
+  hosts: "{{ host | default('web') }}"
+  become: yes
+  roles:
+  - iptables

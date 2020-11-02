@@ -10,7 +10,9 @@ def trigger_forward_rule(
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
 ):
-    if new and new.method == MethodEnum.IPTABLES:
+    if (new and new.method == MethodEnum.IPTABLES) or (
+        old and old.method == MethodEnum.IPTABLES
+    ):
         send_iptables_forward_rule(
             rule.id,
             rule.port.server.ansible_host
@@ -31,21 +33,24 @@ def send_iptables_forward_rule(
     old: PortForwardRuleOut,
     new: PortForwardRuleOut,
 ):
-    protocols = []
-    if new.type == TypeEnum.TCP or new.type == TypeEnum.ALL:
-        protocols.append('tcp')
-    if new.type == TypeEnum.UDP or new.type == TypeEnum.ALL:
-        protocols.append('udp')
-
     kwargs = {
         "rule_id": rule_id,
         "host": host,
         "local_port": local_port,
-        "remote_ip": new.remote_ip,
-        "remote_port": new.remote_port,
-        "protocols": str(protocols)
     }
-    print(f"Sending forward_rule_runner task, kwargs: {kwargs}")
+    protocols = []
+    if new and new.method == MethodEnum.IPTABLES:
+        kwargs["update_status"] = True
+        kwargs["remote_ip"] = new.config.get('remote_ip')
+        kwargs["remote_port"] = new.config.get('remote_port')
+        forward_type = new.config.get("type", "ALL").upper()
+        if forward_type == "ALL" or forward_type == "TCP":
+            protocols.append("tcp")
+        if forward_type == "ALL" or forward_type == "UDP":
+            protocols.append("udp")
+    kwargs["protocols"] = str(protocols)
+
+    print(f"Sending iptables_runner task, kwargs: {kwargs}")
     celery_app.send_task(
-            "app.tasks.iptables.forward_rule_runner", kwargs=kwargs
-        )
+        "app.tasks.iptables.iptables_runner", kwargs=kwargs
+    )

@@ -128,5 +128,9 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Local database
+# Local files
 app.db
+ansible/env/ssh_key
+ansible/inventory/hosts
+ansible/project/roles/gost/files/gost
+ansible/project/roles/gost/files/config.json

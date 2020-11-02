@@ -1,6 +1,7 @@
 import enum
 from sqlalchemy.orm import relationship
-from sqlalchemy import Boolean, Enum, Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy import Boolean, Enum, Column, Integer, String, JSON, ForeignKey, UniqueConstraint
 
 from .base import Base
 
@@ -13,6 +14,7 @@ class TypeEnum(enum.Enum):
 
 class MethodEnum(enum.Enum):
     IPTABLES = "iptables"
+    GOST     = "gost"
 
 
 class PortForwardRule(Base):
@@ -21,11 +23,8 @@ class PortForwardRule(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     port_id = Column(Integer, ForeignKey('port.id'))
-    type = Column(Enum(TypeEnum), nullable=False)
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     method = Column(Enum(MethodEnum), nullable=False)
-    remote_address = Column(String, nullable=False)
-    remote_ip = Column(String, nullable=True)
-    remote_port = Column(Integer, nullable=False)
     status = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 

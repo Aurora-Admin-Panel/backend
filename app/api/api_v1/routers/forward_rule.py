@@ -7,11 +7,13 @@ from fastapi import (
     Response,
     encoders,
 )
+from urllib.parse import urlparse
 
 from app.db.session import get_db
 from app.api.utils.ip import is_ip
 from app.api.utils.dns import dns_query
-from app.api.utils.iptables import trigger_forward_rule
+from app.api.utils.tasks import trigger_forward_rule
+from app.db.models.port_forward import MethodEnum
 from app.db.schemas.port_forward import (
     PortForwardRuleCreate,
     PortForwardRuleEdit,
@@ -65,11 +67,6 @@ async def forward_rule_create(
     """
     Create a port forward rule
     """
-    if not forward_rule.remote_ip:
-        if not is_ip(forward_rule.remote_address):
-            forward_rule.remote_ip = dns_query(forward_rule.remote_address)
-        else:
-            forward_rule.remote_ip = forward_rule.remote_address
     forward_rule = create_forward_rule(db, port_id, forward_rule, current_user)
 
     trigger_forward_rule(forward_rule, new = forward_rule)
@@ -91,11 +88,6 @@ async def forward_rule_edit(
     """
     Edit a port forward rule
     """
-    if not forward_rule.remote_ip:
-        if not is_ip(forward_rule.remote_address):
-            forward_rule.remote_ip = dns_query(forward_rule.remote_address)
-        else:
-            forward_rule.remote_ip = forward_rule.remote_address
     old, updated = edit_forward_rule(
         db, server_id, port_id, forward_rule, current_user
     )
