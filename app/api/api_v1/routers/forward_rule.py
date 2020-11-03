@@ -24,6 +24,7 @@ from app.db.crud.port_forward import (
     create_forward_rule,
     edit_forward_rule,
     delete_forward_rule,
+    get_all_gost_rules,
 )
 from app.core.auth import (
     get_current_active_user,
@@ -75,13 +76,16 @@ async def forward_rule_create(
     """
     Create a port forward rule
     """
-    forward_rule, update_gost = create_forward_rule(
-        db, port_id, forward_rule, current_user
-    )
-
-    trigger_forward_rule(
-        forward_rule, forward_rule.port, new=forward_rule, update_gost=update_gost
-    )
+    forward_rule = create_forward_rule(db, port_id, forward_rule, current_user)
+    if forward_rule.method == MethodEnum.GOST:
+        trigger_forward_rule(
+            forward_rule,
+            forward_rule.port,
+            new=forward_rule,
+            update_gost=len(get_all_gost_rules(db, server_id)) == 0,
+        )
+    else:
+        trigger_forward_rule(forward_rule, forward_rule.port, new=forward_rule)
     return forward_rule
 
 
@@ -121,6 +125,8 @@ async def forward_rule_delete(
     """
     Delete a port forward rule
     """
-    forward_rule, port = delete_forward_rule(db, server_id, port_id, current_user)
+    forward_rule, port = delete_forward_rule(
+        db, server_id, port_id, current_user
+    )
     trigger_forward_rule(forward_rule, port, old=forward_rule)
     return forward_rule

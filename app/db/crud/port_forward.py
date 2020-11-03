@@ -44,7 +44,7 @@ def get_forward_rule(
 
 def create_forward_rule(
     db: Session, port_id: int, forward_rule: PortForwardRuleCreate, user: User
-) -> [PortForwardRule, bool]:
+) -> PortForwardRule:
     port = db.query(Port).filter(Port.id == port_id).first()
     if not user.is_admin() and not any(
         u.user_id == user.id for u in port.allowed_users
@@ -52,11 +52,6 @@ def create_forward_rule(
         raise HTTPException(
             status_code=403,
             detail="User not allowed to create forward rule on this port",
-        )
-    if port.port_forward_rules:
-        raise HTTPException(
-            status_code=403,
-            detail="Cannot create multiple forward rules on same port",
         )
     if forward_rule.method == MethodEnum.IPTABLES:
         if not forward_rule.config.get(
@@ -74,17 +69,6 @@ def create_forward_rule(
         forward_rule = verify_iptables_config(forward_rule)
     elif forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_and_replace_port_gost_config(port, forward_rule)
-        existing_gost_rules = (
-            db.query(PortForwardRule)
-            .join(Port)
-            .filter(
-                and_(
-                    PortForwardRule.method == MethodEnum.GOST,
-                    Port.server_id == port.server_id,
-                )
-            )
-            .all()
-        )
 
     db_forward_rule = PortForwardRule(
         **forward_rule.dict(), port_id=port_id, status="starting"
@@ -92,7 +76,7 @@ def create_forward_rule(
     db.add(db_forward_rule)
     db.commit()
     db.refresh(db_forward_rule)
-    return db_forward_rule, len(existing_gost_rules) == 0
+    return db_forward_rule
 
 
 def edit_forward_rule(
@@ -223,3 +207,17 @@ def verify_and_replace_port_gost_config(
             )
         rule.config["ServeNodes"] = serve_nodes
     return rule
+
+
+def get_all_gost_rules(db: Session, server_id: int) -> bool:
+    return (
+        db.query(PortForwardRule)
+        .join(Port)
+        .filter(
+            and_(
+                PortForwardRule.method == MethodEnum.GOST,
+                Port.server_id == server_id,
+            )
+        )
+        .all()
+    )

@@ -18,13 +18,13 @@ def gost_finished_handler(stdout_name: str):
 
 
 @celery_app.task()
-def gost_status_handler(rule_id: int, status_data: dict, update_status: bool):
+def gost_status_handler(port_id: int, status_data: dict, update_status: bool):
     if not update_status:
         return status_data
 
     db = SessionLocal()
     rule = (
-        db.query(PortForwardRule).filter(PortForwardRule.id == rule_id).first()
+        db.query(PortForwardRule).filter(PortForwardRule.port_id == port_id).first()
     )
     if rule:
         if (
@@ -40,7 +40,7 @@ def gost_status_handler(rule_id: int, status_data: dict, update_status: bool):
 
 @celery_app.task()
 def gost_runner(
-    rule_id: int,
+    port_id: int,
     host: str,
     update_gost: bool = False,
     update_status: bool = False
@@ -49,17 +49,17 @@ def gost_runner(
         "host": host,
         "update_gost": update_gost
     }
-    config = get_gost_config(rule_id)
+    config = get_gost_config(host)
     with open('ansible/project/roles/gost/files/config.json', 'w') as f:
         f.write(json.dumps(config, indent=4))
 
     t = ansible_runner.run_async(
         private_data_dir="ansible",
-        artifact_dir=f"ansible/{rule_id}/gost",
+        artifact_dir=f"ansible/{port_id}/gost",
         playbook="gost.yml",
         extravars=extra_vars,
         status_handler=lambda s, **k: gost_status_handler.delay(
-            rule_id, s, update_status
+            port_id, s, update_status
         ),
         finished_callback=lambda r: gost_finished_handler.delay(
             r.stdout.name

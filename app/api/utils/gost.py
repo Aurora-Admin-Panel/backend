@@ -1,23 +1,24 @@
 import json
 import typing as t
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from urllib.parse import urlencode
 
 from app.tasks import celery_app
 from app.db.session import SessionLocal
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.models.port import Port
+from app.db.models.server import Server
 from app.db.models.port_forward import MethodEnum, PortForwardRule
 
 
 def send_gost_rule(
-    rule_id: int,
+    port_id: int,
     host: str,
     update_status: bool,
     update_gost: bool = False,
 ):
     kwargs = {
-        "rule_id": rule_id,
+        "port_id": port_id,
         "host": host,
         "update_status": update_status,
         "update_gost": update_gost,
@@ -36,26 +37,36 @@ def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     }
 
 
-def get_gost_config(rule_id: int) -> t.Dict:
+def get_gost_config(host: int) -> t.Dict:
     db = SessionLocal()
-    rule = (
-        db.query(PortForwardRule).filter(PortForwardRule.id == rule_id).first()
-    )
-    rules = (
-        db.query(PortForwardRule)
-        .join(Port)
+    server = (
+        db.query(Server)
         .filter(
-            and_(
-                PortForwardRule.method == MethodEnum.GOST,
-                Port.server_id == rule.port.server_id,
+            or_(
+                Server.address == host,
+                Server.ansible_name == host,
+                Server.ansible_host == host,
             )
         )
-        .all()
+        .first()
     )
-    config = {
-        "Retries": 0,
-        "ServeNodes": [],
-        "ChainNodes": [],
-        "Routes": list(map(generate_gost_config, rules)),
-    }
+    config = {}
+    if server:
+        rules = (
+            db.query(PortForwardRule)
+            .join(Port)
+            .filter(
+                and_(
+                    PortForwardRule.method == MethodEnum.GOST,
+                    Port.server_id == server.id,
+                )
+            )
+            .all()
+        )
+        config = {
+            "Retries": 0,
+            "ServeNodes": [],
+            "ChainNodes": [],
+            "Routes": list(map(generate_gost_config, rules)),
+        }
     return config

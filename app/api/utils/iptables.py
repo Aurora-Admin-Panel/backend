@@ -5,36 +5,15 @@ from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.models.port_forward import TypeEnum, MethodEnum, PortForwardRule
 
 
-def trigger_forward_rule(
-    rule: PortForwardRule,
-    old: PortForwardRuleOut = None,
-    new: PortForwardRuleOut = None,
-):
-    if (new and new.method == MethodEnum.IPTABLES) or (
-        old and old.method == MethodEnum.IPTABLES
-    ):
-        send_iptables_forward_rule(
-            rule.id,
-            rule.port.server.ansible_host
-            if rule.port.server.ansible_host is not None
-            else rule.port.server.address,
-            rule.port.internal_num
-            if rule.port.internal_num is not None and rule.port.internal_num > 0
-            else rule.port.num,
-            old,
-            new,
-        )
-
-
 def send_iptables_forward_rule(
-    rule_id: int,
+    port_id: int,
     host: str,
     local_port: int,
     old: PortForwardRuleOut,
     new: PortForwardRuleOut,
 ):
     kwargs = {
-        "rule_id": rule_id,
+        "port_id": port_id,
         "host": host,
         "local_port": local_port,
     }
