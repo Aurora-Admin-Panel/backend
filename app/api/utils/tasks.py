@@ -10,7 +10,9 @@ def trigger_forward_rule(
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
 ):
-    print(f"Received forward rule:\nold:{old.__dict__ if old else None}\nnew:{new.__dict__ if new else None}")
+    print(
+        f"Received forward rule:\nold:{old.__dict__ if old else None}\nnew:{new.__dict__ if new else None}"
+    )
     if (new and new.method == MethodEnum.IPTABLES) or (
         old and old.method == MethodEnum.IPTABLES
     ):
@@ -31,5 +33,12 @@ def trigger_forward_rule(
     ):
         if new:
             db = SessionLocal()
-            update_gost = db.query(PortForwardRule).filter(PortForwardRule.method == MethodEnum.GOST).all()
-        send_gost_rule(rule, old, new, update_gost=len(update_gost)==0)
+            update_gost = (
+                db.query(PortForwardRule)
+                .filter(
+                    PortForwardRule.method == MethodEnum.GOST,
+                    PortForwardRule.port.server_id == rule.port.server_id,
+                )
+                .all()
+            )
+        send_gost_rule(rule, old, new, update_gost=len(update_gost) == 0)

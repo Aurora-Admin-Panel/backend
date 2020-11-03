@@ -49,7 +49,7 @@ async def forward_rule_get(
     Get port forward rule
     """
     forward_rule = get_forward_rule(db, server_id, port_id, current_user)
-    if forward_rule.method == MethodEnum.GOST:
+    if forward_rule and forward_rule.method == MethodEnum.GOST:
         forward_rule.config["ServeNodes"] = [
             n.replace(
                 f":{forward_rule.port.internal_num}",
