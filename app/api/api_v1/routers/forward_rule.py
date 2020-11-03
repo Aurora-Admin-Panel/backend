@@ -75,9 +75,13 @@ async def forward_rule_create(
     """
     Create a port forward rule
     """
-    forward_rule = create_forward_rule(db, port_id, forward_rule, current_user)
+    forward_rule, update_gost = create_forward_rule(
+        db, port_id, forward_rule, current_user
+    )
 
-    trigger_forward_rule(forward_rule, new=forward_rule)
+    trigger_forward_rule(
+        forward_rule, new=forward_rule, update_gost=update_gost
+    )
     return forward_rule
 
 
