@@ -1,10 +1,12 @@
 import json
 import typing as t
+from sqlalchemy import and_
 from urllib.parse import urlencode
 
 from app.tasks import celery_app
 from app.db.session import SessionLocal
 from app.db.schemas.port_forward import PortForwardRuleOut
+from app.db.models.port import Port
 from app.db.models.port_forward import MethodEnum, PortForwardRule
 
 
@@ -34,11 +36,20 @@ def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     }
 
 
-def get_gost_config() -> t.Dict:
+def get_gost_config(rule_id: int) -> t.Dict:
     db = SessionLocal()
+    rule = (
+        db.query(PortForwardRule).filter(PortForwardRule.id == rule_id).first()
+    )
     rules = (
         db.query(PortForwardRule)
-        .filter(PortForwardRule.method == MethodEnum.GOST)
+        .join(Port)
+        .filter(
+            and_(
+                PortForwardRule.method == MethodEnum.GOST,
+                Port.server_id == rule.port.server_id,
+            )
+        )
         .all()
     )
     config = {

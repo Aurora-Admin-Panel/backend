@@ -49,7 +49,7 @@ def gost_runner(
         "host": host,
         "update_gost": update_gost
     }
-    config = get_gost_config()
+    config = get_gost_config(rule_id)
     with open('ansible/project/roles/gost/files/config.json', 'w') as f:
         f.write(json.dumps(config, indent=4))
 
