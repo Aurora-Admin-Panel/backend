@@ -80,7 +80,7 @@ async def forward_rule_create(
     )
 
     trigger_forward_rule(
-        forward_rule, new=forward_rule, update_gost=update_gost
+        forward_rule, forward_rule.port, new=forward_rule, update_gost=update_gost
     )
     return forward_rule
 
@@ -103,7 +103,7 @@ async def forward_rule_edit(
     old, updated = edit_forward_rule(
         db, server_id, port_id, forward_rule, current_user
     )
-    trigger_forward_rule(updated, old, updated)
+    trigger_forward_rule(updated, updated.port, old, updated)
     return updated
 
 
@@ -121,6 +121,6 @@ async def forward_rule_delete(
     """
     Delete a port forward rule
     """
-    forward_rule = delete_forward_rule(db, server_id, port_id, current_user)
-    trigger_forward_rule(forward_rule, old=forward_rule)
+    forward_rule, port = delete_forward_rule(db, server_id, port_id, current_user)
+    trigger_forward_rule(forward_rule, port, old=forward_rule)
     return forward_rule

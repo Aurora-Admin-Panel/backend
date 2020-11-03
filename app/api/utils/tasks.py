@@ -1,3 +1,4 @@
+from app.db.models.port import Port
 from app.db.models.port_forward import PortForwardRule, MethodEnum
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.api.utils.gost import send_gost_rule
@@ -6,6 +7,7 @@ from app.api.utils.iptables import send_iptables_forward_rule
 
 def trigger_forward_rule(
     rule: PortForwardRule,
+    port: Port,
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
     update_gost: bool = False
@@ -18,12 +20,12 @@ def trigger_forward_rule(
     ):
         send_iptables_forward_rule(
             rule.id,
-            rule.port.server.ansible_host
-            if rule.port.server.ansible_host is not None
-            else rule.port.server.address,
-            rule.port.internal_num
-            if rule.port.internal_num is not None and rule.port.internal_num > 0
-            else rule.port.num,
+            port.server.ansible_host
+            if port.server.ansible_host is not None
+            else port.server.address,
+            port.internal_num
+            if port.internal_num is not None and port.internal_num > 0
+            else port.num,
             old,
             new,
         )
@@ -31,4 +33,10 @@ def trigger_forward_rule(
     if (new and new.method == MethodEnum.GOST) or (
         old and old.method == MethodEnum.GOST
     ):
-        send_gost_rule(rule, old, new, update_gost=update_gost)
+        send_gost_rule(
+            rule.id,
+            port.server.ansible_host
+            if port.server.ansible_host is not None
+            else port.server.address,
+            update_status=new and new.method == MethodEnum.GOST,
+            update_gost=update_gost)

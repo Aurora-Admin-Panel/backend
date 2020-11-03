@@ -145,7 +145,7 @@ def edit_forward_rule(
 
 def delete_forward_rule(
     db: Session, server_id: int, port_id: int, user: User
-) -> PortForwardRule:
+) -> t.Tuple[PortForwardRule, Port]:
     db_forward_rule = get_forward_rule(db, server_id, port_id)
     if not db_forward_rule:
         raise HTTPException(
@@ -158,9 +158,10 @@ def delete_forward_rule(
             status_code=403,
             detail="User not allowed to delete this port forward rule",
         )
+    port = db_forward_rule.port
     db.delete(db_forward_rule)
     db.commit()
-    return db_forward_rule
+    return db_forward_rule, port
 
 
 def verify_iptables_config(

@@ -11,16 +11,16 @@ from app.db.models.port_forward import MethodEnum, PortForwardRule
 
 
 def send_gost_rule(
-    rule: PortForwardRule,
-    old: PortForwardRuleOut = None,
-    new: PortForwardRuleOut = None,
+    rule_id: int,
+    host: str,
+    update_status: bool,
     update_gost: bool = False,
 ):
     kwargs = {
-        "rule_id": rule.id,
-        "host": rule.port.server.ansible_host,
+        "rule_id": rule_id,
+        "host": host,
+        "update_status": update_status,
         "update_gost": update_gost,
-        "update_status": new and new.method == MethodEnum.GOST,
     }
     print(f"Sending gost_runner task, kwargs: {kwargs}")
     celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
@@ -28,7 +28,7 @@ def send_gost_rule(
 
 def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     return {
-        "Retries": rule.config.get("Retries", 1),
+        "Retries": rule.config.get("Retries", 0),
         "ServeNodes": rule.config.get(
             "ServeNodes", [f":{rule.port.internal_num}"]
         ),
