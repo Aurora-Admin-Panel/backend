@@ -20,7 +20,7 @@ from app.db.models.port_forward import PortForwardRule, TypeEnum, MethodEnum
 
 def get_forward_rule(
     db: Session, server_id: int, port_id: int, user: User = None
-) -> PortForwardRuleOut:
+) -> PortForwardRule:
     forward_rule = (
         db.query(PortForwardRule)
         .join(Port)
@@ -112,29 +112,23 @@ def edit_forward_rule(
 
     old = PortForwardRuleOut(**db_forward_rule.__dict__)
     updated = forward_rule.dict(exclude_unset=True)
-    print('1', db_forward_rule.__dict__)
-    print(db_forward_rule.method == forward_rule.method, db_forward_rule.method, forward_rule.method)
     if db_forward_rule.method == forward_rule.method:
-        for key, val in updated['config'].items():
+        for key, val in updated["config"].items():
             db_forward_rule.config[key] = val
     else:
         db_forward_rule.config = {}
-        for key, val in updated['config'].items():
+        for key, val in updated["config"].items():
             db_forward_rule.config[key] = val
-    print('1.1', db_forward_rule.__dict__)
 
     for key, val in updated.items():
-        if key == 'config':
+        if key == "config":
             continue
         setattr(db_forward_rule, key, val)
 
-    print('2', db_forward_rule.__dict__)
     db_forward_rule.status = "starting"
-    print('3', db_forward_rule.__dict__)
     db.add(db_forward_rule)
     db.commit()
     db.refresh(db_forward_rule)
-    print('4', db_forward_rule.__dict__)
     return old, db_forward_rule
 
 
@@ -163,27 +157,29 @@ def verify_iptables_config(
 ) -> t.Union[PortForwardRuleCreate, PortForwardRuleEdit]:
     if not rule.method == MethodEnum.IPTABLES:
         return rule
-    if (
-        rule.config.get("type")
-        and not rule.config.get("type") in TypeEnum.__members__
-    ):
-        raise HTTPException(
-            status_code=401,
-            detail=f"Forward type: {rule.config.get('type')} not supported",
-        )
-    if not rule.config.get("remote_ip"):
-        if rule.config.get("remote_address"):
-            if is_ip(rule.config.get("remote_address")):
-                rule.config["remote_ip"] = rule.config.get("remote_address")
-            else:
-                rule.config["remote_ip"] = dns_query(
-                    rule.config.get("remote_address")
-                )
-    elif not is_ip(rule.config.get("remote_ip")):
-        raise HTTPException(
-            status_code=401,
-            detail=f"Not a valid ip address: {rule.config.get('remote_ip')}",
-        )
+
+    if rule.config:
+        if (
+            rule.config.get("type")
+            and not rule.config.get("type") in TypeEnum.__members__
+        ):
+            raise HTTPException(
+                status_code=401,
+                detail=f"Forward type: {rule.config.get('type')} not supported",
+            )
+        if not rule.config.get("remote_ip"):
+            if rule.config.get("remote_address"):
+                if is_ip(rule.config.get("remote_address")):
+                    rule.config["remote_ip"] = rule.config.get("remote_address")
+                else:
+                    rule.config["remote_ip"] = dns_query(
+                        rule.config.get("remote_address")
+                    )
+        elif not is_ip(rule.config.get("remote_ip")):
+            raise HTTPException(
+                status_code=401,
+                detail=f"Not a valid ip address: {rule.config.get('remote_ip')}",
+            )
     return rule
 
 
@@ -193,24 +189,25 @@ def verify_and_replace_port_gost_config(
     if not rule.method == MethodEnum.GOST:
         return rule
     serve_nodes = []
-    for node in rule.config.get("ServeNodes", []):
-        if node.startswith(":"):
-            if not node.startswith(f":{port.num}"):
-                raise HTTPException(
-                    status_code=401,
-                    detail=f"Port not allowed, ServeNode: {node}",
-                )
-        else:
-            parsed = urlparse(node)
-            if not parsed.netloc.endswith(
-                str(port.num)
-            ) and not parsed.path.endswith(str(port.num)):
-                raise HTTPException(
-                    status_code=401,
-                    detail=f"Port not allowed, ServeNode: {node}",
-                )
-        serve_nodes.append(
-            node.replace(f":{port.num}", f":{port.internal_num}")
-        )
-    rule.config["ServeNodes"] = serve_nodes
+    if rule.config:
+        for node in rule.config.get("ServeNodes", []):
+            if node.startswith(":"):
+                if not node.startswith(f":{port.num}"):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=f"Port not allowed, ServeNode: {node}",
+                    )
+            else:
+                parsed = urlparse(node)
+                if not parsed.netloc.endswith(
+                    str(port.num)
+                ) and not parsed.path.endswith(str(port.num)):
+                    raise HTTPException(
+                        status_code=401,
+                        detail=f"Port not allowed, ServeNode: {node}",
+                    )
+            serve_nodes.append(
+                node.replace(f":{port.num}", f":{port.internal_num}")
+            )
+        rule.config["ServeNodes"] = serve_nodes
     return rule

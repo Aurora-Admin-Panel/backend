@@ -49,6 +49,14 @@ async def forward_rule_get(
     Get port forward rule
     """
     forward_rule = get_forward_rule(db, server_id, port_id, current_user)
+    if forward_rule.method == MethodEnum.GOST:
+        forward_rule.config["ServeNodes"] = [
+            n.replace(
+                f":{forward_rule.port.internal_num}",
+                f":{forward_rule.port.num}",
+            )
+            for n in forward_rule.config.get("ServeNodes", [])
+        ]
     return forward_rule
 
 
@@ -69,7 +77,7 @@ async def forward_rule_create(
     """
     forward_rule = create_forward_rule(db, port_id, forward_rule, current_user)
 
-    trigger_forward_rule(forward_rule, new = forward_rule)
+    trigger_forward_rule(forward_rule, new=forward_rule)
     return forward_rule
 
 
@@ -110,5 +118,5 @@ async def forward_rule_delete(
     Delete a port forward rule
     """
     forward_rule = delete_forward_rule(db, server_id, port_id, current_user)
-    trigger_forward_rule(forward_rule, old = forward_rule)
+    trigger_forward_rule(forward_rule, old=forward_rule)
     return forward_rule
