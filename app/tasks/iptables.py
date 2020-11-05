@@ -55,7 +55,7 @@ def iptables_runner(
 
     t = ansible_runner.run_async(
         private_data_dir="ansible",
-        artifact_dir=f"ansible/{port_id}/iptables",
+        artifact_dir=f"ansible/artifacts/iptables/{port_id}",
         playbook="iptables.yml",
         extravars=extra_vars,
         status_handler=lambda s, **k: forward_rule_status_handler.delay(

@@ -37,36 +37,16 @@ def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     }
 
 
-def get_gost_config(host: int) -> t.Dict:
+def get_gost_config(port_id: int) -> t.Tuple[int, t.Dict]:
     db = SessionLocal()
-    server = (
-        db.query(Server)
-        .filter(
-            or_(
-                Server.address == host,
-                Server.ansible_name == host,
-                Server.ansible_host == host,
-            )
+    port = db.query(Port).filter(Port.id == port_id).first()
+    # Here we will use only the first rule.
+    if (
+        port
+        and len(port.port_forward_rules) > 0
+        and port.port_forward_rules[0].method == MethodEnum.GOST
+    ):
+        return port.internal_num, generate_gost_config(
+            port.port_forward_rules[0]
         )
-        .first()
-    )
-    config = {}
-    if server:
-        rules = (
-            db.query(PortForwardRule)
-            .join(Port)
-            .filter(
-                and_(
-                    PortForwardRule.method == MethodEnum.GOST,
-                    Port.server_id == server.id,
-                )
-            )
-            .all()
-        )
-        config = {
-            "Retries": 0,
-            "ServeNodes": [],
-            "ChainNodes": [],
-            "Routes": list(map(generate_gost_config, rules)),
-        }
-    return config
+    return port.internal_num, {}

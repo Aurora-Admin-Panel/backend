@@ -2,7 +2,9 @@
 - name: Download latest gost
   hosts: 127.0.0.1
   connection: local
+  gather_facts: no
   tasks:
+    - setup:
     - name: Get latest gost download url
       when: update_gost is defined and update_gost
       shell: curl -Lso- https://api.github.com/repos/ginuerzh/gost/releases/latest | grep -E "browser_download_url.*gost-linux-amd64" | awk '{print $2}' | xargs echo
@@ -26,6 +28,7 @@
 
 - hosts: "{{ host | default('web') }}"
   become: yes
+  gather_facts: no
   pre_tasks:
     - name: Sync gost binary
       when: update_gost is defined and update_gost
@@ -38,10 +41,11 @@
     - name: Sync gost.service
       when: update_gost is defined and update_gost
       copy:
-        src: roles/gost/files/gost.service
-        dest: /usr/lib/systemd/system/gost.service
+        src: roles/gost/files/gost@.service
+        dest: /usr/lib/systemd/system/gost@.service
         owner: root
         group: root
-
+  tasks:
+    - setup:
   roles:
     - gost

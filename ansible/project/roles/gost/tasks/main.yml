@@ -1,7 +1,7 @@
 ---
 - name: assert gost.service exists
   stat:
-    path: /usr/lib/systemd/system/gost.service
+    path: /usr/lib/systemd/system/gost@.service
   register: gost_service
 
 - name: fail if systemd config not exist
@@ -16,14 +16,14 @@
 
 - name: Sync gost config
   copy:
-    src: roles/gost/files/config.json
-    dest: /usr/local/etc/gost/config.json
+    src: roles/gost/files/{{ port_id }}.json
+    dest: /usr/local/etc/gost/{{ port_id }}.json
     owner: root
     group: root
 
 - name: enable & restart gost
   systemd:
-    name: gost
+    name: gost@{{ port_id }}
     state: restarted
     enabled: yes
     daemon_reload: yes

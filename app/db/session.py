@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 
 from app.core import config
@@ -13,8 +13,8 @@ Base = declarative_base()
 
 
 # Dependency
-def get_db():
-    db = SessionLocal()
+def get_db() -> Session:
+    db: Session = SessionLocal()
     try:
         yield db
     finally:

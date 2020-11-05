@@ -45,17 +45,18 @@ def gost_runner(
     update_gost: bool = False,
     update_status: bool = False
 ):
-    extra_vars = {
-        "host": host,
-        "update_gost": update_gost
-    }
-    config = get_gost_config(host)
-    with open('ansible/project/roles/gost/files/config.json', 'w') as f:
+    port_num, config = get_gost_config(port_id)
+    with open(f'ansible/project/roles/gost/files/{port_num}.json', 'w') as f:
         f.write(json.dumps(config, indent=4))
 
+    extra_vars = {
+        "host": host,
+        "port_id": port_num,
+        "update_gost": update_gost
+    }
     t = ansible_runner.run_async(
         private_data_dir="ansible",
-        artifact_dir=f"ansible/{port_id}/gost",
+        artifact_dir=f"ansible/artifacts/gost/{port_id}",
         playbook="gost.yml",
         extravars=extra_vars,
         status_handler=lambda s, **k: gost_status_handler.delay(

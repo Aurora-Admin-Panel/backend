@@ -133,4 +133,4 @@ app.db
 ansible/env/ssh_key
 ansible/inventory/hosts
 ansible/project/roles/gost/files/gost
-ansible/project/roles/gost/files/config.json
+ansible/project/roles/gost/files/*.json

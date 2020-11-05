@@ -78,6 +78,7 @@ async def forward_rule_create(
     """
     forward_rule = create_forward_rule(db, port_id, forward_rule, current_user)
     if forward_rule.method == MethodEnum.GOST:
+        print(get_all_gost_rules(db, server_id))
         trigger_forward_rule(
             forward_rule,
             forward_rule.port,

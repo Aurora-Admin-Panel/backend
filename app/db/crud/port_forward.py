@@ -58,12 +58,12 @@ def create_forward_rule(
             "remote_address"
         ) or not forward_rule.config.get("remote_port"):
             raise HTTPException(
-                status_code=401,
+                status_code=400,
                 detail="Both remote_address and remote_ip are needed",
             )
         if not forward_rule.config.get("type"):
             raise HTTPException(
-                status_code=401,
+                status_code=400,
                 detail=f"Forward type not specified",
             )
         forward_rule = verify_iptables_config(forward_rule)
@@ -160,7 +160,7 @@ def verify_iptables_config(
             and not rule.config.get("type") in TypeEnum.__members__
         ):
             raise HTTPException(
-                status_code=401,
+                status_code=400,
                 detail=f"Forward type: {rule.config.get('type')} not supported",
             )
         if not rule.config.get("remote_ip"):
@@ -173,7 +173,7 @@ def verify_iptables_config(
                     )
         elif not is_ip(rule.config.get("remote_ip")):
             raise HTTPException(
-                status_code=401,
+                status_code=400,
                 detail=f"Not a valid ip address: {rule.config.get('remote_ip')}",
             )
     return rule
@@ -190,7 +190,7 @@ def verify_and_replace_port_gost_config(
             if node.startswith(":"):
                 if not node.startswith(f":{port.num}"):
                     raise HTTPException(
-                        status_code=401,
+                        status_code=403,
                         detail=f"Port not allowed, ServeNode: {node}",
                     )
             else:
@@ -199,7 +199,7 @@ def verify_and_replace_port_gost_config(
                     str(port.num)
                 ) and not parsed.path.endswith(str(port.num)):
                     raise HTTPException(
-                        status_code=401,
+                        status_code=403,
                         detail=f"Port not allowed, ServeNode: {node}",
                     )
             serve_nodes.append(
