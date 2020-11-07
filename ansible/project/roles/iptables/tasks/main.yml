@@ -1,4 +1,12 @@
 ---
+- name: Set iptables forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
 - name: Get interfaces
   shell: ip route show | grep default | awk '{print $5}'
   register: iface
