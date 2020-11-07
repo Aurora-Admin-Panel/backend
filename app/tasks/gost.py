@@ -7,7 +7,7 @@ from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
-from app.api.utils.gost import get_gost_config
+from app.api.utils.gost import get_gost_config, get_gost_remote_ip
 
 
 @celery_app.task()
@@ -51,8 +51,10 @@ def gost_runner(
 
     extra_vars = {
         "host": host,
-        "port_id": port_num,
-        "update_gost": update_gost
+        "local_port": port_num,
+        "remote_ip": get_gost_remote_ip(config),
+        "update_gost": update_gost,
+        "update_status": update_status
     }
     t = ansible_runner.run_async(
         private_data_dir="ansible",

@@ -38,5 +38,5 @@ def trigger_forward_rule(
             port.server.ansible_host
             if port.server.ansible_host is not None
             else port.server.address,
-            update_status=new and new.method == MethodEnum.GOST,
+            update_status=bool(new and new.method == MethodEnum.GOST),
             update_gost=update_gost)

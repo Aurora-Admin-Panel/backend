@@ -1,9 +1,11 @@
 import json
 import typing as t
 from sqlalchemy import and_, or_
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 from app.tasks import celery_app
+from app.api.utils.dns import dns_query
+from app.api.utils.ip import is_ip
 from app.db.session import SessionLocal
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.models.port import Port
@@ -20,8 +22,8 @@ def send_gost_rule(
     kwargs = {
         "port_id": port_id,
         "host": host,
-        "update_status": update_status,
         "update_gost": update_gost,
+        "update_status": update_status,
     }
     print(f"Sending gost_runner task, kwargs: {kwargs}")
     celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
@@ -50,3 +52,25 @@ def get_gost_config(port_id: int) -> t.Tuple[int, t.Dict]:
             port.port_forward_rules[0]
         )
     return port.internal_num, {}
+
+def get_gost_remote_ip(config: t.Dict) -> str:
+    if config.get("ChainNodes", []):
+        first_chain_node = config['ChainNodes'][0]
+        ip_or_address = urlparse(first_chain_node).netloc.split('@')[-1].split(':')[0]
+        if not ip_or_address:
+            return '127.0.0.1'
+        elif is_ip(ip_or_address):
+            return ip_or_address
+        else:
+            return dns_query(ip_or_address)
+    elif config.get("ServeNodes", []):
+        tcp_nodes = list(filter(lambda r: r.startswith("tcp"), config['ServeNodes']))
+        if tcp_nodes:
+            parsed = urlparse(tcp_nodes[0])
+            if parsed.path:
+                ip_or_address = parsed.path[1:].split(':')[0]
+                if is_ip(ip_or_address):
+                    return ip_or_address
+                else:
+                    return dns_query(ip_or_address)
+    return ""
