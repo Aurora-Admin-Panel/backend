@@ -20,9 +20,7 @@ def trigger_forward_rule(
     ):
         send_iptables_forward_rule(
             port.id,
-            port.server.ansible_host
-            if port.server.ansible_host is not None
-            else port.server.address,
+            port.server.ansible_name,
             port.internal_num
             if port.internal_num is not None and port.internal_num > 0
             else port.num,
@@ -35,8 +33,6 @@ def trigger_forward_rule(
     ):
         send_gost_rule(
             port.id,
-            port.server.ansible_host
-            if port.server.ansible_host is not None
-            else port.server.address,
+            port.server.ansible_name,
             update_status=bool(new and new.method == MethodEnum.GOST),
             update_gost=update_gost)

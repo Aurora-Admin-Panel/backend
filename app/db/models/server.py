@@ -9,9 +9,10 @@ class Server(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     address = Column(String, nullable=False)
-    ansible_name = Column(String, nullable=True)
+    ansible_name = Column(String, nullable=False)
     ansible_host = Column(String, nullable=True)
-    ansible_port = Column(Integer, nullable=True)
+    ansible_port = Column(Integer, nullable=True, default=lambda: 22)
+    ansible_user = Column(String, nullable=True, default=lambda: 'root')
     is_active = Column(Boolean, default=True)
 
     ports = relationship("Port", back_populates="server")
