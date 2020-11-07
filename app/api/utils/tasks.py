@@ -21,9 +21,7 @@ def trigger_forward_rule(
         send_iptables_forward_rule(
             port.id,
             port.server.ansible_name,
-            port.internal_num
-            if port.internal_num is not None and port.internal_num > 0
-            else port.num,
+            port.internal_num,
             old,
             new,
         )

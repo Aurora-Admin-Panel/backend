@@ -95,8 +95,6 @@ async def port_create(
     """
     Create a new port on server
     """
-    if port.internal_num is None:
-        port.internal_num = port.num
     return create_port(db, server_id, port)
 
 

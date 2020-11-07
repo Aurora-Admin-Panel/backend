@@ -54,7 +54,7 @@ async def forward_rule_get(
         forward_rule.config["ServeNodes"] = [
             n.replace(
                 f":{forward_rule.port.internal_num}",
-                f":{forward_rule.port.num}",
+                f":{forward_rule.port.external_num}",
             )
             for n in forward_rule.config.get("ServeNodes", [])
         ]
