@@ -185,7 +185,7 @@ def verify_and_replace_port_gost_config(
     if not rule.method == MethodEnum.GOST:
         return rule
     serve_nodes = []
-    num = port.external_num if port.external_num else port.internal_num
+    num = port.external_num if port.external_num else port.num
     if rule.config:
         for node in rule.config.get("ServeNodes", []):
             if node.startswith(":"):
@@ -202,7 +202,7 @@ def verify_and_replace_port_gost_config(
                         detail=f"Port not allowed, ServeNode: {node}",
                     )
             serve_nodes.append(
-                node.replace(f":{num}", f":{port.internal_num}")
+                node.replace(f":{num}", f":{port.num}")
             )
         rule.config["ServeNodes"] = serve_nodes
     return rule

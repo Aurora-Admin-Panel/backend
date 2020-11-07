@@ -6,7 +6,7 @@ from app.db.schemas.user import UserOut
 
 class PortBase(BaseModel):
     external_num: int = None
-    internal_num: int
+    num: int
     server_id: int
 
 
@@ -27,7 +27,7 @@ class PortOpsOut(PortBase):
 
 class PortCreate(BaseModel):
     external_num: t.Optional[int] = None
-    internal_num: int
+    num: int
     is_active: t.Optional[bool] = True
 
     class Config:
@@ -36,7 +36,7 @@ class PortCreate(BaseModel):
 
 class PortEdit(BaseModel):
     external_num: t.Optional[int]
-    internal_num: t.Optional[int]
+    num: t.Optional[int]
     server_id: t.Optional[int]
     is_active: t.Optional[bool]
 

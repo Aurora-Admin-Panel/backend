@@ -21,7 +21,7 @@ def trigger_forward_rule(
         send_iptables_forward_rule(
             port.id,
             port.server.ansible_name,
-            port.internal_num,
+            port.num,
             old,
             new,
         )

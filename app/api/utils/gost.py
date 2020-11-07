@@ -32,9 +32,7 @@ def send_gost_rule(
 def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     return {
         "Retries": rule.config.get("Retries", 0),
-        "ServeNodes": rule.config.get(
-            "ServeNodes", [f":{rule.port.internal_num}"]
-        ),
+        "ServeNodes": rule.config.get("ServeNodes", [f":{rule.port.num}"]),
         "ChainNodes": rule.config.get("ChainNodes", []),
     }
 
@@ -48,27 +46,30 @@ def get_gost_config(port_id: int) -> t.Tuple[int, t.Dict]:
         and len(port.port_forward_rules) > 0
         and port.port_forward_rules[0].method == MethodEnum.GOST
     ):
-        return port.internal_num, generate_gost_config(
-            port.port_forward_rules[0]
-        )
-    return port.internal_num, {}
+        return port.num, generate_gost_config(port.port_forward_rules[0])
+    return port.num, {}
+
 
 def get_gost_remote_ip(config: t.Dict) -> str:
     if config.get("ChainNodes", []):
-        first_chain_node = config['ChainNodes'][0]
-        ip_or_address = urlparse(first_chain_node).netloc.split('@')[-1].split(':')[0]
+        first_chain_node = config["ChainNodes"][0]
+        ip_or_address = (
+            urlparse(first_chain_node).netloc.split("@")[-1].split(":")[0]
+        )
         if not ip_or_address:
-            return '127.0.0.1'
+            return "127.0.0.1"
         elif is_ip(ip_or_address):
             return ip_or_address
         else:
             return dns_query(ip_or_address)
     elif config.get("ServeNodes", []):
-        tcp_nodes = list(filter(lambda r: r.startswith("tcp"), config['ServeNodes']))
+        tcp_nodes = list(
+            filter(lambda r: r.startswith("tcp"), config["ServeNodes"])
+        )
         if tcp_nodes:
             parsed = urlparse(tcp_nodes[0])
             if parsed.path:
-                ip_or_address = parsed.path[1:].split(':')[0]
+                ip_or_address = parsed.path[1:].split(":")[0]
                 if is_ip(ip_or_address):
                     return ip_or_address
                 else:

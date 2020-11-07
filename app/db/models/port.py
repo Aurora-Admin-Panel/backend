@@ -11,7 +11,7 @@ class Port(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     external_num = Column(Integer, nullable=True)
-    internal_num = Column(Integer, nullable=False)
+    num = Column(Integer, nullable=False)
     server_id = Column(Integer, ForeignKey('server.id'))
     is_active = Column(Boolean, default=True)
 
