@@ -19,46 +19,23 @@ from app.db.models.server import Server, ServerUser
 
 def get_servers(
     db: Session, user: User, offset: int = 0, limit: int = 100
-) -> t.Union[t.List[ServerOpsOut], t.List[ServerOut]]:
+) -> t.List[Server]:
     if user.is_superuser or user.is_ops:
-        servers = [
-            ServerOpsOut(**server.__dict__)
-            for server in db.query(Server).offset(offset).limit(limit).all()
-        ]
-    else:
-        servers = [
-            ServerOut(**server.__dict__)
-            for server in db.query(Server)
-            .filter(Server.allowed_users.any(user_id=user.id))
-            .offset(offset)
-            .limit(limit)
-            .all()
-        ]
-    return servers
+        return db.query(Server).offset(offset).limit(limit).all()
+    return (
+        db.query(Server)
+        .filter(Server.allowed_users.any(user_id=user.id))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
 
-def get_server(
-    db: Session, server_id: int, user: User = None
-) -> Server:
-    server = db.query(Server).filter(Server.id == server_id).first()
-    if user:
-        if not user.is_superuser and not user.is_ops:
-            if not any(user.id == u.id for u in server.allowed_users):
-                raise HTTPException(
-                    status_code=403,
-                    detail="User not allowed to access this server",
-                )
-    return server
+def get_server(db: Session, server_id: int) -> Server:
+    return db.query(Server).filter(Server.id == server_id).first()
 
 
-def create_server(db: Session, server: ServerCreate, user: User) -> Server:
-    if not user.is_ops and not user.is_superuser:
-        raise HTTPException(
-            status_code=403,
-            detail="Only superuser or ops are allowed to create servers.",
-        )
-    if server.ansible_host is None:
-        server.ansible_host = server.address
+def create_server(db: Session, server: ServerCreate) -> Server:
     db_server = Server(**server.dict())
     db.add(db_server)
     db.commit()
@@ -107,12 +84,14 @@ def add_server_user(
     return db_server_user
 
 
-def delete_server_user(
-    db: Session, server_id: int, user_id: int
-) -> ServerUser:
+def delete_server_user(db: Session, server_id: int, user_id: int) -> ServerUser:
     db_server_user = (
         db.query(ServerUser)
-        .filter(and_(ServerUser.server_id==server_id, ServerUser.user_id==user_id))
+        .filter(
+            and_(
+                ServerUser.server_id == server_id, ServerUser.user_id == user_id
+            )
+        )
         .first()
     )
     if not db_server_user:

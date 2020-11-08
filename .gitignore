@@ -130,6 +130,7 @@ dmypy.json
 
 # Local files
 app.db
+ansible/artifacts/**/*
 ansible/env/ssh_key
 ansible/inventory/hosts
 ansible/project/roles/gost/files/gost

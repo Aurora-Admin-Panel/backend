@@ -18,7 +18,9 @@ class ServerOut(ServerBase):
 
 class ServerOpsOut(ServerOut):
     id: int
-    ansible_host: str = None
+    ansible_name: str
+    ansible_host: t.Optional[str]
+    ansible_port: t.Optional[int]
     is_active: bool
 
     class Config:
@@ -26,7 +28,9 @@ class ServerOpsOut(ServerOut):
 
 
 class ServerCreate(ServerBase):
-    ansible_host: t.Optional[str]
+    ansible_name: str
+    ansible_host: t.Optional[str] = None
+    ansible_port: t.Optional[int] = 22
 
     class Config:
         orm_mode = True
@@ -35,7 +39,9 @@ class ServerCreate(ServerBase):
 class ServerEdit(BaseModel):
     name: t.Optional[str]
     address: t.Optional[str]
+    ansible_name: t.Optional[str]
     ansible_host: t.Optional[str]
+    ansible_port: t.Optional[int]
     is_active: t.Optional[bool]
 
     class Config:

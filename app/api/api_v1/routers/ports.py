@@ -7,16 +7,17 @@ from fastapi import (
     Response,
     encoders,
 )
+from fastapi.encoders import jsonable_encoder
 
 from app.db.session import get_db
 from app.db.schemas.port import (
-    Port,
     PortOut,
     PortOpsOut,
     PortCreate,
     PortEdit,
     PortUserEdit,
     PortUserOut,
+    PortUserOpsOut,
 )
 from app.db.crud.port import (
     get_ports,
@@ -48,16 +49,17 @@ async def ports_list(
     offset: int = 0,
     limit: int = 100,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    user=Depends(get_current_active_user),
 ):
     """
     Get all ports related to server
     """
-    ports = get_ports(db, server_id, current_user, offset, limit)
+    ports = get_ports(db, server_id, user, offset, limit)
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(ports)}"
-    print(ports)
-    return ports
+    if user.is_admin():
+        return [PortOpsOut(**jsonable_encoder(port)) for port in ports]
+    return [PortOut(**jsonable_encoder(port)) for port in ports]
 
 
 @r.get(
@@ -71,18 +73,23 @@ async def port_get(
     server_id: int,
     port_id: int,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    user=Depends(get_current_active_user),
 ):
     """
     Get port by id
     """
-    port = get_port(db, server_id, port_id, current_user)
-    return port
+    port = get_port(db, server_id, port_id)
+    if user.is_admin():
+        return PortOpsOut(**jsonable_encoder(port))
+
+    if not any(user.id == u.user_id for u in port.allowed_users):
+        raise HTTPException(status_code=404, detail="Port not found")
+    return PortOut(**jsonable_encoder(port))
 
 
 @r.post(
     "/servers/{server_id}/ports",
-    response_model=Port,
+    response_model=PortOut,
     response_model_exclude_none=True,
 )
 async def port_create(
@@ -100,7 +107,7 @@ async def port_create(
 
 @r.put(
     "/servers/{server_id}/ports/{port_id}",
-    response_model=Port,
+    response_model=PortOut,
     response_model_exclude_none=True,
 )
 async def port_edit(
@@ -119,7 +126,7 @@ async def port_edit(
 
 @r.delete(
     "/servers/{server_id}/ports/{port_id}",
-    response_model=Port,
+    response_model=PortOut,
     response_model_exclude_none=True,
 )
 async def port_delete(
@@ -137,7 +144,7 @@ async def port_delete(
 
 @r.get(
     "/servers/{server_id}/ports/{port_id}/users",
-    response_model=t.List[PortUserOut],
+    response_model=t.List[PortUserOpsOut],
 )
 async def port_users_get(
     request: Request,
@@ -150,7 +157,7 @@ async def port_users_get(
     Get all port users
     """
     port_users = get_port_users(db, server_id, port_id)
-    return port_users
+    return jsonable_encoder(port_users)
 
 
 @r.post(

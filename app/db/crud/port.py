@@ -1,6 +1,6 @@
 import typing as t
 from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
 from .server import add_server_user
@@ -22,35 +22,37 @@ from app.db.models.port_forward import PortForwardRule
 
 def get_ports(
     db: Session, server_id: int, user: User, offset: int = 0, limit: int = 100
-) -> t.Union[t.List[PortOpsOut], t.List[PortOut]]:
-    ports = (
+) -> t.List[Port]:
+    if user.is_admin():
+        return (
+            db.query(Port)
+            .filter(Port.server_id == server_id)
+            .options(joinedload(Port.allowed_users).joinedload(PortUser.user))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+    return (
         db.query(Port)
-        .filter(Port.server_id == server_id)
+        .filter(
+            and_(
+                Port.server_id == server_id,
+                Port.allowed_users.any(user_id=user.id),
+            )
+        )
         .offset(offset)
         .limit(limit)
         .all()
     )
-    if not user.is_superuser and not user.is_ops:
-        return [
-            PortOut(**port.__dict__)
-            for port in ports
-            if any(user.id == u.user_id for u in port.allowed_users)
-        ]
-    return [PortOpsOut(**port.__dict__) for port in ports]
 
 
-def get_port(
-    db: Session, server_id: int, port_id: int, user: User = None
-) -> Port:
-    port = (
+def get_port(db: Session, server_id: int, port_id: int) -> Port:
+    return (
         db.query(Port)
         .filter(and_(Port.server_id == server_id, Port.id == port_id))
+        .options(joinedload(Port.allowed_users).joinedload(PortUser.user))
         .first()
     )
-    if user and not user.is_ops and not user.is_superuser:
-        if not any(user.id == u.user_id for u in port.allowed_users):
-            raise HTTPException(status_code=404, detail="Port not found")
-    return port
 
 
 def create_port(db: Session, server_id: int, port: PortCreate) -> Port:
@@ -93,6 +95,7 @@ def get_port_users(
     port_users = (
         db.query(PortUser)
         .filter(and_(Port.server_id == server_id, PortUser.port_id == port_id))
+        .options(joinedload(PortUser.user))
         .all()
     )
     return port_users

@@ -47,15 +47,17 @@ async def servers_list(
     offset: int = 0,
     limit: int = 100,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    user=Depends(get_current_active_user),
 ):
     """
     Get all servers
     """
-    servers = get_servers(db, current_user, offset, limit)
+    servers = get_servers(db, user, offset, limit)
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(servers)}"
-    return servers
+    if user.is_ops or user.is_superuser:
+        return [ServerOpsOut(**server.__dict__) for server in servers]
+    return [ServerOut(**server.__dict__) for server in servers]
 
 
 @r.get(
@@ -67,14 +69,20 @@ async def server_get(
     response: Response,
     server_id: int,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_user),
+    user=Depends(get_current_active_user),
 ):
     """
     Get server by id
     """
-    server = get_server(db, server_id, current_user)
+    server = get_server(db, server_id)
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
+    if not user.is_superuser and not user.is_ops:
+        if not any(user.id == u.id for u in server.allowed_users):
+            raise HTTPException(
+                    status_code=403,
+                    detail="User not allowed to access this server",
+                )
     return server
 
 
@@ -85,12 +93,14 @@ async def server_create(
     request: Request,
     server: ServerCreate,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    user=Depends(get_current_active_admin),
 ):
     """
     Create a new server
     """
-    return create_server(db, server, current_user)
+    if server.ansible_host is None:
+        server.ansible_host = server.address
+    return create_server(db, server)
 
 
 @r.put(
