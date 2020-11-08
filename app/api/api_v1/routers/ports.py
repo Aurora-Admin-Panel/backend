@@ -29,6 +29,7 @@ from app.db.crud.port import (
     add_port_user,
     delete_port_user,
 )
+from app.db.crud.user import get_user
 from app.core.auth import (
     get_current_active_user,
     get_current_active_superuser,
@@ -175,6 +176,9 @@ async def port_user_add(
     """
     Add a port user to port
     """
+    db_user = get_user(db, port_user.user_id)
+    if not db_user:
+        raise HTTPException(status_code=400, detail="User not found") 
     port_user = add_port_user(db, server_id, port_id, port_user)
     return port_user
 
