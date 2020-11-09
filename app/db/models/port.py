@@ -17,7 +17,7 @@ class Port(Base):
 
     server = relationship("Server", back_populates="ports")
     allowed_users = relationship("PortUser", back_populates="port")
-    port_forward_rules = relationship("PortForwardRule", back_populates="port")
+    forward_rule = relationship("PortForwardRule", uselist=False, back_populates="port")
 
 
 class PortUser(Base):

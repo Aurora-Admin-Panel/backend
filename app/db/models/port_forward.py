@@ -28,4 +28,4 @@ class PortForwardRule(Base):
     status = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    port = relationship("Port", back_populates="port_forward_rules")
+    port = relationship("Port", back_populates="forward_rule")

@@ -58,9 +58,21 @@ async def ports_list(
     ports = get_ports(db, server_id, user, offset, limit)
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(ports)}"
+    ports = jsonable_encoder(ports)
+    for port in ports:
+        if (
+            port["external_num"]
+            and port["forward_rule"]
+            and port["forward_rule"].get("method") == "gost"
+            and port["forward_rule"].get("config", {}).get("ServeNodes")
+        ):
+            port["forward_rule"]["config"]["ServeNodes"] = [
+                node.replace(f":{port['num']}", f":{port['external_num']}")
+                for node in port["forward_rule"]["config"]["ServeNodes"]
+            ]
     if user.is_admin():
-        return [PortOpsOut(**jsonable_encoder(port)) for port in ports]
-    return [PortOut(**jsonable_encoder(port)) for port in ports]
+        return [PortOpsOut(**port) for port in ports]
+    return [PortOut(**port) for port in ports]
 
 
 @r.get(
@@ -80,12 +92,23 @@ async def port_get(
     Get port by id
     """
     port = get_port(db, server_id, port_id)
+    port = jsonable_encoder(port)
+    if (
+        port["external_num"]
+        and port["forward_rule"]
+        and port["forward_rule"].get("method") == "gost"
+        and port["forward_rule"].get("config", {}).get("ServeNodes")
+    ):
+        port["forward_rule"]["config"]["ServeNodes"] = [
+            node.replace(f":{port['num']}", f":{port['external_num']}")
+            for node in port["forward_rule"]["config"]["ServeNodes"]
+        ]
     if user.is_admin():
-        return PortOpsOut(**jsonable_encoder(port))
+        return PortOpsOut(**port)
 
-    if not any(user.id == u.user_id for u in port.allowed_users):
+    if not any(user.id == u["user_id"] for u in port.allowed_users):
         raise HTTPException(status_code=404, detail="Port not found")
-    return PortOut(**jsonable_encoder(port))
+    return PortOut(**port)
 
 
 @r.post(
@@ -178,7 +201,7 @@ async def port_user_add(
     """
     db_user = get_user(db, port_user.user_id)
     if not db_user:
-        raise HTTPException(status_code=400, detail="User not found") 
+        raise HTTPException(status_code=400, detail="User not found")
     port_user = add_port_user(db, server_id, port_id, port_user)
     return port_user
 
