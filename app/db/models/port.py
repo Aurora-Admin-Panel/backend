@@ -2,7 +2,7 @@ from .base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, UniqueConstraint
 
-from app.db.models.port_forward import PortForwardRule
+from app.db.models.port_forward import PortForwardRule, MethodEnum
 
 
 class Port(Base):

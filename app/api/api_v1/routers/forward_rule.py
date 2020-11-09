@@ -59,16 +59,6 @@ async def forward_rule_get(
             raise HTTPException(
                 status_code=404, detail="Port forward rule not found"
             )
-    if forward_rule and forward_rule.method == MethodEnum.GOST:
-        forward_rule.config["ServeNodes"] = [
-            n.replace(
-                f":{forward_rule.port.num}",
-                f":{forward_rule.port.external_num}",
-            )
-            if forward_rule.port.external_num
-            else f":{forward_rule.port.num}"
-            for n in forward_rule.config.get("ServeNodes", [])
-        ]
     return forward_rule
 
 
@@ -87,7 +77,7 @@ async def forward_rule_create(
     """
     Create a port forward rule
     """
-    db_port = get_port(db, server_id, port_id)    
+    db_port = get_port(db, server_id, port_id)
     if not user.is_admin() and not any(
         u.user_id == user.id for u in db_port.allowed_users
     ):
@@ -95,23 +85,16 @@ async def forward_rule_create(
             status_code=403,
             detail="User not allowed to create forward rule on this port",
         )
+    if db_port.forward_rule:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot create more than one rule on same port",
+        )
 
     if forward_rule.method == MethodEnum.IPTABLES:
-        if not forward_rule.config.get(
-            "remote_address"
-        ) or not forward_rule.config.get("remote_port"):
-            raise HTTPException(
-                status_code=400,
-                detail="Both remote_address and remote_ip are needed",
-            )
-        if not forward_rule.config.get("type"):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Forward type not specified",
-            )
         forward_rule = verify_iptables_config(forward_rule)
     elif forward_rule.method == MethodEnum.GOST:
-        forward_rule = verify_and_replace_port_gost_config(db_port, forward_rule)
+        forward_rule = verify_gost_config(db_port, forward_rule)
 
     update_gost = False
     if forward_rule.method == MethodEnum.GOST:
@@ -142,7 +125,7 @@ async def forward_rule_edit(
     """
     Edit a port forward rule
     """
-    db_port = get_port(db, server_id, port_id)    
+    db_port = get_port(db, server_id, port_id)
     if not user.is_admin() and not any(
         u.user_id == user.id for u in db_port.allowed_users
     ):
@@ -154,9 +137,7 @@ async def forward_rule_edit(
     if forward_rule.method == MethodEnum.IPTABLES:
         forward_rule = verify_iptables_config(forward_rule)
     elif forward_rule.method == MethodEnum.GOST:
-        forward_rule = verify_and_replace_port_gost_config(
-            db_port, forward_rule
-        )
+        forward_rule = verify_gost_config(db_port, forward_rule)
 
     old, updated = edit_forward_rule(db, server_id, port_id, forward_rule)
     trigger_forward_rule(updated, updated.port, old, updated)
@@ -190,6 +171,20 @@ def verify_iptables_config(
     if not rule.method == MethodEnum.IPTABLES:
         return rule
 
+    if isinstance(rule, PortForwardRuleCreate):
+        if not rule.config.get("remote_address") or not rule.config.get(
+            "remote_port"
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Both remote_address and remote_ip are needed",
+            )
+        if not rule.config.get("type"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Forward type not specified",
+            )
+
     if rule.config:
         if (
             rule.config.get("type")
@@ -215,12 +210,20 @@ def verify_iptables_config(
     return rule
 
 
-def verify_and_replace_port_gost_config(
+def verify_gost_config(
     port: Port, rule: t.Union[PortForwardRuleCreate, PortForwardRuleEdit]
 ) -> t.Union[PortForwardRuleCreate, PortForwardRuleEdit]:
     if not rule.method == MethodEnum.GOST:
         return rule
-    serve_nodes = []
+
+    if isinstance(rule, PortForwardRuleCreate):
+        if not rule.config.get("ServeNodes") and not rule.config.get(
+            "ChainNodes"
+        ):
+            raise HTTPException(
+                status_code=400, detail=f"Bad gost rule: {rule.config}"
+            )
+
     num = port.external_num if port.external_num else port.num
     if rule.config:
         for node in rule.config.get("ServeNodes", []):
@@ -232,13 +235,11 @@ def verify_and_replace_port_gost_config(
                     )
             else:
                 parsed = urlparse(node)
-                if not parsed.netloc.endswith(str(num)) and not parsed.path.endswith(str(num)):
+                if not parsed.netloc.endswith(
+                    str(num)
+                ) and not parsed.path.endswith(str(num)):
                     raise HTTPException(
                         status_code=403,
                         detail=f"Port not allowed, ServeNode: {node}",
                     )
-            serve_nodes.append(
-                node.replace(f":{num}", f":{port.num}")
-            )
-        rule.config["ServeNodes"] = serve_nodes
     return rule

@@ -39,7 +39,6 @@ class PortOut(PortBase):
     id: int
     forward_rule: t.Optional[PortForwardRuleOut]
 
-
     class Config:
         orm_mode = True
 

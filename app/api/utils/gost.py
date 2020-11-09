@@ -32,7 +32,12 @@ def send_gost_rule(
 def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     return {
         "Retries": rule.config.get("Retries", 0),
-        "ServeNodes": rule.config.get("ServeNodes", [f":{rule.port.num}"]),
+        "ServeNodes": [
+            node.replace(f":{rule.port.external_num}", f":{rule.port.num}", 1)
+            if rule.port.external_num
+            else node
+            for node in rule.config.get("ServeNodes", [f":{rule.port.num}"])
+        ],
         "ChainNodes": rule.config.get("ChainNodes", []),
     }
 
@@ -43,10 +48,10 @@ def get_gost_config(port_id: int) -> t.Tuple[int, t.Dict]:
     # Here we will use only the first rule.
     if (
         port
-        and len(port.port_forward_rules) > 0
-        and port.port_forward_rules[0].method == MethodEnum.GOST
+        and port.forward_rule
+        and port.forward_rule.method == MethodEnum.GOST
     ):
-        return port.num, generate_gost_config(port.port_forward_rules[0])
+        return port.num, generate_gost_config(port.forward_rule)
     return port.num, {}
 
 

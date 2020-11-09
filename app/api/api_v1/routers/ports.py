@@ -56,20 +56,10 @@ async def ports_list(
     Get all ports related to server
     """
     ports = get_ports(db, server_id, user, offset, limit)
+    ports = jsonable_encoder(ports)
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(ports)}"
-    ports = jsonable_encoder(ports)
-    for port in ports:
-        if (
-            port["external_num"]
-            and port["forward_rule"]
-            and port["forward_rule"].get("method") == "gost"
-            and port["forward_rule"].get("config", {}).get("ServeNodes")
-        ):
-            port["forward_rule"]["config"]["ServeNodes"] = [
-                node.replace(f":{port['num']}", f":{port['external_num']}")
-                for node in port["forward_rule"]["config"]["ServeNodes"]
-            ]
+
     if user.is_admin():
         return [PortOpsOut(**port) for port in ports]
     return [PortOut(**port) for port in ports]
@@ -92,23 +82,12 @@ async def port_get(
     Get port by id
     """
     port = get_port(db, server_id, port_id)
-    port = jsonable_encoder(port)
-    if (
-        port["external_num"]
-        and port["forward_rule"]
-        and port["forward_rule"].get("method") == "gost"
-        and port["forward_rule"].get("config", {}).get("ServeNodes")
-    ):
-        port["forward_rule"]["config"]["ServeNodes"] = [
-            node.replace(f":{port['num']}", f":{port['external_num']}")
-            for node in port["forward_rule"]["config"]["ServeNodes"]
-        ]
-    if user.is_admin():
-        return PortOpsOut(**port)
 
+    if user.is_admin():
+        return PortOpsOut(**jsonable_encoder(port))
     if not any(user.id == u["user_id"] for u in port.allowed_users):
         raise HTTPException(status_code=404, detail="Port not found")
-    return PortOut(**port)
+    return PortOut(**jsonable_encoder(port))
 
 
 @r.post(
