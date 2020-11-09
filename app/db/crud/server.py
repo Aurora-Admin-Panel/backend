@@ -25,6 +25,7 @@ def get_servers(
     return (
         db.query(Server)
         .filter(Server.allowed_users.any(user_id=user.id))
+        .order_by(Server.address)
         .offset(offset)
         .limit(limit)
         .all()
