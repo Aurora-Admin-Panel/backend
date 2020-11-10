@@ -18,7 +18,7 @@ from app.tasks import celery_app
 app = FastAPI(
     title=config.PROJECT_NAME, docs_url="/api/docs", openapi_url="/api"
 )
-origins = ["*", "http://localhost:3000/", "http://192.168.1.119:8000", "https://monitor.2cn.io"]
+origins = ["*", "localhost:3000", "192.168.1.181:8000", "https://monitor.2cn.io"]
 
 app.add_middleware(
     CORSMiddleware,

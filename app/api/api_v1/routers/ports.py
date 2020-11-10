@@ -165,7 +165,7 @@ async def port_users_get(
 
 @r.post(
     "/servers/{server_id}/ports/{port_id}/users",
-    response_model=PortUserOut,
+    response_model=PortUserOpsOut,
 )
 async def port_user_add(
     request: Request,
@@ -182,7 +182,7 @@ async def port_user_add(
     if not db_user:
         raise HTTPException(status_code=400, detail="User not found")
     port_user = add_port_user(db, server_id, port_id, port_user)
-    return port_user
+    return jsonable_encoder(port_user)
 
 
 @r.delete(

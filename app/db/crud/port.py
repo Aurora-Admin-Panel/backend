@@ -115,6 +115,7 @@ def add_port_user(
     db.add(db_port_user)
     db.commit()
     db.refresh(db_port_user)
+    assert db_port_user.user
 
     db_server_user = (
         db.query(ServerUser)
