@@ -1,0 +1,7 @@
+---
+- name: Exec tc script
+  script: roles/tc/files/tc.sh {{ tc_args }}
+  register: result
+
+- debug:
+    var: result

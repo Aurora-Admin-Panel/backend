@@ -44,10 +44,8 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task("app.tasks.gost.gost_runner", kwargs={
-        'rule_id': 2,
-        'host': 'sj2',
-        'update_gost': True
+    celery_app.send_task("app.tasks.tc.tc_runner", kwargs={
+        'port_id': 2,
     })
     return {"message": "ok"}
 

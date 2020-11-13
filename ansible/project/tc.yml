@@ -1,0 +1,7 @@
+---
+- name: Exec tc role
+  gather_facts: false
+  hosts: "{{ host | default('web') }}"
+  become: yes
+  roles:
+  - tc
