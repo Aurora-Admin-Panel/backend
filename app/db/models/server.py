@@ -1,6 +1,7 @@
 from .base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint
 
 
 class Server(Base):
@@ -13,6 +14,7 @@ class Server(Base):
     ansible_host = Column(String, nullable=True)
     ansible_port = Column(Integer, nullable=True, default=lambda: 22)
     ansible_user = Column(String, nullable=True, default=lambda: 'root')
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     is_active = Column(Boolean, default=True)
 
     ports = relationship("Port", back_populates="server")
@@ -26,6 +28,7 @@ class ServerUser(Base):
     id = Column(Integer, primary_key=True, index=True)
     server_id = Column(Integer, ForeignKey("server.id"))
     user_id = Column(Integer, ForeignKey("user.id"))
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
 
     user = relationship("User", back_populates="allowed_servers")
     server = relationship("Server", back_populates="allowed_users")

@@ -1,6 +1,7 @@
 from .base import Base
 from sqlalchemy.orm import relationship
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint
 
 from app.db.models.port_forward import PortForwardRule, MethodEnum
 
@@ -13,6 +14,7 @@ class Port(Base):
     external_num = Column(Integer, nullable=True)
     num = Column(Integer, nullable=False)
     server_id = Column(Integer, ForeignKey('server.id'))
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     is_active = Column(Boolean, default=True)
 
     server = relationship("Server", back_populates="ports")
@@ -27,6 +29,7 @@ class PortUser(Base):
     id = Column(Integer, primary_key=True, index=True)
     port_id = Column(Integer, ForeignKey("port.id"))
     user_id = Column(Integer, ForeignKey("user.id"))
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
 
     user = relationship("User", back_populates="allowed_ports")
     port = relationship("Port", back_populates="allowed_users")

@@ -7,6 +7,7 @@ from fastapi import (
     Response,
     encoders,
 )
+from fastapi.encoders import jsonable_encoder
 
 from app.db.session import get_db
 from app.db.schemas.server import (
@@ -52,12 +53,12 @@ async def servers_list(
     """
     Get all servers
     """
-    servers = get_servers(db, user, offset, limit)
+    servers = jsonable_encoder(get_servers(db, user, offset, limit))
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(servers)}"
     if user.is_ops or user.is_superuser:
-        return [ServerOpsOut(**server.__dict__) for server in servers]
-    return [ServerOut(**server.__dict__) for server in servers]
+        return [ServerOpsOut(**server) for server in servers]
+    return [ServerOut(**server) for server in servers]
 
 
 @r.get(
@@ -77,13 +78,14 @@ async def server_get(
     server = get_server(db, server_id)
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
-    if not user.is_superuser and not user.is_ops:
-        if not any(user.id == u.id for u in server.allowed_users):
-            raise HTTPException(
-                    status_code=403,
-                    detail="User not allowed to access this server",
-                )
-    return server
+
+    if user.is_admin():
+        return ServerOpsOut(**jsonable_encoder(server))
+    if not any(user.id == u.id for u in server.allowed_users):
+        raise HTTPException(
+                status_code=404,
+                detail="Server not found")
+    return ServerOut(**jsonable_encoder(server))
 
 
 @r.post(

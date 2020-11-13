@@ -82,6 +82,8 @@ async def port_get(
     Get port by id
     """
     port = get_port(db, server_id, port_id)
+    if not port:
+        raise HTTPException(status_code=404, detail="Port not found")
 
     if user.is_admin():
         return PortOpsOut(**jsonable_encoder(port))

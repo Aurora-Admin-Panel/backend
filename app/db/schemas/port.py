@@ -4,9 +4,12 @@ from pydantic import BaseModel
 from app.db.schemas.user import UserOut
 from app.db.schemas.port_forward import PortForwardRuleOut
 
+class PortUserConfig(BaseModel):
+    pass
 
 class PortUserBase(BaseModel):
     user_id: int
+    config: PortUserConfig
 
 
 class PortUserOut(PortUserBase):
@@ -29,10 +32,16 @@ class PortUserEdit(PortUserBase):
         orm_mode = True
 
 
+class PortConfig(BaseModel):
+    egress_limit: t.Optional[int]
+    ingress_limit: t.Optional[int]
+
+
 class PortBase(BaseModel):
     external_num: int = None
     num: int
     server_id: int
+    config: PortConfig
 
 
 class PortOut(PortBase):

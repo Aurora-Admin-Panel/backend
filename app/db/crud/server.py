@@ -1,6 +1,6 @@
 import typing as t
 from sqlalchemy import and_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
 from app.core.security import get_password_hash
@@ -21,7 +21,13 @@ def get_servers(
     db: Session, user: User, offset: int = 0, limit: int = 100
 ) -> t.List[Server]:
     if user.is_superuser or user.is_ops:
-        return db.query(Server).offset(offset).limit(limit).all()
+        return (
+            db.query(Server)
+            .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
     return (
         db.query(Server)
         .filter(Server.allowed_users.any(user_id=user.id))
@@ -33,7 +39,12 @@ def get_servers(
 
 
 def get_server(db: Session, server_id: int) -> Server:
-    return db.query(Server).filter(Server.id == server_id).first()
+    return (
+        db.query(Server)
+        .filter(Server.id == server_id)
+        .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
+        .first()
+    )
 
 
 def create_server(db: Session, server: ServerCreate) -> Server:

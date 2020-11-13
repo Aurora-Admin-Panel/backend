@@ -4,6 +4,38 @@ from pydantic import BaseModel
 from app.db.schemas.user import UserOut
 
 
+class ServerUserConfig(BaseModel):
+    quota: t.Optional[int]
+
+class ServerUserBase(BaseModel):
+    server_id: int
+    user_id: int
+    config: ServerUserConfig
+
+
+class ServerUserOut(ServerUserBase):
+
+    class Config:
+        orm_mode = True
+
+
+class ServerUserOpsOut(ServerUserBase):
+    user: UserOut
+
+    class Config:
+        orm_mode = True
+
+
+class ServerUserEdit(BaseModel):
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class ServerConfig(BaseModel):
+    pass
+
 class ServerBase(BaseModel):
     name: str
     address: str
@@ -21,6 +53,8 @@ class ServerOpsOut(ServerOut):
     ansible_name: str
     ansible_host: t.Optional[str]
     ansible_port: t.Optional[int]
+    config: ServerConfig
+    allowed_users: t.List[ServerUserOpsOut]
     is_active: bool
 
     class Config:
@@ -50,26 +84,6 @@ class ServerEdit(BaseModel):
 
 class Server(ServerBase):
     id: int
-
-    class Config:
-        orm_mode = True
-
-
-class ServerUserBase(BaseModel):
-    server_id: int
-    user_id: int
-
-
-class ServerUserOut(ServerUserBase):
-    # server: ServerOut
-    # user: UserOut
-
-    class Config:
-        orm_mode = True
-
-
-class ServerUserEdit(BaseModel):
-    user_id: int
 
     class Config:
         orm_mode = True
