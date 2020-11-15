@@ -9,6 +9,7 @@ from app.db.models.port_forward import PortForwardRule, MethodEnum
 class Port(Base):
     __tablename__ = "port"
     __table_args__ = UniqueConstraint('external_num', 'server_id', name='_port_num_server_uc'),
+    __table_args__ = UniqueConstraint('num', 'server_id', name='_port_num_server_uc'),
 
     id = Column(Integer, primary_key=True, index=True)
     external_num = Column(Integer, nullable=True)
