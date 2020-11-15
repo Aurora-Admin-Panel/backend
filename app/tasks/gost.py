@@ -1,5 +1,6 @@
 import json
 import ansible_runner
+from uuid import uuid4
 
 from . import celery_app
 from app.db.session import SessionLocal
@@ -58,7 +59,7 @@ def gost_runner(
     }
     t = ansible_runner.run_async(
         private_data_dir="ansible",
-        artifact_dir=f"ansible/artifacts/gost/{port_id}",
+        artifact_dir=f"ansible/artifacts/{port_id}/gost/{uuid4()}",
         playbook="gost.yml",
         extravars=extra_vars,
         status_handler=lambda s, **k: gost_status_handler.delay(

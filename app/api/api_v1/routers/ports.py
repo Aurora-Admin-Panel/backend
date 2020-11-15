@@ -35,6 +35,7 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
+from app.api.utils.tasks import trigger_tc
 
 ports_router = r = APIRouter()
 
@@ -107,7 +108,10 @@ async def port_create(
     """
     Create a new port on server
     """
-    return create_port(db, server_id, port)
+    db_port = create_port(db, server_id, port)
+    if port.config.egress_limit or port.config.ingress_limit:
+        trigger_tc(db_port)
+    return db_port
 
 
 @r.put(
@@ -126,7 +130,9 @@ async def port_edit(
     """
     Update an existing port
     """
-    return edit_port(db, server_id, port_id, port)
+    db_port = edit_port(db, server_id, port_id, port)
+    trigger_tc(db_port)
+    return db_port
 
 
 @r.delete(

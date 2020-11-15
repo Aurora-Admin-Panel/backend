@@ -65,7 +65,7 @@ def create_port(db: Session, server_id: int, port: PortCreate) -> Port:
     db.add(db_port)
     db.commit()
     db.refresh(db_port)
-    return db_port
+    return get_port(db, server_id, db_port.id)
 
 
 def edit_port(
@@ -81,8 +81,7 @@ def edit_port(
 
     db.add(db_port)
     db.commit()
-    db.refresh(db_port)
-    return db_port
+    return get_port(db, server_id, port_id)
 
 
 def delete_port(db: Session, server_id: int, port_id: int) -> PortOut:

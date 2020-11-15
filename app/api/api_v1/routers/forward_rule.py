@@ -52,6 +52,10 @@ async def forward_rule_get(
     Get port forward rule
     """
     forward_rule = get_forward_rule(db, server_id, port_id, user)
+    if not forward_rule:
+        raise HTTPException(
+                status_code=404, detail="Port forward rule not found"
+            )
     if not user.is_admin():
         if not any(
             user.id == u.user_id for u in forward_rule.port.allowed_users
