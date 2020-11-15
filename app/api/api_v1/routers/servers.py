@@ -102,7 +102,7 @@ async def server_create(
     """
     if server.ansible_host is None:
         server.ansible_host = server.address
-    return create_server(db, server)
+    return jsonable_encoder(create_server(db, server))
 
 
 @r.put(
@@ -120,7 +120,7 @@ async def server_edit(
     """
     Update an existing server
     """
-    return edit_server(db, server_id, server)
+    return jsonable_encoder(edit_server(db, server_id, server))
 
 @r.delete(
     "/servers/{server_id}",
