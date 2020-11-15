@@ -52,7 +52,7 @@ def create_server(db: Session, server: ServerCreate) -> Server:
     db.add(db_server)
     db.commit()
     db.refresh(db_server)
-    return db_server
+    return get_server(db, db_server.id)
 
 
 def edit_server(db: Session, server_id: int, server: ServerEdit) -> Server:
@@ -67,7 +67,7 @@ def edit_server(db: Session, server_id: int, server: ServerEdit) -> Server:
     db.add(db_server)
     db.commit()
     db.refresh(db_server)
-    return db_server
+    return get_server(db, db_server.id)
 
 
 def delete_server(db: Session, server_id: int) -> Server:
