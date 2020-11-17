@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Request, Depends, Response, encoders
 import typing as t
+from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
+from fastapi import APIRouter, Request, Depends, Response, encoders
 
+from app.core.security import verify_password
 from app.db.session import get_db
 from app.db.crud.user import (
     get_users,
@@ -8,8 +11,9 @@ from app.db.crud.user import (
     create_user,
     delete_user,
     edit_user,
+    edit_me,
 )
-from app.db.schemas.user import UserCreate, UserEdit, User, UserOut
+from app.db.schemas.user import UserCreate, UserEdit, User, UserOut, MeEdit
 from app.core.auth import get_current_active_user, get_current_active_superuser
 
 users_router = r = APIRouter()
@@ -40,6 +44,26 @@ async def user_me(current_user=Depends(get_current_active_user)):
     Get own user
     """
     return current_user
+
+@r.put(
+    "/users/me", response_model=User, response_model_exclude_none=True
+)
+async def user_me_edit(
+    request: Request,
+    user: MeEdit,
+    db=Depends(get_db),
+    current_user=Depends(get_current_active_user),
+):
+    """
+    Update me
+    """
+    if user.new_password and not user.prev_password:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="No old password provided")
+    elif user.prev_password:
+        if not verify_password(user.prev_password, current_user.hashed_password):
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="Password not match")
+        user.prev_password = None
+    return edit_me(db, current_user, user)
 
 
 @r.get(

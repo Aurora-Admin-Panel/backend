@@ -35,6 +35,17 @@ class UserEdit(BaseModel):
         orm_mode = True
 
 
+class MeEdit(BaseModel):
+    email: t.Optional[str]
+    first_name: t.Optional[str]
+    last_name: t.Optional[str]
+    prev_password: t.Optional[str] = None
+    new_password: t.Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+
 class User(UserBase):
     id: int
 

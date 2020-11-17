@@ -4,7 +4,7 @@ import typing as t
 
 from app.core.security import get_password_hash
 from app.db.models.user import User as UserModel
-from app.db.schemas.user import User, UserBase, UserCreate, UserEdit, UserOut
+from app.db.schemas.user import User, UserBase, UserCreate, UserEdit, UserOut, MeEdit
 
 
 def get_user(db: Session, user_id: int) -> User:
@@ -57,6 +57,21 @@ def edit_user(db: Session, user_id: int, user: UserEdit) -> User:
     if "password" in update_data:
         update_data["hashed_password"] = get_password_hash(user.password)
         del update_data["password"]
+
+    for key, value in update_data.items():
+        setattr(db_user, key, value)
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def edit_me(db: Session, db_user: UserModel, user: MeEdit) -> User:
+    update_data = user.dict(exclude_unset=True)
+
+    if "new_password" in update_data:
+        update_data["hashed_password"] = get_password_hash(user.new_password)
+        del update_data["new_password"]
 
     for key, value in update_data.items():
         setattr(db_user, key, value)

@@ -5,7 +5,6 @@ from sqlalchemy import Boolean, Column, Integer, String
 
 from .base import Base
 from app.core.security import get_password_hash
-from app.db.schemas.user import UserBase, UserCreate, UserEdit, UserOut
 from .server import ServerUser
 from .port import PortUser
 
