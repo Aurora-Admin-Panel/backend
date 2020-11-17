@@ -17,6 +17,7 @@ class Port(Base):
     external_num = Column(Integer, nullable=True)
     num = Column(Integer, nullable=False)
     server_id = Column(Integer, ForeignKey('server.id'))
+    usage = Column(Integer, nullable=False, default=lambda: 0)
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     is_active = Column(Boolean, default=True)
 
