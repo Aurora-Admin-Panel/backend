@@ -1,12 +1,17 @@
+import os
 import ansible_runner
 from uuid import uuid4
+from distutils.dir_util import copy_tree
 
-from . import celery_app
 from app.db.session import SessionLocal
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
+from app.db.crud.server import get_server, get_servers
 from app.db.models.port_forward import PortForwardRule
+
+from . import celery_app
+from .utils import prepare_priv_dir
 
 
 @celery_app.task()
@@ -17,12 +22,16 @@ def forward_rule_finished_handler(stdout_name: str):
 
 
 @celery_app.task()
-def forward_rule_status_handler(port_id: int, status_data: dict, update_status: bool):
+def forward_rule_status_handler(
+    port_id: int, status_data: dict, update_status: bool
+):
     if not update_status:
         return status_data
     db = SessionLocal()
     rule = (
-        db.query(PortForwardRule).filter(PortForwardRule.port_id == port_id).first()
+        db.query(PortForwardRule)
+        .filter(PortForwardRule.port_id == port_id)
+        .first()
     )
     if rule:
         if (
@@ -39,15 +48,17 @@ def forward_rule_status_handler(port_id: int, status_data: dict, update_status: 
 @celery_app.task()
 def iptables_runner(
     port_id: int,
-    host: str,
+    server_id: int,
     local_port: int,
     protocols: str,
     remote_ip: str = None,
     remote_port: int = None,
-    update_status: bool = False
+    update_status: bool = False,
 ):
+    server = get_server(SessionLocal(), server_id)
+    priv_data_dir = prepare_priv_dir(server)
     extra_vars = {
-        "host": host,
+        "host": server.ansible_name,
         "local_port": local_port,
         "remote_ip": remote_ip,
         "remote_port": remote_port,
@@ -55,15 +66,15 @@ def iptables_runner(
     }
 
     t = ansible_runner.run_async(
-        private_data_dir="ansible",
-        artifact_dir=f"ansible/artifacts/{port_id}/iptables/{uuid4()}",
+        private_data_dir=priv_data_dir,
+        project_dir="ansible/project",
         playbook="iptables.yml",
         extravars=extra_vars,
         status_handler=lambda s, **k: forward_rule_status_handler.delay(
             port_id, s, update_status
         ),
-        finished_callback=lambda r: forward_rule_finished_handler.delay(
-            r.stdout.name
-        ),
+        # finished_callback=lambda r: forward_rule_finished_handler.delay(
+        #     r.stdout.name
+        # ),
     )
     return t[1].config.artifact_dir

@@ -1,6 +1,6 @@
 import os
 
-PROJECT_NAME = "port-forward-admin"
+PROJECT_NAME = "aurora-admin-panel"
 
 SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 

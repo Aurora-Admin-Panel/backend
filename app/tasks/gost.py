@@ -1,4 +1,5 @@
 import json
+import typing as t
 import ansible_runner
 from uuid import uuid4
 
@@ -8,7 +9,8 @@ from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
-from app.api.utils.gost import get_gost_config, get_gost_remote_ip
+from app.db.crud.server import get_server
+from app.tasks.utils import prepare_priv_dir
 
 
 @celery_app.task()
@@ -42,24 +44,29 @@ def gost_status_handler(port_id: int, status_data: dict, update_status: bool):
 @celery_app.task()
 def gost_runner(
     port_id: int,
-    host: str,
+    server_id: int,
+    port_num: int,
+    gost_config: t.Dict,
+    remote_ip: str = None,
     update_gost: bool = False,
     update_status: bool = False
 ):
-    port_num, config = get_gost_config(port_id)
-    with open(f'ansible/project/roles/gost/files/{port_num}.json', 'w') as f:
-        f.write(json.dumps(config, indent=4))
+    server = get_server(SessionLocal(), server_id)
+    priv_data_dir = prepare_priv_dir(server)
+    with open(f'ansible/project/roles/gost/files/{port_id}.json', 'w') as f:
+        f.write(json.dumps(gost_config, indent=4))
 
     extra_vars = {
-        "host": host,
+        "host": server.ansible_name,
+        "port_id": port_id,
         "local_port": port_num,
-        "remote_ip": get_gost_remote_ip(config),
+        "remote_ip": remote_ip,
         "update_gost": update_gost,
         "update_status": update_status
     }
-    t = ansible_runner.run_async(
-        private_data_dir="ansible",
-        artifact_dir=f"ansible/artifacts/{port_id}/gost/{uuid4()}",
+    r = ansible_runner.run_async(
+        private_data_dir=priv_data_dir,
+        project_dir="ansible/project",
         playbook="gost.yml",
         extravars=extra_vars,
         status_handler=lambda s, **k: gost_status_handler.delay(
@@ -69,4 +76,4 @@ def gost_runner(
             r.stdout.name
         ),
     )
-    return config, t[1].config.artifact_dir
+    return r[1].config.artifact_dir

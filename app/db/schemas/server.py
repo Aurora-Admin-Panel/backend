@@ -53,6 +53,7 @@ class ServerOpsOut(ServerOut):
     ansible_name: str
     ansible_host: t.Optional[str]
     ansible_port: t.Optional[int]
+    ansible_user: t.Optional[str]
     config: ServerConfig
     allowed_users: t.List[ServerUserOpsOut]
     is_active: bool
@@ -65,6 +66,9 @@ class ServerCreate(ServerBase):
     ansible_name: str
     ansible_host: t.Optional[str] = None
     ansible_port: t.Optional[int] = 22
+    ansible_user: t.Optional[str]
+    ssh_password: t.Optional[str]
+    sudo_password: t.Optional[str]
 
     class Config:
         orm_mode = True
@@ -76,6 +80,9 @@ class ServerEdit(BaseModel):
     ansible_name: t.Optional[str]
     ansible_host: t.Optional[str]
     ansible_port: t.Optional[int]
+    ansible_user: t.Optional[str]
+    ssh_password: t.Optional[str]
+    sudo_password: t.Optional[str]
     is_active: t.Optional[bool]
 
     class Config:

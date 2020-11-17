@@ -16,7 +16,7 @@
 
 - name: Sync gost config
   copy:
-    src: roles/gost/files/{{ local_port }}.json
+    src: roles/gost/files/{{ port_id }}.json
     dest: /usr/local/etc/gost/{{ local_port }}.json
     owner: root
     group: root

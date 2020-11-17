@@ -1,0 +1,9 @@
+---
+- name: Get bandwidth for filter table
+  script: roles/bandwidth/files/get_bandwidth.sh
+  register: results
+
+- name: Set fact for result
+  set_fact:
+    results: "{{ results.stdout }}"
+    cacheable: yes

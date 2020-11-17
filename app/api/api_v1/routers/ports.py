@@ -35,7 +35,7 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
-from app.api.utils.tasks import trigger_tc
+from app.api.utils.tasks import trigger_tc, remove_tc, trigger_forward_rule
 
 ports_router = r = APIRouter()
 
@@ -109,8 +109,7 @@ async def port_create(
     Create a new port on server
     """
     db_port = create_port(db, server_id, port)
-    if port.config.egress_limit or port.config.ingress_limit:
-        trigger_tc(db_port)
+    trigger_tc(db_port)
     return db_port
 
 
@@ -150,7 +149,15 @@ async def port_delete(
     """
     Delete an existing port on server
     """
-    return delete_port(db, server_id, port_id)
+    db_port = get_port(db, server_id, port_id)
+    if db_port:
+        if db_port.forward_rule:
+            trigger_forward_rule(
+                db_port.forward_rule, db_port, old=db_port.forward_rule
+            )
+        delete_port(db, server_id, port_id)
+    remove_tc(server_id, db_port.num)
+    return db_port
 
 
 @r.get(

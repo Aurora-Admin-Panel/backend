@@ -13,23 +13,9 @@ from app.db.models.server import Server
 from app.db.models.port_forward import MethodEnum, PortForwardRule
 
 
-def send_gost_rule(
-    port_id: int,
-    host: str,
-    update_status: bool,
-    update_gost: bool = False,
-):
-    kwargs = {
-        "port_id": port_id,
-        "host": host,
-        "update_gost": update_gost,
-        "update_status": update_status,
-    }
-    print(f"Sending gost_runner task, kwargs: {kwargs}")
-    celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
-
-
 def generate_gost_config(rule: PortForwardRule) -> t.Dict:
+    if rule.method != MethodEnum.GOST:
+        return {}
     return {
         "Retries": rule.config.get("Retries", 0),
         "ServeNodes": [
@@ -40,19 +26,6 @@ def generate_gost_config(rule: PortForwardRule) -> t.Dict:
         ],
         "ChainNodes": rule.config.get("ChainNodes", []),
     }
-
-
-def get_gost_config(port_id: int) -> t.Tuple[int, t.Dict]:
-    db = SessionLocal()
-    port = db.query(Port).filter(Port.id == port_id).first()
-    # Here we will use only the first rule.
-    if (
-        port
-        and port.forward_rule
-        and port.forward_rule.method == MethodEnum.GOST
-    ):
-        return port.num, generate_gost_config(port.forward_rule)
-    return port.num, {}
 
 
 def get_gost_remote_ip(config: t.Dict) -> str:

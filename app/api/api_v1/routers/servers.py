@@ -33,6 +33,7 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
+from app.api.utils.tasks import trigger_ansible_hosts
 
 servers_router = r = APIRouter()
 
@@ -102,6 +103,7 @@ async def server_create(
     """
     if server.ansible_host is None:
         server.ansible_host = server.address
+    trigger_ansible_hosts()
     return jsonable_encoder(create_server(db, server))
 
 
@@ -120,7 +122,9 @@ async def server_edit(
     """
     Update an existing server
     """
-    return jsonable_encoder(edit_server(db, server_id, server))
+    server = edit_server(db, server_id, server)
+    trigger_ansible_hosts()
+    return jsonable_encoder(server)
 
 @r.delete(
     "/servers/{server_id}",
@@ -136,7 +140,9 @@ async def server_delete(
     """
     Delete an existing server
     """
-    return delete_server(db, server_id)
+    server = delete_server(db, server_id)
+    trigger_ansible_hosts()
+    return jsonable_encoder(server)
 
 
 @r.get(

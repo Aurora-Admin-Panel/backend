@@ -3,7 +3,6 @@ from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.utils.gost import get_gost_config
 from app.api.api_v1.routers.auth import auth_router
 from app.api.api_v1.routers.users import users_router
 from app.api.api_v1.routers.servers import servers_router
@@ -44,9 +43,7 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task("app.tasks.tc.tc_runner", kwargs={
-        'port_id': 2,
-    })
+    celery_app.send_task("app.tasks.bandwidth.bandwidth_runner")
     return {"message": "ok"}
 
 

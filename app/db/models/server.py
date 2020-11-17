@@ -6,6 +6,10 @@ from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, Uniqu
 
 class Server(Base):
     __tablename__ = "server"
+    __table_args__ = (
+        UniqueConstraint('ansible_name', name='_server_ansible_name_uc'),
+        UniqueConstraint('ansible_host', 'ansible_port', name='_server_ansible_host_ansible_port_uc'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
@@ -15,6 +19,8 @@ class Server(Base):
     ansible_port = Column(Integer, nullable=True, default=lambda: 22)
     ansible_user = Column(String, nullable=True, default=lambda: 'root')
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
+    ssh_password = Column(String, nullable=True)
+    sudo_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 
     ports = relationship("Port", back_populates="server")
