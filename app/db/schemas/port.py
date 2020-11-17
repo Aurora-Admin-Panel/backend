@@ -2,6 +2,7 @@ import typing as t
 from pydantic import BaseModel
 
 from app.db.schemas.user import UserOut
+from app.db.schemas.port_usage import PortUsageOut
 from app.db.schemas.port_forward import PortForwardRuleOut
 
 class PortUserConfig(BaseModel):
@@ -46,6 +47,7 @@ class PortBase(BaseModel):
 
 class PortOut(PortBase):
     id: int
+    usage: t.Optional[PortUsageOut]
     forward_rule: t.Optional[PortForwardRuleOut]
 
     class Config:

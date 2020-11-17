@@ -17,19 +17,18 @@ class Port(Base):
     external_num = Column(Integer, nullable=True)
     num = Column(Integer, nullable=False)
     server_id = Column(Integer, ForeignKey('server.id'))
-    download_usage = Column(Integer, nullable=False, default=lambda: 0)
-    upload_usage = Column(Integer, nullable=False, default=lambda: 0)
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     is_active = Column(Boolean, default=True)
 
     server = relationship("Server", back_populates="ports")
     allowed_users = relationship("PortUser", back_populates="port")
     forward_rule = relationship("PortForwardRule", uselist=False, back_populates="port")
+    usage = relationship("PortUsage", uselist=False, back_populates="port")
 
 
 class PortUser(Base):
     __tablename__ = "port_user"
-    __table_args__ = UniqueConstraint('port_id', 'user_id', name='_server_user_server_id_user_id_uc'),
+    __table_args__ = UniqueConstraint('port_id', 'user_id', name='_port_user_server_id_user_id_uc'),
 
     id = Column(Integer, primary_key=True, index=True)
     port_id = Column(Integer, ForeignKey("port.id"))
@@ -38,3 +37,21 @@ class PortUser(Base):
 
     user = relationship("User", back_populates="allowed_ports")
     port = relationship("Port", back_populates="allowed_users")
+
+
+class PortUsage(Base):
+    __tablename__ = "port_usage"
+    __table_args__ = (
+        UniqueConstraint('port_id', name='_port_usage_port_id_uc'),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    port_id = Column(Integer, ForeignKey("port.id"))
+    download = Column(Integer, nullable=False, default=lambda: 0)
+    upload = Column(Integer, nullable=False, default=lambda: 0)
+    download_accumulate = Column(Integer, nullable=False, default=lambda: 0)
+    upload_accumulate = Column(Integer, nullable=False, default=lambda: 0)
+    download_checkpoint = Column(Integer, nullable=False, default=lambda: 0)
+    upload_checkpoint = Column(Integer, nullable=False, default=lambda: 0)
+
+    port = relationship("Port", back_populates="usage")

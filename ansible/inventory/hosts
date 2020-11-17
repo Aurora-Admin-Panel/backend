@@ -1,5 +1,0 @@
-### START AUTO GENERATION ###
-### END AUTO GENERATION ###
-
-[all:vars]
-ansible_python_interpreter=/usr/bin/python3

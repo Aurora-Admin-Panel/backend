@@ -15,16 +15,6 @@ def ansible_hosts_runner():
     servers = (
         SessionLocal().query(Server).filter(Server.is_active == True).all()
     )
-    with open("ansible/inventory/hosts", "r") as f:
-        lines = []
-        skip = False
-        for line in f.readlines():
-            if "### START AUTO GENERATION ###" in line:
-                skip = True
-            elif "### END AUTO GENERATION ###" in line:
-                skip = False
-            if not skip:
-                lines.append(line)
 
     with open("ansible/inventory/hosts", 'w+') as f:
         f.write("### START AUTO GENERATION ###\n")
@@ -32,5 +22,6 @@ def ansible_hosts_runner():
             f.write(
                 f"{server.ansible_name}\tansible_host={server.ansible_host}\tansible_port={server.ansible_port}\tansible_user={server.ansible_user}\n"
             )
-        for line in lines:
-            f.write(f"{line}")
+        f.write("\n[all:vars]\n")
+        f.write("ansible_python_interpreter=/usr/bin/python3\n")
+        f.write("### END AUTO GENERATION ###")

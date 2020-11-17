@@ -29,6 +29,7 @@ def get_ports(
             .filter(Port.server_id == server_id)
             .options(joinedload(Port.allowed_users).joinedload(PortUser.user))
             .options(joinedload(Port.forward_rule))
+            .options(joinedload(Port.usage))
             .order_by(Port.num)
             .offset(offset)
             .limit(limit)
@@ -43,6 +44,7 @@ def get_ports(
             )
         )
         .options(joinedload(Port.forward_rule))
+        .options(joinedload(Port.usage))
         .order_by(Port.num)
         .offset(offset)
         .limit(limit)
@@ -56,6 +58,15 @@ def get_port(db: Session, server_id: int, port_id: int) -> Port:
         .filter(and_(Port.server_id == server_id, Port.id == port_id))
         .options(joinedload(Port.allowed_users).joinedload(PortUser.user))
         .options(joinedload(Port.forward_rule))
+        .options(joinedload(Port.usage))
+        .first()
+    )
+
+def get_port_with_num(db: Session, server_id: int, port_num: int) -> Port:
+    return (
+        db.query(Port)
+        .filter(and_(Port.server_id == server_id, Port.num == port_num))
+        .options(joinedload(Port.usage))
         .first()
     )
 
