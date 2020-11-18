@@ -196,7 +196,6 @@ async def server_users_add(
     Add server user for server
     """
     server_user = add_server_user(db, server_id, server_user)
-    print(server_user.__dict__)
     return server_user
 
 

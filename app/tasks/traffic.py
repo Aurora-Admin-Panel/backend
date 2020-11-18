@@ -99,7 +99,7 @@ def finished_handler(server):
 
 
 @celery_app.task()
-def bandwidth_runner():
+def traffic_runner():
     servers = get_servers(SessionLocal())
     for server in servers:
         priv_data_dir = prepare_priv_dir(server)

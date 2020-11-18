@@ -8,7 +8,7 @@ celery_app.conf.task_routes = {"app.tasks.*": "main-queue"}
 celery_app.autodiscover_tasks(
     [
         "app.tasks.ansible",
-        "app.tasks.bandwidth",
+        "app.tasks.traffic",
         "app.tasks.example",
         "app.tasks.iptables",
         "app.tasks.gost",

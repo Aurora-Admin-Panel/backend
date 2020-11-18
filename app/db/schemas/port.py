@@ -10,11 +10,11 @@ class PortUserConfig(BaseModel):
 
 class PortUserBase(BaseModel):
     user_id: int
-    config: PortUserConfig
 
 
 class PortUserOut(PortUserBase):
     port_id: int
+    config: PortUserConfig
 
     class Config:
         orm_mode = True
@@ -23,12 +23,15 @@ class PortUserOut(PortUserBase):
 class PortUserOpsOut(PortUserBase):
     port_id: int
     user: UserOut
+    config: PortUserConfig
 
     class Config:
         orm_mode = True
 
 
 class PortUserEdit(PortUserBase):
+    config: t.Optional[PortUserConfig]
+    
     class Config:
         orm_mode = True
 

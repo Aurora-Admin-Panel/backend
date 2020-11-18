@@ -116,6 +116,17 @@ def get_port_users(
     return port_users
 
 
+def get_port_user(
+    db: Session, server_id: int, port_id: int, user_id: int,
+) -> PortUser:
+    return (
+        db.query(PortUser)
+        .filter(and_(Port.server_id == server_id, PortUser.port_id == port_id, PortUser.user_id == user_id))
+        .options(joinedload(PortUser.user))
+        .first()
+    )
+
+
 def add_port_user(
     db: Session, server_id: int, port_id: int, port_user: PortUserEdit
 ) -> PortUser:
@@ -125,7 +136,6 @@ def add_port_user(
     db.add(db_port_user)
     db.commit()
     db.refresh(db_port_user)
-    assert db_port_user.user
 
     db_server_user = (
         db.query(ServerUser)
@@ -141,7 +151,7 @@ def add_port_user(
         add_server_user(
             db, server_id, ServerUserEdit(user_id=port_user.user_id)
         )
-    return db_port_user
+    return get_port_user(db, server_id, port_id, port_user.user_id)
 
 
 def delete_port_user(

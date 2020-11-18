@@ -43,7 +43,7 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task("app.tasks.bandwidth.bandwidth_runner")
+    celery_app.send_task("app.tasks.traffic.traffic_runner")
     return {"message": "ok"}
 
 
