@@ -95,13 +95,11 @@ async def forward_rule_create(
             detail="Cannot create more than one rule on same port",
         )
 
+    update_gost = False
     if forward_rule.method == MethodEnum.IPTABLES:
         forward_rule = verify_iptables_config(forward_rule)
     elif forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_gost_config(db_port, forward_rule)
-
-    update_gost = False
-    if forward_rule.method == MethodEnum.GOST:
         update_gost = len(get_all_gost_rules(db, server_id)) == 0
 
     forward_rule = create_forward_rule(db, db_port, forward_rule)
@@ -138,13 +136,15 @@ async def forward_rule_edit(
             detail="User not allowed to create forward rule on this port",
         )
 
+    update_gost = False
     if forward_rule.method == MethodEnum.IPTABLES:
         forward_rule = verify_iptables_config(forward_rule)
     elif forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_gost_config(db_port, forward_rule)
+        update_gost = len(get_all_gost_rules(db, server_id)) == 0
 
     old, updated = edit_forward_rule(db, server_id, port_id, forward_rule)
-    trigger_forward_rule(updated, updated.port, old, updated)
+    trigger_forward_rule(updated, updated.port, old, updated, update_gost=update_gost)
     return updated
 
 

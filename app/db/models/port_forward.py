@@ -22,7 +22,7 @@ class PortForwardRule(Base):
     __table_args__ = {'extend_existing': True}
 
     id = Column(Integer, primary_key=True, index=True)
-    port_id = Column(Integer, ForeignKey('port.id'))
+    port_id = Column(Integer, ForeignKey('port.id'), nullable=False)
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     method = Column(Enum(MethodEnum), nullable=False)
     status = Column(String, nullable=True)

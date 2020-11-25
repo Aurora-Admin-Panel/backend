@@ -32,8 +32,8 @@ class ServerUser(Base):
     __table_args__ = UniqueConstraint('server_id', 'user_id', name='_server_user_server_id_user_id_uc'),
 
     id = Column(Integer, primary_key=True, index=True)
-    server_id = Column(Integer, ForeignKey("server.id"))
-    user_id = Column(Integer, ForeignKey("user.id"))
+    server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
 
     user = relationship("User", back_populates="allowed_servers")

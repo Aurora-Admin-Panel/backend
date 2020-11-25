@@ -15,9 +15,15 @@ from app.db.schemas.port import (
     PortOpsOut,
     PortCreate,
     PortEdit,
+    PortUserCreate,
     PortUserEdit,
     PortUserOut,
     PortUserOpsOut,
+)
+from app.db.schemas.port_usage import (
+    PortUsageEdit,
+    PortUsageOut,
+    PortUsageCreate,
 )
 from app.db.crud.port import (
     get_ports,
@@ -27,15 +33,22 @@ from app.db.crud.port import (
     delete_port,
     get_port_users,
     add_port_user,
+    edit_port_user,
     delete_port_user,
 )
+from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.crud.user import get_user
 from app.core.auth import (
     get_current_active_user,
     get_current_active_superuser,
     get_current_active_admin,
 )
-from app.api.utils.tasks import trigger_tc, remove_tc, trigger_forward_rule
+from app.api.utils.tasks import (
+    trigger_tc,
+    remove_tc,
+    trigger_forward_rule,
+    trigger_iptables_reset,
+)
 
 ports_router = r = APIRouter()
 
@@ -95,7 +108,7 @@ async def port_get(
 
 @r.post(
     "/servers/{server_id}/ports",
-    response_model=PortOut,
+    response_model=PortOpsOut,
     response_model_exclude_none=True,
 )
 async def port_create(
@@ -103,7 +116,7 @@ async def port_create(
     server_id: int,
     port: PortCreate,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    user=Depends(get_current_active_admin),
 ):
     """
     Create a new port on server
@@ -115,7 +128,7 @@ async def port_create(
 
 @r.put(
     "/servers/{server_id}/ports/{port_id}",
-    response_model=PortOut,
+    response_model=PortOpsOut,
     response_model_exclude_none=True,
 )
 async def port_edit(
@@ -136,7 +149,7 @@ async def port_edit(
 
 @r.delete(
     "/servers/{server_id}/ports/{port_id}",
-    response_model=PortOut,
+    response_model=PortOpsOut,
     response_model_exclude_none=True,
 )
 async def port_delete(
@@ -186,7 +199,7 @@ async def port_user_add(
     request: Request,
     server_id: int,
     port_id: int,
-    port_user: PortUserEdit,
+    port_user: PortUserCreate,
     db=Depends(get_db),
     current_user=Depends(get_current_active_admin),
 ):
@@ -197,6 +210,28 @@ async def port_user_add(
     if not db_user:
         raise HTTPException(status_code=400, detail="User not found")
     port_user = add_port_user(db, server_id, port_id, port_user)
+    return jsonable_encoder(port_user)
+
+
+@r.put(
+    "/servers/{server_id}/ports/{port_id}/users/{user_id}",
+    response_model=PortUserOpsOut,
+)
+async def port_user_edit(
+    request: Request,
+    server_id: int,
+    port_id: int,
+    user_id: int,
+    port_user: PortUserEdit,
+    db=Depends(get_db),
+    current_user=Depends(get_current_active_admin),
+):
+    """
+    Add a port user to port
+    """
+    port_user = edit_port_user(db, server_id, port_id, user_id, port_user)
+    if not port_user:
+        raise HTTPException(status_code=400, detail="Port user not found")
     return jsonable_encoder(port_user)
 
 
@@ -217,3 +252,33 @@ async def port_users_delete(
     """
     port_user = delete_port_user(db, server_id, port_id, user_id)
     return port_user
+
+
+@r.post(
+    "/servers/{server_id}/ports/{port_id}/usage",
+    response_model=PortUsageOut,
+)
+async def port_usage_edit(
+    server_id: int,
+    port_id: int,
+    port_usage: PortUsageEdit,
+    db=Depends(get_db),
+    user=Depends(get_current_active_admin),
+):
+    """
+    Update a port usage
+    """
+    db_port_usage = edit_port_usage(db, port_id, port_usage)
+    if (
+        sum(
+            [
+                port_usage.download,
+                port_usage.upload,
+                port_usage.download_accumulate,
+                port_usage.upload_accumulate,
+            ]
+        )
+        == 0
+    ):
+        trigger_iptables_reset(db_port_usage.port)
+    return db_port_usage

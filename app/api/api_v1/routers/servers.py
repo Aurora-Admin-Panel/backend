@@ -17,6 +17,8 @@ from app.db.schemas.server import (
     ServerEdit,
     ServerUserEdit,
     ServerUserOut,
+    ServerUserOpsOut,
+    ServerUserCreate
 )
 from app.db.crud.server import (
     get_servers,
@@ -26,6 +28,7 @@ from app.db.crud.server import (
     delete_server,
     get_server_users,
     add_server_user,
+    edit_server_user,
     delete_server_user,
 )
 from app.core.auth import (
@@ -33,7 +36,7 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
-from app.api.utils.tasks import trigger_ansible_hosts
+from app.api.utils.tasks import trigger_ansible_hosts, trigger_install_gost
 
 servers_router = r = APIRouter()
 
@@ -103,8 +106,10 @@ async def server_create(
     """
     if server.ansible_host is None:
         server.ansible_host = server.address
+    server = create_server(db, server)
     trigger_ansible_hosts()
-    return jsonable_encoder(create_server(db, server))
+    trigger_install_gost(server.id)
+    return jsonable_encoder(server)
 
 
 @r.put(
@@ -142,30 +147,13 @@ async def server_delete(
     """
     server = delete_server(db, server_id)
     trigger_ansible_hosts()
+    # TODO: trigger tasks to clean all the states
     return jsonable_encoder(server)
 
 
 @r.get(
     "/servers/{server_id}/users",
-    response_model=t.List[ServerUserOut],
-    response_model_exclude_none=True,
-)
-async def server_users_get(
-    response: Response,
-    server_id: int,
-    db=Depends(get_db),
-    current_user=Depends(get_current_active_admin),
-):
-    """
-    Get server users by id
-    """
-    server_users = get_server_users(db, server_id)
-    return server_users
-
-
-@r.get(
-    "/servers/{server_id}/users",
-    response_model=t.List[ServerUserOut],
+    response_model=t.List[ServerUserOpsOut],
     response_model_exclude_none=True,
 )
 async def server_users_get(
@@ -183,12 +171,12 @@ async def server_users_get(
 
 @r.post(
     "/servers/{server_id}/users",
-    response_model=ServerUserOut,
+    response_model=ServerUserOpsOut,
 )
 async def server_users_add(
     response: Response,
     server_id: int,
-    server_user: ServerUserEdit,
+    server_user: ServerUserCreate,
     db=Depends(get_db),
     current_user=Depends(get_current_active_admin),
 ):
@@ -198,12 +186,29 @@ async def server_users_add(
     server_user = add_server_user(db, server_id, server_user)
     return server_user
 
+@r.put(
+    "/servers/{server_id}/users",
+    response_model=ServerUserOpsOut,
+)
+async def server_users_edit(
+    response: Response,
+    server_id: int,
+    server_user: ServerUserEdit,
+    db=Depends(get_db),
+    current_user=Depends(get_current_active_admin),
+):
+    """
+    Add server user for server
+    """
+    server_user = edit_server_user(db, server_id, server_user)
+    return server_user
 
-@r.post(
+
+@r.delete(
     "/servers/{server_id}/users/{user_id}",
     response_model=ServerUserOut,
 )
-async def server_users_add(
+async def server_users_delete(
     response: Response,
     server_id: int,
     user_id: int,

@@ -1,6 +1,7 @@
 import typing as t
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
+from app.api.utils.size import get_readable_size
 from app.db.models.port_forward import MethodEnum
 
 
@@ -11,10 +12,19 @@ class PortUsageBase(BaseModel):
 
 
 class PortUsageOut(PortUsageBase):
-    id: int
+    readable_download: t.Optional[str]
+    readable_upload: t.Optional[str]
 
     class Config:
         orm_mode = True
+
+    @validator('readable_download', pre=True, always=True)
+    def default_readable_download(cls, v, *, values, **kwargs):
+        return v or get_readable_size(values['download'])
+
+    @validator('readable_upload', pre=True, always=True)
+    def default_readable_upload(cls, v, *, values, **kwargs):
+        return v or get_readable_size(values['upload'])
 
 
 class PortUsageCreate(PortUsageBase):

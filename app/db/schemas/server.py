@@ -1,8 +1,13 @@
 import typing as t
 from pydantic import BaseModel
 
-from app.db.schemas.user import UserOut
+class UserOut(BaseModel):
+    id: int
+    email: str
+    is_active: bool = True
 
+    class Config:
+        orm_mode = True
 
 class ServerUserConfig(BaseModel):
     quota: t.Optional[int]
@@ -10,24 +15,31 @@ class ServerUserConfig(BaseModel):
 class ServerUserBase(BaseModel):
     server_id: int
     user_id: int
-    config: ServerUserConfig
 
 
 class ServerUserOut(ServerUserBase):
+    config: ServerUserConfig
+
+    class Config:
+        orm_mode = True
+
+class ServerUserOpsOut(ServerUserBase):
+    user: UserOut
+    config: ServerUserConfig
 
     class Config:
         orm_mode = True
 
 
-class ServerUserOpsOut(ServerUserBase):
-    user: UserOut
+class ServerUserCreate(BaseModel):
+    user_id: int
 
     class Config:
         orm_mode = True
 
 
 class ServerUserEdit(BaseModel):
-    user_id: int
+    config: t.Optional[ServerUserConfig]
 
     class Config:
         orm_mode = True

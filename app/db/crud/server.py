@@ -13,8 +13,10 @@ from app.db.schemas.server import (
     ServerOpsOut,
     ServerUserEdit,
     ServerUserOut,
+    ServerUserCreate,
 )
 from app.db.models.server import Server, ServerUser
+from app.db.models.port import Port
 
 
 def get_servers(
@@ -24,15 +26,22 @@ def get_servers(
         return (
             db.query(Server)
             .filter(Server.is_active == True)
-            .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
-            .options(joinedload(Server.ports))
+            .options(
+                joinedload(Server.allowed_users).joinedload(ServerUser.user)
+            )
+            .options(joinedload(Server.ports).joinedload(Port.usage))
             .offset(offset)
             .limit(limit)
             .all()
         )
     return (
         db.query(Server)
-        .filter(and_(Server.is_active == True, Server.allowed_users.any(user_id=user.id)))
+        .filter(
+            and_(
+                Server.is_active == True,
+                Server.allowed_users.any(user_id=user.id),
+            )
+        )
         .order_by(Server.address)
         .offset(offset)
         .limit(limit)
@@ -45,7 +54,7 @@ def get_server(db: Session, server_id: int) -> Server:
         db.query(Server)
         .filter(and_(Server.id == server_id, Server.is_active == True))
         .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
-        .options(joinedload(Server.ports))
+        .options(joinedload(Server.ports).joinedload(Port.usage))
         .first()
     )
 
@@ -83,16 +92,38 @@ def delete_server(db: Session, server_id: int) -> Server:
 
 
 def get_server_users(db: Session, server_id: int) -> t.List[ServerUser]:
-    server_users = db.query(ServerUser).filter(server_id == server_id).all()
+    server_users = (
+        db.query(ServerUser)
+        .filter(ServerUser.server_id == server_id)
+        .options(joinedload(ServerUser.user))
+        .all()
+    )
     return server_users
 
 
 def add_server_user(
+    db: Session, server_id: int, server_user: ServerUserCreate
+) -> ServerUser:
+    db_server_user = ServerUser(
+        **server_user.dict(exclude_unset=True), server_id=server_id
+    )
+    db.add(db_server_user)
+    db.commit()
+    db.refresh(db_server_user)
+    return db_server_user
+
+
+def edit_server_user(
     db: Session, server_id: int, server_user: ServerUserEdit
 ) -> ServerUser:
     db_server_user = ServerUser(
         **server_user.dict(exclude_unset=True), server_id=server_id
     )
+
+    updated = server_user.dict(exclude_unset=True)
+    for key, val in updated.items():
+        setattr(db_server_user, key, val)
+
     db.add(db_server_user)
     db.commit()
     db.refresh(db_server_user)

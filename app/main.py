@@ -1,4 +1,6 @@
+import os
 import uvicorn
+import sentry_sdk
 from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +12,7 @@ from app.api.api_v1.routers.ports import ports_router
 from app.api.api_v1.routers.forward_rule import forward_rule_router
 from app.core import config
 from app.db.session import SessionLocal
+from app.core import config
 from app.core.auth import get_current_active_user
 from app.tasks import celery_app
 
@@ -26,6 +29,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+sentry_sdk.init(dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928")
+@app.middleware("http")
+async def sentry_exception(request: Request, call_next):
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        if config.ENABLE_SENTRY:
+            with sentry_sdk.push_scope() as scope:
+                scope.set_context("request", request)
+                scope.user = {
+                    "ip_address": request.client.host
+                }
+                sentry_sdk.capture_exception(e)
+        raise e
 
 
 @app.middleware("http")

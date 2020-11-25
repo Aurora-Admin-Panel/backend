@@ -81,14 +81,14 @@ def edit_forward_rule(
 
 
 def delete_forward_rule(
-    db: Session, server_id: int, port_id: int, user: User
+    db: Session, server_id: int, port_id: int, user: User = None
 ) -> t.Tuple[PortForwardRule, Port]:
     db_forward_rule = get_forward_rule(db, server_id, port_id)
     if not db_forward_rule:
         raise HTTPException(
             status_code=404, detail="Port forward rule not found"
         )
-    if not user.is_admin() and not any(
+    if user is not None and not user.is_admin() and not any(
         user.id == u.user_id for u in db_forward_rule.port.allowed_users
     ):
         raise HTTPException(

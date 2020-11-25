@@ -1,9 +1,19 @@
 import typing as t
 from pydantic import BaseModel
 
-from app.db.schemas.user import UserOut
+from app.db.constants import LimitActionEnum
 from app.db.schemas.port_usage import PortUsageOut
 from app.db.schemas.port_forward import PortForwardRuleOut
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    is_active: bool = True
+
+    class Config:
+        orm_mode = True
+
 
 class PortUserConfig(BaseModel):
     pass
@@ -13,6 +23,7 @@ class PortUserBase(BaseModel):
 
 
 class PortUserOut(PortUserBase):
+    user_id: int
     port_id: int
     config: PortUserConfig
 
@@ -21,6 +32,7 @@ class PortUserOut(PortUserBase):
 
 
 class PortUserOpsOut(PortUserBase):
+    user_id: int
     port_id: int
     user: UserOut
     config: PortUserConfig
@@ -29,7 +41,15 @@ class PortUserOpsOut(PortUserBase):
         orm_mode = True
 
 
+class PortUserCreate(PortUserBase):
+    user_id: int
+    config: t.Optional[PortUserConfig]
+    
+    class Config:
+        orm_mode = True
+
 class PortUserEdit(PortUserBase):
+    user_id: t.Optional[int]
     config: t.Optional[PortUserConfig]
     
     class Config:
@@ -39,6 +59,10 @@ class PortUserEdit(PortUserBase):
 class PortConfig(BaseModel):
     egress_limit: t.Optional[int]
     ingress_limit: t.Optional[int]
+    valid_until: t.Optional[int]
+    due_action: t.Optional[LimitActionEnum] = LimitActionEnum.NO_ACTION
+    quota: t.Optional[int]
+    quota_action: t.Optional[LimitActionEnum] = LimitActionEnum.NO_ACTION
 
 
 class PortBase(BaseModel):
@@ -60,6 +84,7 @@ class PortOut(PortBase):
 class PortOpsOut(PortBase):
     id: int
     is_active: bool
+    usage: t.Optional[PortUsageOut]
     forward_rule: t.Optional[PortForwardRuleOut]
     allowed_users: t.List[PortUserOpsOut]
 

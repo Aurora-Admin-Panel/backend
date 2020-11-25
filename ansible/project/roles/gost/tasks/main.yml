@@ -1,18 +1,14 @@
 ---
-- name: assert gost.service exists
-  stat:
-    path: /usr/lib/systemd/system/gost@.service
-  register: gost_service
+- name: Exec gost script
+  script: roles/gost/files/gost.sh {{ local_port }} {{ remote_ip }}
+  register: results
+  when: update_status
 
-- name: fail if systemd config not exist
-  fail:
-    msg: "gost.service not exists"
-  when: gost_service.stat.islnk is not defined
-
-- name: Ensure gost config dir exists
-  file:
-    path: /usr/local/etc/gost
-    state: directory
+- name: Set fact for result
+  set_fact:
+    results: "{{ results.stdout }}"
+    cacheable: yes
+  when: update_status
 
 - name: Sync gost config
   copy:
@@ -28,4 +24,3 @@
     state: "{{ 'restarted' if update_status else 'stopped' }}"
     enabled: "{{ 'yes' if update_status else 'no' }}"
     daemon_reload: yes
-  notify: "gost config changed"

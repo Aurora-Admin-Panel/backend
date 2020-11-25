@@ -10,7 +10,7 @@ from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
 from app.db.crud.server import get_server
-from app.tasks.utils import prepare_priv_dir
+from app.tasks.utils import prepare_priv_dir, iptables_finished_handler
 
 
 @celery_app.task()
@@ -27,7 +27,9 @@ def gost_status_handler(port_id: int, status_data: dict, update_status: bool):
 
     db = SessionLocal()
     rule = (
-        db.query(PortForwardRule).filter(PortForwardRule.port_id == port_id).first()
+        db.query(PortForwardRule)
+        .filter(PortForwardRule.port_id == port_id)
+        .first()
     )
     if rule:
         if (
@@ -49,11 +51,11 @@ def gost_runner(
     gost_config: t.Dict,
     remote_ip: str = None,
     update_gost: bool = False,
-    update_status: bool = False
+    update_status: bool = False,
 ):
     server = get_server(SessionLocal(), server_id)
     priv_data_dir = prepare_priv_dir(server)
-    with open(f'ansible/project/roles/gost/files/{port_id}.json', 'w') as f:
+    with open(f"ansible/project/roles/gost/files/{port_id}.json", "w") as f:
         f.write(json.dumps(gost_config, indent=4))
 
     extra_vars = {
@@ -62,7 +64,7 @@ def gost_runner(
         "local_port": port_num,
         "remote_ip": remote_ip,
         "update_gost": update_gost,
-        "update_status": update_status
+        "update_status": update_status,
     }
     r = ansible_runner.run_async(
         private_data_dir=priv_data_dir,
@@ -72,8 +74,8 @@ def gost_runner(
         status_handler=lambda s, **k: gost_status_handler.delay(
             port_id, s, update_status
         ),
-        finished_callback=lambda r: gost_finished_handler.delay(
-            r.stdout.name
-        ),
+        finished_callback=iptables_finished_handler(server, True)
+        if update_status
+        else lambda r: None,
     )
     return r[1].config.artifact_dir

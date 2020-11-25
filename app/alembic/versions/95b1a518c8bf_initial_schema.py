@@ -47,6 +47,7 @@ def upgrade():
     sa.Column('is_active', sa.Boolean(), nullable=True),
     sa.Column('is_ops', sa.Boolean(), nullable=True),
     sa.Column('is_superuser', sa.Boolean(), nullable=True),
+    sa.Column('notes', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     with op.batch_alter_table('user', schema=None) as batch_op:
@@ -70,8 +71,8 @@ def upgrade():
 
     op.create_table('server_user',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('server_id', sa.Integer(), nullable=True),
-    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('server_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('config', sa.JSON(), nullable=False),
     sa.ForeignKeyConstraint(['server_id'], ['server.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
@@ -83,7 +84,7 @@ def upgrade():
 
     op.create_table('port_forward_rule',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('port_id', sa.Integer(), nullable=True),
+    sa.Column('port_id', sa.Integer(), nullable=False),
     sa.Column('config', sa.JSON(), nullable=False),
     sa.Column('method', sa.Enum('IPTABLES', 'GOST', name='methodenum'), nullable=False),
     sa.Column('status', sa.String(), nullable=True),
@@ -96,13 +97,13 @@ def upgrade():
 
     op.create_table('port_usage',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('port_id', sa.Integer(), nullable=True),
-    sa.Column('download', sa.Integer(), nullable=False),
-    sa.Column('upload', sa.Integer(), nullable=False),
-    sa.Column('download_accumulate', sa.Integer(), nullable=False),
-    sa.Column('upload_accumulate', sa.Integer(), nullable=False),
-    sa.Column('download_checkpoint', sa.Integer(), nullable=False),
-    sa.Column('upload_checkpoint', sa.Integer(), nullable=False),
+    sa.Column('port_id', sa.Integer(), nullable=False),
+    sa.Column('download', sa.BigInteger(), nullable=False),
+    sa.Column('upload', sa.BigInteger(), nullable=False),
+    sa.Column('download_accumulate', sa.BigInteger(), nullable=False),
+    sa.Column('upload_accumulate', sa.BigInteger(), nullable=False),
+    sa.Column('download_checkpoint', sa.BigInteger(), nullable=False),
+    sa.Column('upload_checkpoint', sa.BigInteger(), nullable=False),
     sa.ForeignKeyConstraint(['port_id'], ['port.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('port_id', name='_port_usage_port_id_uc')
@@ -112,8 +113,8 @@ def upgrade():
 
     op.create_table('port_user',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('port_id', sa.Integer(), nullable=True),
-    sa.Column('user_id', sa.Integer(), nullable=True),
+    sa.Column('port_id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('config', sa.JSON(), nullable=False),
     sa.ForeignKeyConstraint(['port_id'], ['port.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),

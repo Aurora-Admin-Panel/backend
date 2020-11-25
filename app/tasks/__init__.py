@@ -16,10 +16,9 @@ celery_app.autodiscover_tasks(
     ]
 )
 
-# celery_app.conf.beat_schedule = {
-#     'run-every-minute': {
-#         'task': 'app.tasks.example.example_task',
-#         'schedule': crontab(),
-#         'args': ('world', )
-#     }
-# }
+celery_app.conf.beat_schedule = {
+    'run-every-minute': {
+        'task': 'app.tasks.traffic.traffic_runner',
+        'schedule': crontab(minute='*/10'),
+    }
+}

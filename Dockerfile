@@ -7,5 +7,5 @@ WORKDIR /app
 RUN apt update && \
     apt install -y openssh-client sshpass
 
-COPY requirements.txt ./
+COPY . ./
 RUN pip install --no-cache-dir -r requirements.txt

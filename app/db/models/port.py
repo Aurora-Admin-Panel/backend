@@ -1,7 +1,7 @@
 from .base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint, BigInteger
 
 from app.db.models.port_forward import PortForwardRule, MethodEnum
 
@@ -31,8 +31,8 @@ class PortUser(Base):
     __table_args__ = UniqueConstraint('port_id', 'user_id', name='_port_user_server_id_user_id_uc'),
 
     id = Column(Integer, primary_key=True, index=True)
-    port_id = Column(Integer, ForeignKey("port.id"))
-    user_id = Column(Integer, ForeignKey("user.id"))
+    port_id = Column(Integer, ForeignKey("port.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
 
     user = relationship("User", back_populates="allowed_ports")
@@ -46,12 +46,12 @@ class PortUsage(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    port_id = Column(Integer, ForeignKey("port.id"))
-    download = Column(Integer, nullable=False, default=lambda: 0)
-    upload = Column(Integer, nullable=False, default=lambda: 0)
-    download_accumulate = Column(Integer, nullable=False, default=lambda: 0)
-    upload_accumulate = Column(Integer, nullable=False, default=lambda: 0)
-    download_checkpoint = Column(Integer, nullable=False, default=lambda: 0)
-    upload_checkpoint = Column(Integer, nullable=False, default=lambda: 0)
+    port_id = Column(Integer, ForeignKey("port.id"), nullable=False)
+    download = Column(BigInteger, nullable=False, default=lambda: 0)
+    upload = Column(BigInteger, nullable=False, default=lambda: 0)
+    download_accumulate = Column(BigInteger, nullable=False, default=lambda: 0)
+    upload_accumulate = Column(BigInteger, nullable=False, default=lambda: 0)
+    download_checkpoint = Column(BigInteger, nullable=False, default=lambda: 0)
+    upload_checkpoint = Column(BigInteger, nullable=False, default=lambda: 0)
 
     port = relationship("Port", back_populates="usage")

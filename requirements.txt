@@ -21,3 +21,4 @@ pyjwt==1.7.1
 ansible==2.10.1
 ansible-runner==1.4.6
 psutil==5.7.2
+sentry-sdk==0.19.3

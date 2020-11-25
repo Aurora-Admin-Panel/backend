@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 import typing as t
+from pydantic import BaseModel, validator
+from .port_usage import PortUsageOut
 
 
 class UserBase(BaseModel):
@@ -12,7 +13,29 @@ class UserBase(BaseModel):
 
 
 class UserOut(UserBase):
-    pass
+    id: int
+
+    class Config:
+        orm_mode = True
+
+class UserPort(BaseModel):
+    port_id: int
+
+class UserServer(BaseModel):
+    server_id: int
+
+class UserOpsOut(UserBase):
+    id: int
+    notes: t.Optional[str] = None
+    download_usage: t.Optional[int]
+    readable_download_usage: t.Optional[str]
+    upload_usage: t.Optional[int]
+    readable_upload_usage: t.Optional[str]
+    allowed_ports: t.List[UserPort]
+    allowed_servers: t.List[UserServer]
+
+    class Config:
+        orm_mode = True
 
 
 class UserCreate(UserBase):
@@ -30,6 +53,7 @@ class UserEdit(BaseModel):
     first_name: t.Optional[str]
     last_name: t.Optional[str]
     password: t.Optional[str] = None
+    notes: t.Optional[str]
 
     class Config:
         orm_mode = True
@@ -65,3 +89,22 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: str = None
     permissions: str = "user"
+
+
+class PortUserConfig(BaseModel):
+    quota: t.Optional[int]
+
+class UserPortOut(BaseModel):
+    port_id: int
+    usage: t.Optional[PortUsageOut]
+    config: PortUserConfig
+
+
+class ServerUserConfig(BaseModel):
+    quota: t.Optional[int]
+
+
+class UserServerOut(BaseModel):
+    server_id: int
+    ports: t.List[UserPortOut]
+    config: ServerUserConfig

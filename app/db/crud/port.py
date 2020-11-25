@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 
 from .server import add_server_user
 from app.db.schemas.user import User
-from app.db.schemas.server import ServerUserEdit
+from app.db.schemas.server import ServerUserCreate
 from app.db.schemas.port import (
     PortBase,
     PortCreate,
@@ -14,6 +14,7 @@ from app.db.schemas.port import (
     PortOpsOut,
     PortUserEdit,
     PortUserOut,
+    PortUserCreate,
 )
 from app.db.models.server import ServerUser
 from app.db.models.port import Port, PortUser
@@ -128,7 +129,7 @@ def get_port_user(
 
 
 def add_port_user(
-    db: Session, server_id: int, port_id: int, port_user: PortUserEdit
+    db: Session, server_id: int, port_id: int, port_user: PortUserCreate
 ) -> PortUser:
     db_port_user = PortUser(
         **port_user.dict(exclude_unset=True), port_id=port_id
@@ -149,9 +150,24 @@ def add_port_user(
     )
     if not db_server_user:
         add_server_user(
-            db, server_id, ServerUserEdit(user_id=port_user.user_id)
+            db, server_id, ServerUserCreate(user_id=port_user.user_id)
         )
     return get_port_user(db, server_id, port_id, port_user.user_id)
+
+
+def edit_port_user(
+    db: Session, server_id: int, port_id: int, user_id: int, port_user: PortUserEdit
+) -> PortUser:
+    db_port_user = get_port_user(db, server_id, port_id, user_id)
+    if not db_port_user:
+        return db_port_user
+
+    updated = port_user.dict(exclude_unset=True)
+    for key, val in updated.items():
+        setattr(db_port_user, key, val)
+    db.add(db_port_user)
+    db.commit()
+    return get_port_user(db, server_id, port_id, user_id)
 
 
 def delete_port_user(

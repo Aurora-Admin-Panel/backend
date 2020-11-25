@@ -20,17 +20,11 @@ def send_iptables(
         "server_id": port.server.id,
         "local_port": port.num,
     }
-    protocols = []
     if new and new.method == MethodEnum.IPTABLES:
         kwargs["update_status"] = True
         kwargs["remote_ip"] = new.config.get("remote_ip")
         kwargs["remote_port"] = new.config.get("remote_port")
-        forward_type = new.config.get("type", "ALL").upper()
-        if forward_type == "ALL" or forward_type == "TCP":
-            protocols.append("tcp")
-        if forward_type == "ALL" or forward_type == "UDP":
-            protocols.append("udp")
-    kwargs["protocols"] = str(protocols)
+        kwargs["forward_type"] = new.config.get("type", "ALL").upper()
     print(f"Sending iptables_runner task, kwargs: {kwargs}")
     celery_app.send_task("app.tasks.iptables.iptables_runner", kwargs=kwargs)
 
@@ -54,6 +48,20 @@ def send_gost(
     }
     print(f"Sending gost_runner task, kwargs: {kwargs}")
     celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
+
+
+def trigger_install_gost(server_id):
+    kwargs = {
+        "port_id": 0,
+        "server_id": server_id,
+        "port_num": 0,
+        "gost_config": {},
+        "update_gost": True,
+        "update_status": False,
+    }
+    print(f"Sending gost install gost_runner task, kwargs: {kwargs}")
+    celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
+
 
 
 def trigger_forward_rule(
@@ -96,3 +104,11 @@ def remove_tc(server_id: int, port_num: int):
 def trigger_ansible_hosts():
     print(f"Sending ansible_hosts_runner task")
     celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
+
+def trigger_iptables_reset(port: Port):
+    kwargs = {
+        "server_id": port.server.id,
+        "port_num": port.num
+    }
+    print(f"Sending iptables.iptables_reset_runner task")
+    celery_app.send_task("app.tasks.iptables.iptables_reset_runner", kwargs=kwargs)

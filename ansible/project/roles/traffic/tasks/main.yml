@@ -1,6 +1,6 @@
 ---
-- name: Get bandwidth for filter table
-  script: roles/bandwidth/files/get_bandwidth.sh
+- name: Get traffic
+  script: roles/traffic/files/get_traffic.sh
   register: results
 
 - name: Set fact for result

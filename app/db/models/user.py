@@ -1,7 +1,7 @@
 import typing as t
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session, relationship
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String, Text
 
 from .base import Base
 from app.core.security import get_password_hash
@@ -20,6 +20,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_ops = Column(Boolean, default=False)
     is_superuser = Column(Boolean, default=False)
+    notes = Column(Text, nullable=True)
 
     allowed_servers = relationship("ServerUser", back_populates="user")
     allowed_ports = relationship("PortUser", back_populates="user")
