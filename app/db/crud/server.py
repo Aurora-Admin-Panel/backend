@@ -75,6 +75,14 @@ def edit_server(db: Session, server_id: int, server: ServerEdit) -> Server:
 
     for key, val in updated.items():
         setattr(db_server, key, val)
+    if (
+        server.sudo_password
+        or server.ssh_password
+        or server.ansible_host
+        or server.ansible_user
+        or server.ansible_port
+    ):
+        db_server.config["facts"] = None
 
     db.add(db_server)
     db.commit()

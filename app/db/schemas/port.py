@@ -76,6 +76,7 @@ class PortOut(PortBase):
     id: int
     usage: t.Optional[PortUsageOut]
     forward_rule: t.Optional[PortForwardRuleOut]
+    allowed_users: t.List[PortUserOpsOut]
 
     class Config:
         orm_mode = True

@@ -1,0 +1,3 @@
+---
+- name: Exec clean script
+  script: roles/clean/files/clean.sh

@@ -37,6 +37,7 @@ from app.db.crud.port import (
     delete_port_user,
 )
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
+from app.db.crud.port_forward import delete_forward_rule
 from app.db.crud.user import get_user
 from app.core.auth import (
     get_current_active_user,
@@ -270,7 +271,8 @@ async def port_usage_edit(
     """
     db_port_usage = edit_port_usage(db, port_id, port_usage)
     if (
-        sum(
+        db_port_usage
+        and sum(
             [
                 port_usage.download,
                 port_usage.upload,

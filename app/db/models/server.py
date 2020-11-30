@@ -23,8 +23,8 @@ class Server(Base):
     sudo_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 
-    ports = relationship("Port", back_populates="server")
-    allowed_users = relationship("ServerUser", back_populates="server")
+    ports = relationship("Port", cascade="all,delete", back_populates="server")
+    allowed_users = relationship("ServerUser", cascade="all,delete", back_populates="server")
 
 
 class ServerUser(Base):

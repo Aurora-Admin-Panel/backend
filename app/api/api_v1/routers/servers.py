@@ -18,7 +18,7 @@ from app.db.schemas.server import (
     ServerUserEdit,
     ServerUserOut,
     ServerUserOpsOut,
-    ServerUserCreate
+    ServerUserCreate,
 )
 from app.db.crud.server import (
     get_servers,
@@ -36,7 +36,12 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
-from app.api.utils.tasks import trigger_ansible_hosts, trigger_install_gost
+from app.api.utils.tasks import (
+    trigger_ansible_hosts,
+    trigger_install_gost,
+    trigger_server_connect,
+    trigger_server_clean,
+)
 
 servers_router = r = APIRouter()
 
@@ -86,9 +91,7 @@ async def server_get(
     if user.is_admin():
         return ServerOpsOut(**jsonable_encoder(server))
     if not any(user.id == u.id for u in server.allowed_users):
-        raise HTTPException(
-                status_code=404,
-                detail="Server not found")
+        raise HTTPException(status_code=404, detail="Server not found")
     return ServerOut(**jsonable_encoder(server))
 
 
@@ -109,6 +112,7 @@ async def server_create(
     server = create_server(db, server)
     trigger_ansible_hosts()
     trigger_install_gost(server.id)
+    trigger_server_connect(server.id)
     return jsonable_encoder(server)
 
 
@@ -129,7 +133,9 @@ async def server_edit(
     """
     server = edit_server(db, server_id, server)
     trigger_ansible_hosts()
+    trigger_server_connect(server.id)
     return jsonable_encoder(server)
+
 
 @r.delete(
     "/servers/{server_id}",
@@ -147,7 +153,7 @@ async def server_delete(
     """
     server = delete_server(db, server_id)
     trigger_ansible_hosts()
-    # TODO: trigger tasks to clean all the states
+    trigger_server_clean(server)
     return jsonable_encoder(server)
 
 
@@ -185,6 +191,7 @@ async def server_users_add(
     """
     server_user = add_server_user(db, server_id, server_user)
     return server_user
+
 
 @r.put(
     "/servers/{server_id}/users",

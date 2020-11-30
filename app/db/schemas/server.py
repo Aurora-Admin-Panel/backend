@@ -1,5 +1,5 @@
 import typing as t
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 class UserOut(BaseModel):
     id: int
@@ -45,8 +45,15 @@ class ServerUserEdit(BaseModel):
         orm_mode = True
 
 
+class ServerFacts(BaseModel):
+    ansible_architecture: t.Optional[str]
+    ansible_distribution: t.Optional[str]
+    ansible_distribution_release: t.Optional[str]
+    ansible_distribution_version: t.Optional[str]
+
+
 class ServerConfig(BaseModel):
-    pass
+    facts: t.Optional[ServerFacts]
 
 class ServerBase(BaseModel):
     name: str
@@ -55,6 +62,7 @@ class ServerBase(BaseModel):
 
 class ServerOut(ServerBase):
     id: int
+    config: ServerConfig
 
     class Config:
         orm_mode = True
@@ -67,11 +75,21 @@ class ServerOpsOut(ServerOut):
     ansible_port: t.Optional[int]
     ansible_user: t.Optional[str]
     config: ServerConfig
+    ssh_password: t.Optional[str]
+    sudo_password: t.Optional[str]
     allowed_users: t.List[ServerUserOpsOut]
     is_active: bool
 
     class Config:
         orm_mode = True
+
+    @validator('ssh_password', pre=True, always=True)
+    def default_ssh_password(cls, v):
+        return 'masked' if v else None
+
+    @validator('sudo_password', pre=True, always=True)
+    def default_sudo_password(cls, v):
+        return 'masked' if v else None
 
 
 class ServerCreate(ServerBase):

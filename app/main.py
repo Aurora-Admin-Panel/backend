@@ -62,7 +62,7 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task("app.tasks.traffic.traffic_runner")
+    celery_app.send_task("app.tasks.connect.connect_runner", kwargs={'server_id': 1})
     return {"message": "ok"}
 
 

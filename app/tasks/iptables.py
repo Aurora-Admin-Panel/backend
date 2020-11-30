@@ -49,8 +49,6 @@ def iptables_runner(
     forward_type: str = None,
     update_status: bool = False,
 ):
-    if not update_status:
-        return
     server = get_server(SessionLocal(), server_id)
     priv_data_dir = prepare_priv_dir(server)
     if not forward_type:

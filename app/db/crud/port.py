@@ -44,6 +44,7 @@ def get_ports(
                 Port.allowed_users.any(user_id=user.id),
             )
         )
+        .options(joinedload(Port.allowed_users).joinedload(PortUser.user))
         .options(joinedload(Port.forward_rule))
         .options(joinedload(Port.usage))
         .order_by(Port.num)

@@ -22,8 +22,8 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
 
-    allowed_servers = relationship("ServerUser", back_populates="user")
-    allowed_ports = relationship("PortUser", back_populates="user")
+    allowed_servers = relationship("ServerUser", cascade="all,delete", back_populates="user")
+    allowed_ports = relationship("PortUser", cascade="all,delete", back_populates="user")
 
 
     def is_admin(self) -> bool:
