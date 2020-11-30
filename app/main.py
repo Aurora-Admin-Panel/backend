@@ -18,7 +18,10 @@ from app.tasks import celery_app
 
 
 app = FastAPI(
-    title=config.PROJECT_NAME, docs_url="/api/docs", openapi_url="/api"
+    title=config.PROJECT_NAME,
+    docs_url="/api/docs",
+    openapi_url="/api",
+    version=config.BACKEND_VERSION,
 )
 origins = [
     "*",
@@ -69,9 +72,7 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task(
-        "app.tasks.traffic.traffic_runner"
-    )
+    celery_app.send_task("app.tasks.traffic.traffic_runner")
     return {"message": "ok"}
 
 

@@ -34,3 +34,5 @@ celery_app.conf.beat_schedule = {
         "schedule": crontab(minute="*/10"),
     }
 }
+
+celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
