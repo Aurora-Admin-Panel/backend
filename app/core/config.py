@@ -2,6 +2,7 @@ import os
 
 PROJECT_NAME = "aurora-admin-panel"
 
+ENVIRONMENT = os.getenv("ENVIRONMENT", "PROD")
 SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 ENABLE_SENTRY = os.getenv("ENABLE_SENTRY", False)
 SECRET_KEY = os.getenv("SECRET_KEY", "aurora-admin-panel")

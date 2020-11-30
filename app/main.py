@@ -20,7 +20,12 @@ from app.tasks import celery_app
 app = FastAPI(
     title=config.PROJECT_NAME, docs_url="/api/docs", openapi_url="/api"
 )
-origins = ["*", "localhost:3000", "192.168.1.181:8000", "https://monitor.2cn.io"]
+origins = [
+    "*",
+    "localhost:3000",
+    "192.168.1.181:8000",
+    "https://monitor.2cn.io",
+]
 
 app.add_middleware(
     CORSMiddleware,
@@ -30,7 +35,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-sentry_sdk.init(dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928")
+sentry_sdk.init(
+    dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928"
+)
+
+
 @app.middleware("http")
 async def sentry_exception(request: Request, call_next):
     try:
@@ -40,9 +49,7 @@ async def sentry_exception(request: Request, call_next):
         if config.ENABLE_SENTRY:
             with sentry_sdk.push_scope() as scope:
                 scope.set_context("request", request)
-                scope.user = {
-                    "ip_address": request.client.host
-                }
+                scope.user = {"ip_address": request.client.host}
                 sentry_sdk.capture_exception(e)
         raise e
 
@@ -62,7 +69,9 @@ async def root():
 
 @app.get("/api/v1/task")
 async def run_task():
-    celery_app.send_task("app.tasks.connect.connect_runner", kwargs={'server_id': 1})
+    celery_app.send_task(
+        "app.tasks.traffic.traffic_runner"
+    )
     return {"message": "ok"}
 
 
@@ -94,4 +103,9 @@ app.include_router(
 app.include_router(auth_router, prefix="/api", tags=["auth"])
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", reload=True, port=8888)
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        reload=(not config.ENVIRONMENT == "PROD"),
+        port=8888,
+    )
