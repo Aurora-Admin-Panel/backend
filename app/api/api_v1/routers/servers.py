@@ -112,6 +112,7 @@ async def server_create(
         server.ansible_host = server.address
     server = create_server(db, server)
     trigger_ansible_hosts()
+    trigger_server_connect(server.id)
     trigger_server_init(server.id)
     return jsonable_encoder(server)
 
