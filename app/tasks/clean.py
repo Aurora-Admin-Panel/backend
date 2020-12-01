@@ -13,6 +13,9 @@ from . import celery_app
 from .utils import prepare_priv_dir_dict
 
 
+def clean_finished_handler(runner):
+    celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
+
 @celery_app.task()
 def clean_runner(server: t.Dict):
     priv_data_dir = prepare_priv_dir_dict(server)
@@ -22,5 +25,6 @@ def clean_runner(server: t.Dict):
         project_dir="ansible/project",
         playbook="clean.yml",
         extravars={"host": server.get('ansible_name')},
+        finished_callback=clean_finished_handler,
     )
     return t[1].config.artifact_dir

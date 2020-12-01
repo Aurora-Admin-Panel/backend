@@ -152,9 +152,8 @@ async def server_delete(
     Delete an existing server
     """
     server = delete_server(db, server_id)
-    trigger_ansible_hosts()
     trigger_server_clean(server)
-    return jsonable_encoder(server)
+    return server
 
 
 @r.get(
