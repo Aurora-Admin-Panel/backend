@@ -1,15 +1,20 @@
 ---
-- name: Set iptables forward
-  sysctl:
-    name: net.ipv4.ip_forward
-    value: 1
-    sysctl_set: yes
-    state: present
-    reload: yes
-
 - name: Exec iptables script
-  script: roles/iptables/files/iptables.sh {{ iptables_args }}
-  register: results
+  block:
+    - name: Exec iptables script locally
+      shell: /usr/local/bin/iptables.sh {{ iptables_args }}
+      register: results
+  rescue:
+    - name: Sync iptables.sh
+      copy:
+        src: files/iptables.sh
+        dest: /usr/local/bin/iptables.sh
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Exec iptables script locally again
+      shell: /usr/local/bin/iptables.sh {{ iptables_args }}
+      register: results
 
 - name: Set fact for result
   set_fact:

@@ -70,9 +70,9 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.get("/api/v1/task")
-async def run_task():
-    celery_app.send_task("app.tasks.traffic.traffic_runner")
+@app.get("/api/v1/task/{task_name}")
+async def run_task(task_name: str):
+    celery_app.send_task(f"app.tasks.{task_name}")
     return {"message": "ok"}
 
 

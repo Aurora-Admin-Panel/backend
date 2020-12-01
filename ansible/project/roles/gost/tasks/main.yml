@@ -1,8 +1,21 @@
 ---
 - name: Exec gost script
-  script: roles/gost/files/gost.sh {{ local_port }} {{ remote_ip }}
-  register: results
   when: update_status
+  block:
+    - name: Exec gost script locally
+      shell: /usr/local/bin/gost.sh {{ local_port }} {{ remote_ip }}
+      register: results
+  rescue:
+    - name: Sync gost.sh
+      copy:
+        src: files/gost.sh
+        dest: /usr/local/bin/gost.sh
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Exec gost script locally again
+      shell: /usr/local/bin/gost.sh {{ local_port }} {{ remote_ip }}
+      register: results
 
 - name: Set fact for result
   set_fact:

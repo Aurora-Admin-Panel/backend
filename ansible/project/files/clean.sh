@@ -18,5 +18,12 @@ clean_gost () {
     ls /etc/systemd/system/multi-user.target.wants | grep -E 'gost@[0-9]+\.service' | xargs $SUDO systemctl disable
 }
 
+clean_scripts () {
+    $SUDO rm /usr/local/bin/iptables.sh
+    $SUDO rm /usr/local/bin/gost.sh
+    $SUDO rm /usr/local/bin/tc.sh
+    $SUDO rm /usr/local/bin/get_traffic.sh
+}
+
 clean_iptables
 clean_gost

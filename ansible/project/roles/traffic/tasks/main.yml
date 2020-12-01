@@ -1,7 +1,21 @@
 ---
-- name: Get traffic
-  script: roles/traffic/files/get_traffic.sh
-  register: results
+- name: Exec traffic script
+  block:
+    - name: Exec get_traffic script locally
+      shell: /usr/local/bin/get_traffic.sh
+      register: results
+  rescue:
+    - name: Sync get_traffic.sh
+      copy:
+        src: files/get_traffic.sh
+        dest: /usr/local/bin/get_traffic.sh
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Exec get_traffci script locally again
+      shell: /usr/local/bin/get_traffic.sh
+      register: results
+
 
 - name: Set fact for result
   set_fact:

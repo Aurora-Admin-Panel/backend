@@ -40,6 +40,7 @@ from app.api.utils.tasks import (
     trigger_ansible_hosts,
     trigger_install_gost,
     trigger_server_connect,
+    trigger_server_init,
     trigger_server_clean,
 )
 
@@ -111,8 +112,7 @@ async def server_create(
         server.ansible_host = server.address
     server = create_server(db, server)
     trigger_ansible_hosts()
-    trigger_install_gost(server.id)
-    trigger_server_connect(server.id)
+    trigger_server_init(server.id)
     return jsonable_encoder(server)
 
 

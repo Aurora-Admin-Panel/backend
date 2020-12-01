@@ -38,13 +38,6 @@
         mode: +x
         owner: root
         group: root
-    - name: Sync gost.service
-      when: update_gost is defined and update_gost
-      copy:
-        src: roles/gost/files/gost@.service
-        dest: /usr/lib/systemd/system/gost@.service
-        owner: root
-        group: root
   tasks:
     - setup:
   roles:

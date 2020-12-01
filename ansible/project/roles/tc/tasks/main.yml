@@ -1,3 +1,15 @@
 ---
 - name: Exec tc script
-  script: roles/tc/files/tc.sh {{ tc_args }}
+  block:
+    - name: Exec tc script locally
+      shell: /usr/local/bin/tc.sh {{ tc_args }}
+  rescue:
+    - name: Sync tc.sh
+      copy:
+        src: files/tc.sh
+        dest: /usr/local/bin/tc.sh
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Exec tc script locally again
+      shell: /usr/local/bin/tc.sh {{ iptables_args }}

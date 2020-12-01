@@ -20,10 +20,10 @@ save_iptables () {
   fi
   if [ $release = "centos" ]; then
     $SUDO mkdir -p /etc/sysconfig
-    $SUDO iptables-save | $SUDO tee /etc/sysconfig/iptables > /dev/null
+    $SUDO iptables-save -c | $SUDO tee /etc/sysconfig/iptables > /dev/null
   else
     $SUDO mkdir -p /etc/iptables
-    $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
+    $SUDO iptables-save -c | $SUDO tee /etc/iptables/rules.v4 > /dev/null
   fi
 }
 

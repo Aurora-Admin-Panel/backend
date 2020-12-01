@@ -2,6 +2,7 @@ import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import celeryd_init
 from app.core import config
 
 if config.ENABLE_SENTRY:
@@ -23,6 +24,7 @@ celery_app.autodiscover_tasks(
         "app.tasks.traffic",
         "app.tasks.example",
         "app.tasks.iptables",
+        "app.tasks.init",
         "app.tasks.gost",
         "app.tasks.tc",
     ]
@@ -35,4 +37,8 @@ celery_app.conf.beat_schedule = {
     }
 }
 
-celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
+
+@celeryd_init.connect
+def configure_workers(sender=None, conf=None, **kwargs):
+    celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
+    celery_app.send_task("app.tasks.init.server_init_runner")

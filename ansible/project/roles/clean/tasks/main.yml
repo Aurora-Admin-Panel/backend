@@ -1,3 +1,4 @@
 ---
-- name: Exec clean script
-  script: roles/clean/files/clean.sh
+- name: Exec clean script remotelly
+  script: files/clean.sh
+  register: results

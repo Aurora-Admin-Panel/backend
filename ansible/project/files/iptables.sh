@@ -26,10 +26,10 @@ save_iptables () {
   fi
   if [ $release = "centos" ]; then
     $SUDO mkdir -p /etc/sysconfig
-    $SUDO iptables-save | $SUDO tee /etc/sysconfig/iptables > /dev/null
+    $SUDO iptables-save -c | $SUDO tee /etc/sysconfig/iptables > /dev/null
   else
     $SUDO mkdir -p /etc/iptables
-    $SUDO iptables-save | $SUDO tee /etc/iptables/rules.v4 > /dev/null
+    $SUDO iptables-save -c | $SUDO tee /etc/iptables/rules.v4 > /dev/null
   fi
 }
 
@@ -78,6 +78,12 @@ list () {
     COMMENT="$LOCAL_PORT->"
     $SUDO iptables -nxvL | grep $COMMENT
     $SUDO iptables -t nat -nxvL | grep $COMMENT
+}
+
+list_all () {
+    $SUDO iptables -nxvL INPUT | grep '\/\*.*\*\/$'
+    $SUDO iptables -nxvL FORWARD | grep '\/\*.*\*\/$'
+    $SUDO iptables -nxvL OUTPUT | grep '\/\*.*\*\/$'
 }
 
 reset () {
@@ -139,6 +145,8 @@ elif [ $OPERATION == "monitor" ]; then
     monitor
 elif [ $OPERATION == "list" ]; then
     list
+elif [ $OPERATION == "list_all" ]; then
+    list_all
 elif [ $OPERATION == "delete" ]; then
     delete
 elif [ $OPERATION == "reset" ]; then

@@ -1,5 +1,6 @@
 import re
 import os
+import hashlib
 import typing as t
 from uuid import uuid4
 from datetime import datetime
@@ -188,3 +189,11 @@ def iptables_finished_handler(server: Server, accumulate: bool = False):
             check_port_limits(db, port)
 
     return wrapper
+
+
+def get_md5_for_file(path: str) -> str:
+    hash_md5 = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()

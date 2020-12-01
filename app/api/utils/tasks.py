@@ -129,6 +129,10 @@ def trigger_server_connect(server_id: int):
         "app.tasks.connect.connect_runner", kwargs={"server_id": server_id}
     )
 
+def trigger_server_init(server_id: int):
+    print(f"Sending init.server_runner task")
+    celery_app.send_task("app.tasks.init.server_init_runner", kwargs={'server_id': server_id})
+
 
 def trigger_server_clean(server: Server):
     print(f"Sending clean.clean_runner task")
