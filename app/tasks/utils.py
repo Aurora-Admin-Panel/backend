@@ -9,6 +9,7 @@ from distutils.dir_util import copy_tree
 from sqlalchemy.orm import joinedload, Session
 
 from app.api.utils.tasks import trigger_forward_rule, trigger_tc
+from app.api.utils.size import get_readable_size
 from app.db.constants import LimitActionEnum
 from app.db.session import SessionLocal
 from app.db.models.port import Port
@@ -157,6 +158,14 @@ def check_port_limits(db: Session, port: Port) -> None:
         )
         apple_port_limits(db, port, action)
 
+def check_server_user_limit(db: Session, server_id: int, server_users_usage: t.DefaultDict):
+    server_users = get_server_users(db, server_id)
+    for server_user in server_users:
+        server_user.download = server_users_usage.get(server_user.user_id)['download']
+        server_user.upload = server_users_usage.get(server_user.user_id)['upload']
+        db.add(server_user)
+    db.commit()
+
 
 def iptables_finished_handler(server: Server, accumulate: bool = False):
     def wrapper(runner):
@@ -185,8 +194,13 @@ def iptables_finished_handler(server: Server, accumulate: bool = False):
             update_usage(
                 db, prev_ports, db_ports, server.id, port_num, usage, accumulate
             )
+        server_users_usage = defaultdict(lambda: {'download': 0, 'upload': 0})
         for port in db_ports.values():
             check_port_limits(db, port)
+            for port_user in port.allowed_users:
+                server_users_usage[port_user.user_id]['download'] += port.usage.download
+                server_users_usage[port_user.user_id]['upload'] += port.usage.upload
+        check_server_user_limit(db, server.id, server_users_usage)
 
     return wrapper
 
