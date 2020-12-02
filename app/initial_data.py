@@ -10,6 +10,9 @@ from app.db.schemas.user import UserCreate
 def init() -> None:
     db = SessionLocal()
     email = input("请输入管理员邮箱：")
+    if not email or '@' not in email:
+        print(" 邮箱格式不正确　！")
+        return
     password = getpass("请输入密码：")
     repeated_password = getpass("请再次输入密码：")
     if password != repeated_password:

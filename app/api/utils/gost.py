@@ -19,6 +19,7 @@ def generate_gost_config(rule: PortForwardRule) -> t.Dict:
     return {
         "Retries": rule.config.get("Retries", 0),
         "ServeNodes": [
+            # TODO: This is not bug free
             node.replace(f":{rule.port.external_num}", f":{rule.port.num}", 1)
             if rule.port.external_num
             else node
