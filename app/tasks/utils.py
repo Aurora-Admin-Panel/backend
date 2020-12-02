@@ -17,9 +17,9 @@ from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
 from app.db.crud.port import get_port_with_num
-from app.db.crud.server import get_server, get_servers
 from app.db.crud.port_forward import delete_forward_rule
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
+from app.db.crud.server import get_server, get_servers, get_server_users
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.schemas.server import ServerEdit
@@ -158,8 +158,11 @@ def check_port_limits(db: Session, port: Port) -> None:
         )
         apple_port_limits(db, port, action)
 
+
 def check_server_user_limit(db: Session, server_id: int, server_users_usage: t.DefaultDict):
     server_users = get_server_users(db, server_id)
+    if not server_users:
+        return
     for server_user in server_users:
         server_user.download = server_users_usage.get(server_user.user_id)['download']
         server_user.upload = server_users_usage.get(server_user.user_id)['upload']
