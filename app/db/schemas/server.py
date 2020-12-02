@@ -1,6 +1,8 @@
 import typing as t
 from pydantic import BaseModel, validator
 
+from app.api.utils.size import get_readable_size
+
 class UserOut(BaseModel):
     id: int
     email: str
@@ -11,6 +13,7 @@ class UserOut(BaseModel):
 
 class ServerUserConfig(BaseModel):
     quota: t.Optional[int]
+
 
 class ServerUserBase(BaseModel):
     server_id: int
@@ -23,13 +26,25 @@ class ServerUserOut(ServerUserBase):
     class Config:
         orm_mode = True
 
+
 class ServerUserOpsOut(ServerUserBase):
     user: UserOut
     config: ServerUserConfig
+    download: t.Optional[int]
+    upload: t.Optional[int]
+    readable_download: t.Optional[str]
+    readable_upload: t.Optional[str]
 
     class Config:
         orm_mode = True
 
+    @validator('readable_download', pre=True, always=True)
+    def default_readable_download(cls, v, *, values, **kwargs):
+        return v or get_readable_size(values['download'])
+
+    @validator('readable_upload', pre=True, always=True)
+    def default_readable_upload(cls, v, *, values, **kwargs):
+        return v or get_readable_size(values['upload'])
 
 class ServerUserCreate(BaseModel):
     user_id: int

@@ -1,7 +1,22 @@
 from .base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, BigInteger, String, JSON, ForeignKey, UniqueConstraint
+
+
+class ServerUser(Base):
+    __tablename__ = "server_user"
+    __table_args__ = UniqueConstraint('server_id', 'user_id', name='_server_user_server_id_user_id_uc'),
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    download = Column(BigInteger, nullable=False, default=lambda: 0)
+    upload = Column(BigInteger, nullable=False, default=lambda: 0)
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
+
+    user = relationship("User", back_populates="allowed_servers")
+    server = relationship("Server", back_populates="allowed_users")
 
 
 class Server(Base):
@@ -24,19 +39,6 @@ class Server(Base):
     is_active = Column(Boolean, default=True)
 
     ports = relationship("Port", cascade="all,delete", back_populates="server")
+    users = relationship("User", secondary="server_user", back_populates="servers")
     allowed_users = relationship("ServerUser", cascade="all,delete", back_populates="server")
-
-
-class ServerUser(Base):
-    __tablename__ = "server_user"
-    __table_args__ = UniqueConstraint('server_id', 'user_id', name='_server_user_server_id_user_id_uc'),
-
-    id = Column(Integer, primary_key=True, index=True)
-    server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
-    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
-
-    user = relationship("User", back_populates="allowed_servers")
-    server = relationship("Server", back_populates="allowed_users")
-
 

@@ -21,6 +21,7 @@ class Port(Base):
     is_active = Column(Boolean, default=True)
 
     server = relationship("Server", back_populates="ports")
+    users = relationship("User", secondary="port_user", back_populates="ports")
     allowed_users = relationship("PortUser", cascade="all,delete", back_populates="port")
     forward_rule = relationship("PortForwardRule", uselist=False, cascade="all,delete", back_populates="port")
     usage = relationship("PortUsage", uselist=False, cascade="all,delete", back_populates="port")

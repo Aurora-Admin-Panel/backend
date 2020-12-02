@@ -88,7 +88,6 @@ async def server_get(
     server = get_server(db, server_id)
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
-
     if user.is_admin():
         return ServerOpsOut(**jsonable_encoder(server))
     if not any(user.id == u.id for u in server.allowed_users):
@@ -172,6 +171,7 @@ async def server_users_get(
     Get server users by id
     """
     server_users = get_server_users(db, server_id)
+    print(jsonable_encoder(server_users))
     return server_users
 
 

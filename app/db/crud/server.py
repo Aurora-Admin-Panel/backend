@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException, status
 
 from app.core.security import get_password_hash
-from app.db.schemas.user import User
+from app.db.models.user import User
 from app.db.schemas.server import (
     ServerBase,
     ServerCreate,
@@ -16,7 +16,7 @@ from app.db.schemas.server import (
     ServerUserCreate,
 )
 from app.db.models.server import Server, ServerUser
-from app.db.models.port import Port
+from app.db.models.port import Port, PortUser
 
 
 def get_servers(
@@ -54,7 +54,9 @@ def get_server(db: Session, server_id: int) -> Server:
         db.query(Server)
         .filter(and_(Server.id == server_id, Server.is_active == True))
         .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
+        .options(joinedload(Server.users).joinedload(User.ports))
         .options(joinedload(Server.ports).joinedload(Port.usage))
+        .options(joinedload(Server.ports).joinedload(Port.allowed_users))
         .first()
     )
 

@@ -24,6 +24,8 @@ class User(Base):
 
     allowed_servers = relationship("ServerUser", cascade="all,delete", back_populates="user")
     allowed_ports = relationship("PortUser", cascade="all,delete", back_populates="user")
+    servers = relationship("Server", secondary="server_user", back_populates="users")
+    ports = relationship("Port", secondary="port_user", back_populates="users")
 
 
     def is_admin(self) -> bool:
