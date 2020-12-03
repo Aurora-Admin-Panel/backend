@@ -8,11 +8,13 @@ from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.crud.server import get_server, get_servers
+from app.db.crud.port_forward import get_all_iptables_rules
 from app.db.models.port_forward import PortForwardRule
+from app.api.utils.dns import dns_query
+from app.api.utils.ip import is_ip
 
 from . import celery_app
 from .utils import prepare_priv_dir, iptables_finished_handler
-
 
 
 @celery_app.task()
@@ -54,7 +56,9 @@ def iptables_runner(
     if not forward_type:
         args = f" delete {local_port}"
     elif remote_ip and remote_port:
-        args = f" -t={forward_type} forward {local_port} {remote_ip} {remote_port}"
+        args = (
+            f" -t={forward_type} forward {local_port} {remote_ip} {remote_port}"
+        )
     else:
         args = f" list {local_port}"
     extra_vars = {
@@ -96,3 +100,29 @@ def iptables_reset_runner(
         extravars=extra_vars,
     )
     return t[1].config.artifact_dir
+
+
+@celery_app.task()
+def ddns_runner():
+    rules = get_all_iptables_rules(SessionLocal())
+    for rule in rules:
+        if (
+            rule.config.get("remote_address")
+            and rule.config.get("remote_ip")
+            and not is_ip(rule.config.get("remote_address"))
+        ):
+            updated_ip = dns_query(rule.config["remote_address"])
+            if updated_ip != rule.config["remote_ip"]:
+                print(
+                    f"DNS changed for address {rule.config['remote_address']}, "
+                    + f"{rule.config['remote_ip']}->{updated_ip}"
+                )
+                iptables_runner.delay(
+                    rule.port.id,
+                    rule.port.server.id,
+                    rule.port.num,
+                    remote_ip=updated_ip,
+                    remote_port=rule.config["remote_port"],
+                    forward_type=rule.config.get("type", "ALL"),
+                    update_status=True,
+                )

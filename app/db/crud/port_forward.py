@@ -101,7 +101,7 @@ def delete_forward_rule(
     return db_forward_rule, port
 
 
-def get_all_gost_rules(db: Session, server_id: int) -> bool:
+def get_all_gost_rules(db: Session, server_id: int) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
         .join(Port)
@@ -111,5 +111,12 @@ def get_all_gost_rules(db: Session, server_id: int) -> bool:
                 Port.server_id == server_id,
             )
         )
+        .all()
+    )
+
+def get_all_iptables_rules(db: Session) -> t.List[PortForwardRule]:
+    return (
+        db.query(PortForwardRule)
+        .filter(PortForwardRule.method == MethodEnum.IPTABLES)
         .all()
     )
