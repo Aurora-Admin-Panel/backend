@@ -7,5 +7,7 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "PROD")
 SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
 ENABLE_SENTRY = os.getenv("ENABLE_SENTRY", False)
 SECRET_KEY = os.getenv("SECRET_KEY", "aurora-admin-panel")
+TRAFFIC_INTERVAL = os.getenv("TRAFFIC_INTERVAL", 10)
+DDNS_INTERVAL = os.getenv("DDNS_INTERVAL", 10)
 
 API_V1_STR = "/api/v1"

@@ -2,6 +2,7 @@ import typing as t
 from pydantic import BaseModel, validator
 
 from app.api.utils.size import get_readable_size
+from app.db.constants import LimitActionEnum
 
 class UserOut(BaseModel):
     id: int
@@ -12,7 +13,10 @@ class UserOut(BaseModel):
         orm_mode = True
 
 class ServerUserConfig(BaseModel):
+    valid_until: t.Optional[int]
+    due_action: t.Optional[LimitActionEnum]
     quota: t.Optional[int]
+    quota_action: t.Optional[LimitActionEnum]
 
 
 class ServerUserBase(BaseModel):

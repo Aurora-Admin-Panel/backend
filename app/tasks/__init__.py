@@ -1,7 +1,8 @@
+from datetime import timedelta
 import sentry_sdk
 from sentry_sdk.integrations.celery import CeleryIntegration
 from celery import Celery
-from celery.schedules import crontab
+from celery.schedules import crontab, schedule
 from celery.signals import celeryd_init
 from app.core import config
 
@@ -33,7 +34,7 @@ celery_app.autodiscover_tasks(
 celery_app.conf.beat_schedule = {
     "run-every-minute": {
         "task": "app.tasks.traffic.traffic_runner",
-        "schedule": crontab(minute="*/10"),
+        "schedule": schedule(timedelta(minutes=config.TRAFFIC_INTERVAL)),
     }
 }
 

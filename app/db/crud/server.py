@@ -110,6 +110,13 @@ def get_server_users(db: Session, server_id: int) -> t.List[ServerUser]:
     )
     return server_users
 
+def get_server_user(db: Session, server_id: int, user_id: int) -> ServerUser:
+    return (
+        db.query(ServerUser)
+        .filter(and_(ServerUser.server_id == server_id, ServerUser.user_id == user_id))
+        .options(joinedload(ServerUser.user))
+        .first()
+    )
 
 def add_server_user(
     db: Session, server_id: int, server_user: ServerUserCreate
@@ -124,15 +131,16 @@ def add_server_user(
 
 
 def edit_server_user(
-    db: Session, server_id: int, server_user: ServerUserEdit
+    db: Session, server_id: int, user_id: int, server_user: ServerUserEdit
 ) -> ServerUser:
-    db_server_user = ServerUser(
-        **server_user.dict(exclude_unset=True), server_id=server_id
-    )
+    db_server_user = get_server_user(db, server_id, user_id)
+    if not db_server_user:
+        return None
 
     updated = server_user.dict(exclude_unset=True)
     for key, val in updated.items():
         setattr(db_server_user, key, val)
+    # TODO: config might be overwritten
 
     db.add(db_server_user)
     db.commit()

@@ -32,12 +32,12 @@ def prepare_priv_dir_dict(server: t.Dict) -> str:
     copy_tree("ansible/env", f"{priv_dir}/env")
     passwords = {}
     cmdline = ""
-    if server.get('ssh_password') or server.get('sudo_password'):
-        if server.get('ssh_password'):
-            passwords["^SSH [pP]assword"] = server.get('ssh_password')
+    if server.get("ssh_password") or server.get("sudo_password"):
+        if server.get("ssh_password"):
+            passwords["^SSH [pP]assword"] = server.get("ssh_password")
             cmdline += " --ask-pass"
-        if server.get('sudo_password'):
-            passwords["^BECOME [pP]assword"] = server.get('sudo_password')
+        if server.get("sudo_password"):
+            passwords["^BECOME [pP]assword"] = server.get("sudo_password")
             cmdline += " -K"
     if passwords:
         with open(f"{priv_dir}/env/passwords", "w+") as f:
@@ -48,6 +48,7 @@ def prepare_priv_dir_dict(server: t.Dict) -> str:
         with open(f"{priv_dir}/env/cmdline", "w+") as f:
             f.write(cmdline)
     return priv_dir
+
 
 def prepare_priv_dir(server: Server) -> str:
     return prepare_priv_dir_dict(server.__dict__)
@@ -108,7 +109,7 @@ def update_usage(
     db.refresh(db_ports[port_num])
 
 
-def apple_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
+def apply_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
     action_to_speed = {
         LimitActionEnum.SPEED_LIMIT_10K: 10,
         LimitActionEnum.SPEED_LIMIT_100K: 100,
@@ -120,54 +121,68 @@ def apple_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
     }
     if action == LimitActionEnum.NO_ACTION:
         return
-    elif action == LimitActionEnum.DELETE_RULE and port.forward_rule:
+    elif action == LimitActionEnum.DELETE_RULE:
+        if not port.forward_rule:
+            return
         forward_urle, _ = delete_forward_rule(db, port.server_id, port.id)
         trigger_forward_rule(forward_urle, port, old=forward_urle)
     elif action in action_to_speed:
         db.refresh(port)
-        port.config["egress_limit"] = action_to_speed[action]
-        port.config["ingress_limit"] = action_to_speed[action]
-        db.add(port)
-        db.commit()
-        trigger_tc(port)
+        if (
+            port.config["egress_limit"] != action_to_speed[action]
+            or port.config["ingress_limit"] != action_to_speed[action]
+        ):
+            port.config["egress_limit"] = action_to_speed[action]
+            port.config["ingress_limit"] = action_to_speed[action]
+            db.add(port)
+            db.commit()
+            trigger_tc(port)
     else:
         print(f"No action found {action} for port (id: {port.id})")
 
 
-def check_port_limits(db: Session, port: Port) -> None:
-    if port.config.get(
+def check_limits(config: t.Dict, usage: int) -> LimitActionEnum:
+    if config.get(
         "valid_until"
     ) and datetime.utcnow() >= datetime.utcfromtimestamp(
-        port.config.get("valid_until") / 1000
+        config.get("valid_until") / 1000
     ):
-        action = LimitActionEnum(port.config.get("due_action", 0))
-        print(
-            f"Port (id: {port.id}) expired, "
-            + f"valid_until: {datetime.utcfromtimestamp(port.config.get('valid_until') / 1000)}, "
-            + f"applying action: {action}"
-        )
-        apple_port_limits(db, port, action)
-    elif port.config.get("quota") and (
-        port.usage.download + port.usage.upload
-    ) >= port.config.get("quota"):
-        action = LimitActionEnum(port.config.get("quota_action", 0))
-        print(
-            f"Port (id: {port.id}) reached quota limit, "
-            + f"quota: {port.config.get('quota')}, "
-            + f"applying action: {action}"
-        )
-        apple_port_limits(db, port, action)
+        return LimitActionEnum(config.get("due_action", 0))
+    elif config.get("quota") and usage >= config.get("quota"):
+        return LimitActionEnum(config.get("quota_action", 0))
+    return None
 
 
-def check_server_user_limit(db: Session, server_id: int, server_users_usage: t.DefaultDict):
+def check_port_limits(db: Session, port: Port) -> None:
+    action = check_limits(port.config, port.usage.download + port.usage.upload)
+    if action is not None:
+        apply_port_limits(db, port, action)
+
+
+def check_server_user_limit(
+    db: Session, server_id: int, server_users_usage: t.DefaultDict
+):
     server_users = get_server_users(db, server_id)
     if not server_users:
         return
     for server_user in server_users:
-        server_user.download = server_users_usage.get(server_user.user_id)['download']
-        server_user.upload = server_users_usage.get(server_user.user_id)['upload']
+        server_user.download = server_users_usage[server_user.user_id][
+            "download"
+        ]
+        server_user.upload = server_users_usage[server_user.user_id]["upload"]
         db.add(server_user)
-    db.commit()
+        db.commit()
+        db.refresh(server_user)
+        action = check_limits(
+            server_user.config, server_user.download + server_user.upload
+        )
+        if action is not None:
+            print(f"ServerUser reached limit, apply action {action}")
+            for port in server_user.server.ports:
+                if server_user.user_id in [
+                    u.user_id for u in port.allowed_users
+                ]:
+                    apply_port_limits(db, port, action)
 
 
 def iptables_finished_handler(server: Server, accumulate: bool = False):
@@ -197,12 +212,17 @@ def iptables_finished_handler(server: Server, accumulate: bool = False):
             update_usage(
                 db, prev_ports, db_ports, server.id, port_num, usage, accumulate
             )
-        server_users_usage = defaultdict(lambda: {'download': 0, 'upload': 0})
-        for port in db_ports.values():
-            check_port_limits(db, port)
-            for port_user in port.allowed_users:
-                server_users_usage[port_user.user_id]['download'] += port.usage.download
-                server_users_usage[port_user.user_id]['upload'] += port.usage.upload
+        server_users_usage = defaultdict(lambda: {"download": 0, "upload": 0})
+        for port in get_server(db, server.id).ports:
+            if port.usage:
+                check_port_limits(db, port)
+                for port_user in port.allowed_users:
+                    server_users_usage[port_user.user_id][
+                        "download"
+                    ] += port.usage.download
+                    server_users_usage[port_user.user_id][
+                        "upload"
+                    ] += port.usage.upload
         check_server_user_limit(db, server.id, server_users_usage)
 
     return wrapper

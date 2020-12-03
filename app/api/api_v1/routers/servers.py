@@ -194,12 +194,13 @@ async def server_users_add(
 
 
 @r.put(
-    "/servers/{server_id}/users",
+    "/servers/{server_id}/users/{user_id}",
     response_model=ServerUserOpsOut,
 )
 async def server_users_edit(
     response: Response,
     server_id: int,
+    user_id: int,
     server_user: ServerUserEdit,
     db=Depends(get_db),
     current_user=Depends(get_current_active_admin),
@@ -207,7 +208,9 @@ async def server_users_edit(
     """
     Add server user for server
     """
-    server_user = edit_server_user(db, server_id, server_user)
+    server_user = edit_server_user(db, server_id, user_id, server_user)
+    if not server_user:
+        raise HTTPException(status_code=404, detail="Server user not found")
     return server_user
 
 
