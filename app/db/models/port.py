@@ -1,7 +1,7 @@
 from .base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint, BigInteger
+from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint, BigInteger, Text
 
 from app.db.models.port_forward import PortForwardRule, MethodEnum
 
@@ -18,6 +18,7 @@ class Port(Base):
     num = Column(Integer, nullable=False)
     server_id = Column(Integer, ForeignKey('server.id'))
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
+    notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
 
     server = relationship("Server", back_populates="ports")

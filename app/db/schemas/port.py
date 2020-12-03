@@ -67,6 +67,7 @@ class PortConfig(BaseModel):
 
 class PortBase(BaseModel):
     external_num: int = None
+    notes: t.Optional[str]
     num: int
     server_id: int
     config: PortConfig
@@ -96,6 +97,7 @@ class PortOpsOut(PortBase):
 class PortCreate(BaseModel):
     num: int
     external_num: t.Optional[int] = None
+    notes: t.Optional[str]
     config: t.Optional[PortConfig]
     is_active: t.Optional[bool] = True
 
@@ -105,6 +107,7 @@ class PortCreate(BaseModel):
 
 class PortEdit(BaseModel):
     external_num: t.Optional[int]
+    notes: t.Optional[str]
     is_active: t.Optional[bool]
     config: t.Optional[PortConfig]
 

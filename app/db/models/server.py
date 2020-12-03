@@ -1,7 +1,7 @@
 from .base import Base
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
-from sqlalchemy import Boolean, Column, Integer, BigInteger, String, JSON, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Column, Integer, BigInteger, String, JSON, ForeignKey, UniqueConstraint, Text
 
 
 class ServerUser(Base):
@@ -13,6 +13,7 @@ class ServerUser(Base):
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
     download = Column(BigInteger, nullable=False, default=lambda: 0)
     upload = Column(BigInteger, nullable=False, default=lambda: 0)
+    notes = Column(Text, nullable=True)
     config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
 
     user = relationship("User", back_populates="allowed_servers")
