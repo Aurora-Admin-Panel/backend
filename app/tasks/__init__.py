@@ -34,11 +34,11 @@ celery_app.autodiscover_tasks(
 celery_app.conf.beat_schedule = {
     "run-get-traffic": {
         "task": "app.tasks.traffic.traffic_runner",
-        "schedule": schedule(timedelta(minutes=config.TRAFFIC_INTERVAL)),
+        "schedule": schedule(timedelta(seconds=config.TRAFFIC_INTERVAL)),
     },
     "run-ddns": {
         "task": "app.tasks.iptables.ddns_runner",
-        "schedule": schedule(timedelta(minutes=config.DDNS_INTERVAL)),
+        "schedule": schedule(timedelta(seconds=config.DDNS_INTERVAL)),
     }
 }
 
