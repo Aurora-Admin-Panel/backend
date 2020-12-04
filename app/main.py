@@ -39,6 +39,7 @@ app.add_middleware(
 )
 
 sentry_sdk.init(
+    release=f"{config.BACKEND_VERSION}",
     dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928"
 )
 

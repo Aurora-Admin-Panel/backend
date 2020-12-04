@@ -8,7 +8,9 @@ from app.core import config
 
 if config.ENABLE_SENTRY:
     sentry_sdk.init(
-        dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928",
+        release=f"{config.BACKEND_VERSION}",
+        dsn="https://5270ad88bab643a98799d2e20a2d4c9a@o176406.ingest.sentry.io/5545255",
+        traces_sample_rate=1.0,
         integrations=[CeleryIntegration()],
     )
 
@@ -34,11 +36,11 @@ celery_app.autodiscover_tasks(
 celery_app.conf.beat_schedule = {
     "run-get-traffic": {
         "task": "app.tasks.traffic.traffic_runner",
-        "schedule": schedule(timedelta(seconds=config.TRAFFIC_INTERVAL)),
+        "schedule": schedule(timedelta(seconds=int(config.TRAFFIC_INTERVAL))),
     },
     "run-ddns": {
         "task": "app.tasks.iptables.ddns_runner",
-        "schedule": schedule(timedelta(seconds=config.DDNS_INTERVAL)),
+        "schedule": schedule(timedelta(seconds=int(config.DDNS_INTERVAL))),
     }
 }
 
