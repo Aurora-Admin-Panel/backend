@@ -10,7 +10,7 @@ from app.db.crud.server import get_server
 from app.db.models.port_forward import PortForwardRule
 
 from . import celery_app
-from .utils import prepare_priv_dir
+from .runner import run_async
 
 
 @celery_app.task()
@@ -21,7 +21,6 @@ def tc_runner(
     ingress_limit: int = None
 ):
     server = get_server(SessionLocal(), server_id)
-    priv_data_dir = prepare_priv_dir(server)
     args = ""
     if egress_limit:
         args += f' -e={egress_limit}kbit'
@@ -29,9 +28,8 @@ def tc_runner(
         args += f' -i={ingress_limit}kbit'
     args += f' {port_num}'
 
-    t = ansible_runner.run_async(
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
+    t = run_async(
+        server=server,
         playbook="tc.yml",
         extravars={"host": server.ansible_name, "tc_args": args},
     )

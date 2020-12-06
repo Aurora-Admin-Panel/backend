@@ -82,19 +82,16 @@ def create_port(db: Session, server_id: int, port: PortCreate) -> Port:
 
 
 def edit_port(
-    db: Session, server_id: int, port_id: int, port: PortEdit
+    db: Session, db_port: Port, port: PortEdit
 ) -> Port:
-    db_port = get_port(db, server_id, port_id)
-    if not db_port:
-        raise HTTPException(status_code=404, detail="Port not found")
     updated = port.dict(exclude_unset=True)
-
     for key, val in updated.items():
         setattr(db_port, key, val)
 
     db.add(db_port)
     db.commit()
-    return get_port(db, server_id, port_id)
+    db.refresh(db_port)
+    return db_port
 
 
 def delete_port(db: Session, server_id: int, port_id: int) -> PortOut:

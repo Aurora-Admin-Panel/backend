@@ -18,6 +18,7 @@ from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
 from . import celery_app
+from .runner import run_async
 from .utils import prepare_priv_dir, iptables_finished_handler, get_md5_for_file
 
 
@@ -67,11 +68,8 @@ def finished_handler(server: Server, md5: str):
 
 
 def run(server: Server, init_md5: str, **kwargs):
-    priv_data_dir = prepare_priv_dir(server)
-    kwargs["host"] = server.ansible_name
-    ansible_runner.run_async(
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
+    run_async(
+        server=server,
         playbook="server.yml",
         extravars=kwargs,
         event_handler=event_handler(server, init_md5),

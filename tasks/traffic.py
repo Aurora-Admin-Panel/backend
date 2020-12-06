@@ -18,7 +18,8 @@ from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
 from . import celery_app
-from .utils import prepare_priv_dir, iptables_finished_handler
+from .runner import run_async
+from .utils import iptables_finished_handler
 
 
 
@@ -26,10 +27,8 @@ from .utils import prepare_priv_dir, iptables_finished_handler
 def traffic_runner():
     servers = get_servers(SessionLocal())
     for server in servers:
-        priv_data_dir = prepare_priv_dir(server)
-        ansible_runner.run_async(
-            private_data_dir=priv_data_dir,
-            project_dir="ansible/project",
+        run_async(
+            server=server,
             playbook="traffic.yml",
             extravars={"host": server.ansible_name},
             finished_callback=iptables_finished_handler(server),

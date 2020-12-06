@@ -14,6 +14,7 @@ from app.utils.dns import dns_query
 from app.utils.ip import is_ip
 
 from . import celery_app
+from .runner import run_async
 from .utils import prepare_priv_dir, iptables_finished_handler
 
 
@@ -52,7 +53,6 @@ def iptables_runner(
     update_status: bool = False,
 ):
     server = get_server(SessionLocal(), server_id)
-    priv_data_dir = prepare_priv_dir(server)
     if not forward_type:
         args = f" delete {local_port}"
     elif remote_ip and remote_port:
@@ -61,17 +61,16 @@ def iptables_runner(
         )
     else:
         args = f" list {local_port}"
-    extra_vars = {
+    extravars = {
         "host": server.ansible_name,
         "local_port": local_port,
         "iptables_args": args,
     }
 
-    t = ansible_runner.run_async(
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
+    t = run_async(
+        server=server,
         playbook="iptables.yml",
-        extravars=extra_vars,
+        extravars=extravars,
         status_handler=lambda s, **k: forward_rule_status_handler.delay(
             port_id, s, update_status
         ),
@@ -86,18 +85,16 @@ def iptables_reset_runner(
     port_num: int,
 ):
     server = get_server(SessionLocal(), server_id)
-    priv_data_dir = prepare_priv_dir(server)
-    extra_vars = {
+    extravars = {
         "host": server.ansible_name,
         "local_port": port_num,
         "iptables_args": f" reset {port_num}",
     }
 
-    t = ansible_runner.run_async(
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
+    t = run_async(
+        server=server,
         playbook="iptables.yml",
-        extravars=extra_vars,
+        extravars=extravars,
     )
     return t[1].config.artifact_dir
 

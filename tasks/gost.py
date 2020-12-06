@@ -11,7 +11,8 @@ from app.db.models.port_forward import PortForwardRule
 from app.db.crud.server import get_server
 
 from . import celery_app
-from .utils import prepare_priv_dir, iptables_finished_handler
+from .runner import run_async
+from .utils import iptables_finished_handler
 
 
 @celery_app.task()
@@ -54,23 +55,21 @@ def gost_runner(
     update_status: bool = False,
 ):
     server = get_server(SessionLocal(), server_id)
-    priv_data_dir = prepare_priv_dir(server)
     with open(f"ansible/project/roles/gost/files/{port_id}.json", "w") as f:
         f.write(json.dumps(gost_config, indent=4))
 
-    extra_vars = {
+    extravars = {
         "host": server.ansible_name,
         "port_id": port_id,
         "local_port": port_num,
         "remote_ip": remote_ip,
         "update_status": update_status,
-        "update_gost": len(server.config.get('gost', '')) > 0,
+        "update_gost": update_status and not server.config.get('gost'),
     }
-    r = ansible_runner.run_async(
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
+    r = run_async(
+        server=server,
         playbook="gost.yml",
-        extravars=extra_vars,
+        extravars=extravars,
         status_handler=lambda s, **k: gost_status_handler.delay(
             port_id, s, update_status
         ),

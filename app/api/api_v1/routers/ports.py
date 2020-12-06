@@ -15,6 +15,7 @@ from app.db.schemas.port import (
     PortOpsOut,
     PortCreate,
     PortEdit,
+    PortEditBase,
     PortUserCreate,
     PortUserEdit,
     PortUserOut,
@@ -102,7 +103,7 @@ async def port_get(
 
     if user.is_admin():
         return PortOpsOut(**jsonable_encoder(port))
-    if not any(user.id == u["user_id"] for u in port.allowed_users):
+    if not any(user.id == u.user_id for u in port.allowed_users):
         raise HTTPException(status_code=404, detail="Port not found")
     return PortOut(**jsonable_encoder(port))
 
@@ -138,12 +139,19 @@ async def port_edit(
     port_id: int,
     port: PortEdit,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    user=Depends(get_current_active_user),
 ):
     """
     Update an existing port
     """
-    db_port = edit_port(db, server_id, port_id, port)
+    db_port = get_port(db, server_id, port_id)
+    if not db_port:
+        raise HTTPException(status_code=404, detail="Port not found")
+    if not user.is_admin():
+        if not any(u.user_id == user.id for u in db_port.allowed_users):
+            raise HTTPException(status_code=403, detail="Operation not allowed")
+        port = PortEditBase(**port.dict(exclude_unset=True))
+    db_port = edit_port(db, db_port, port)
     trigger_tc(db_port)
     return db_port
 

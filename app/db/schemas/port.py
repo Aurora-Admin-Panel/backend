@@ -105,12 +105,16 @@ class PortCreate(BaseModel):
         orm_mode = True
 
 
-class PortEdit(BaseModel):
-    external_num: t.Optional[int]
+class PortEditBase(BaseModel):
     notes: t.Optional[str]
+
+    class Config:
+        orm_mode = True
+
+class PortEdit(PortEditBase):
+    external_num: t.Optional[int]
     is_active: t.Optional[bool]
     config: t.Optional[PortConfig]
 
     class Config:
         orm_mode = True
-

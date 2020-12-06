@@ -22,6 +22,4 @@ def ansible_hosts_runner():
             f.write(
                 f"{server.ansible_name}\tansible_host={server.ansible_host}\tansible_port={server.ansible_port}\tansible_user={server.ansible_user}\n"
             )
-        f.write("\n[all:vars]\n")
-        f.write("ansible_python_interpreter=/usr/bin/python\n")
         f.write("### END AUTO GENERATION ###")

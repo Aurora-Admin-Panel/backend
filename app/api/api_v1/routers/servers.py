@@ -89,7 +89,7 @@ async def server_get(
         raise HTTPException(status_code=404, detail="Server not found")
     if user.is_admin():
         return ServerOpsOut(**jsonable_encoder(server))
-    if not any(user.id == u.id for u in server.allowed_users):
+    if not any(user.id == u.user_id for u in server.allowed_users):
         raise HTTPException(status_code=404, detail="Server not found")
     return ServerOut(**jsonable_encoder(server))
 

@@ -10,7 +10,7 @@ from app.db.crud.server import get_server
 from app.db.models.port_forward import PortForwardRule
 
 from . import celery_app
-from .utils import prepare_priv_dir
+from .runner import run_async
 
 
 def finished_handler(server: Server):
@@ -28,13 +28,9 @@ def connect_runner(
     server_id: int,
 ):
     server = get_server(SessionLocal(), server_id)
-    priv_data_dir = prepare_priv_dir(server)
-
-    t = ansible_runner.run_async(
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
+    t = run_async(
+        server=server,
         playbook="connect.yml",
-        extravars={"host": server.ansible_name},
         finished_callback=finished_handler(server),
     )
     return t[1].config.artifact_dir

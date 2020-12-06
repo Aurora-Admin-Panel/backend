@@ -2,7 +2,6 @@ import re
 import os
 import hashlib
 import typing as t
-from uuid import uuid4
 from datetime import datetime
 from collections import defaultdict
 from distutils.dir_util import copy_tree
@@ -26,8 +25,8 @@ from app.db.schemas.server import ServerEdit
 
 
 def prepare_priv_dir_dict(server: t.Dict) -> str:
-    priv_dir = f"ansible/priv_data_dirs/{server.get('id', 0)}/{uuid4()}"
-    os.makedirs(priv_dir)
+    priv_dir = f"ansible/priv_data_dirs/{server.get('id', 0)}"
+    os.makedirs(priv_dir, exist_ok=True)
     copy_tree("ansible/inventory", f"{priv_dir}/inventory")
     copy_tree("ansible/env", f"{priv_dir}/env")
     passwords = {}
