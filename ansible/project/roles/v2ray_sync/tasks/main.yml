@@ -1,0 +1,15 @@
+---
+- name: Sync v2ray@.service
+  copy:
+    src: roles/gost/files/systemd/system/v2ray@.service
+    dest: /usr/lib/systemd/system/v2ray@.service
+    owner: root
+    group: root
+
+- name: Sync v2ray binary
+  copy:
+    src: roles/gost/files/v2ray
+    dest: /usr/local/bin/v2ray
+    mode: +x
+    owner: root
+    group: root

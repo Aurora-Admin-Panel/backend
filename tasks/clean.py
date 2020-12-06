@@ -14,7 +14,7 @@ from .utils import prepare_priv_dir_dict
 
 
 def clean_finished_handler(runner):
-    celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
+    celery_app.send_task("tasks.ansible.ansible_hosts_runner")
 
 @celery_app.task()
 def clean_runner(server: t.Dict):

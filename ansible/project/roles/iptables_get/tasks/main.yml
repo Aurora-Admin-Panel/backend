@@ -1,0 +1,15 @@
+---
+- name: Check iptables exist
+  block:
+    - name: Get iptables version
+      shell: iptables -V
+      register: iptables
+    - name: Set fact for iptables version
+      set_fact:
+        iptables: "{{ iptables.stdout }}"
+        cacheable: yes
+  rescue:
+    - name: Set iptables not exist
+      set_fact:
+        iptables: ""
+        cacheable: yes

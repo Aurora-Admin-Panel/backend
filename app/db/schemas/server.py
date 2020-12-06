@@ -1,7 +1,7 @@
 import typing as t
 from pydantic import BaseModel, validator
 
-from app.api.utils.size import get_readable_size
+from app.utils.size import get_readable_size
 from app.db.constants import LimitActionEnum
 
 class UserOut(BaseModel):
@@ -65,14 +65,20 @@ class ServerUserEdit(BaseModel):
 
 
 class ServerFacts(BaseModel):
-    ansible_architecture: t.Optional[str]
-    ansible_distribution: t.Optional[str]
-    ansible_distribution_release: t.Optional[str]
-    ansible_distribution_version: t.Optional[str]
+    msg: t.Optional[str]
+    os_family: t.Optional[str]
+    architecture: t.Optional[str]
+    distribution: t.Optional[str]
+    distribution_release: t.Optional[str]
+    distribution_version: t.Optional[str]
 
 
 class ServerConfig(BaseModel):
-    facts: t.Optional[ServerFacts]
+    system: t.Optional[ServerFacts]
+    iptables: t.Optional[str]
+    gost: t.Optional[str]
+    v2ray: t.Optional[str]
+
 
 class ServerBase(BaseModel):
     name: str
@@ -136,6 +142,11 @@ class ServerEdit(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class ServerConnectArg(BaseModel):
+    update_gost: t.Optional[bool] = False
+    update_v2ray: t.Optional[bool] = False
 
 
 class Server(ServerBase):

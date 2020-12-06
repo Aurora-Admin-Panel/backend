@@ -1,0 +1,15 @@
+---
+- name: Sync gost@.service
+  copy:
+    src: files/gost@.service
+    dest: /usr/lib/systemd/system/gost@.service
+    owner: root
+    group: root
+
+- name: Sync gost binary
+  copy:
+    src: roles/gost/files/gost
+    dest: /usr/local/bin/gost
+    mode: +x
+    owner: root
+    group: root

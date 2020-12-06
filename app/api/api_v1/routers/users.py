@@ -26,7 +26,7 @@ from app.db.schemas.user import (
     UserServerOut,
 )
 from app.core.auth import get_current_active_user, get_current_active_superuser
-from app.api.utils.size import get_readable_size
+from app.utils.size import get_readable_size
 
 users_router = r = APIRouter()
 

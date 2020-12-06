@@ -1,0 +1,20 @@
+---
+- name: Download latest v2ray
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: no
+  tasks:
+    - setup:
+  roles:
+    - role: v2ray_download
+      when: update_v2ray is defined and update_v2ray
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: no
+  tasks:
+    - setup:
+  roles:
+    - role: v2ray_sync
+      when: update_v2ray is defined and update_v2ray
+    - v2ray

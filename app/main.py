@@ -1,6 +1,7 @@
 import os
 import uvicorn
 import sentry_sdk
+import typing as t
 from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +15,7 @@ from app.core import config
 from app.db.session import SessionLocal
 from app.core import config
 from app.core.auth import get_current_active_user
-from app.tasks import celery_app
+from tasks import celery_app
 
 
 app = FastAPI(
@@ -71,9 +72,9 @@ async def root():
     return {"message": "Hello World"}
 
 
-@app.get("/api/v1/task/{task_name}")
-async def run_task(task_name: str):
-    celery_app.send_task(f"app.tasks.{task_name}")
+@app.post("/api/v1/task/{task_name}")
+async def run_task(task_name: str, kwargs: t.Dict):
+    celery_app.send_task(f"tasks.{task_name}", kwargs=kwargs)
     return {"message": "ok"}
 
 

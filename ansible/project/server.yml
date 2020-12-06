@@ -1,0 +1,24 @@
+---
+- name: Prepare binary locally
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: no
+  roles:
+    - role: gost_download
+      when: update_gost is defined and update_gost
+    - role: v2ray_download
+      when: update_v2ray is defined and update_v2ray
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: yes
+  roles:
+    - role: scripts_sync
+      when: sync_scripts is defined and sync_scripts
+    - role: iptables_init
+      when: init_iptables is defined and init_iptables
+    - role: gost_sync
+      when: update_gost is defined and update_gost
+    - role: iptables_get
+    - role: gost_get
+    - role: v2ray_get

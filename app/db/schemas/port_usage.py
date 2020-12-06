@@ -1,7 +1,7 @@
 import typing as t
 from pydantic import BaseModel, validator
 
-from app.api.utils.size import get_readable_size
+from app.utils.size import get_readable_size
 from app.db.models.port_forward import MethodEnum
 
 

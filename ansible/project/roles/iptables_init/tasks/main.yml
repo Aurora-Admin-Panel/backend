@@ -1,0 +1,42 @@
+---
+- name: Set iptables forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Sync iptables-restore.service for centos
+  when: ansible_facts.os_family == 'CentOS'
+  copy:
+    src: files/iptables-restore-centos.service
+    dest: /usr/lib/systemd/system/iptables-restore.service
+    owner: root
+    group: root
+
+- name: Sync iptables-restore.service for debian/ubuntu
+  when: ansible_facts.os_family != 'CentOS'
+  copy:
+    src: files/iptables-restore.service
+    dest: /usr/lib/systemd/system/iptables-restore.service
+    owner: root
+    group: root
+
+- name: get service facts
+  service_facts:
+  register: services
+  when: ansible_facts.os_family == 'CentOS'
+
+- name: Stop firewalld
+  when: ansible_facts.distribution == 'CentOS' and ansible_facts.services["firewalld.service"] is defined
+  systemd:
+    name: firewalld
+    enabled: 'no'
+    state: 'stopped'
+
+- name: enables iptables-restore
+  systemd:
+    name: iptables-restore
+    enabled: 'yes'
+    daemon_reload: yes

@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from urllib.parse import urlparse
 from fastapi import HTTPException, status
 
-from app.api.utils.ip import is_ip
-from app.api.utils.dns import dns_query
+from app.utils.ip import is_ip
+from app.utils.dns import dns_query
 from app.core.security import get_password_hash
 from app.db.models.user import User
 from app.db.schemas.port_forward import (

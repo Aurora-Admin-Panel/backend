@@ -1,7 +1,7 @@
 import typing as t
 from pydantic import BaseModel, validator
 from .port_usage import PortUsageOut
-from app.api.utils.size import get_readable_size
+from app.utils.size import get_readable_size
 
 
 class UserBase(BaseModel):

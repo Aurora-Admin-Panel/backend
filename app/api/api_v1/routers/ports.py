@@ -44,7 +44,7 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
-from app.api.utils.tasks import (
+from app.utils.tasks import (
     trigger_tc,
     remove_tc,
     trigger_forward_rule,

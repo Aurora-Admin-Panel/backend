@@ -1,7 +1,7 @@
 import typing as t
 from fastapi.encoders import jsonable_encoder
 
-from app.tasks import celery_app
+from tasks import celery_app
 from app.db.models.port import Port
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule, MethodEnum
@@ -16,7 +16,6 @@ def send_iptables(
     port: Port,
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
-    update_gost: bool = False,
 ):
     kwargs = {
         "port_id": port.id,
@@ -34,7 +33,7 @@ def send_iptables(
             print(f"Skipping iptables_runner task")
             return
     print(f"Sending iptables_runner task, kwargs: {kwargs}")
-    celery_app.send_task("app.tasks.iptables.iptables_runner", kwargs=kwargs)
+    celery_app.send_task("tasks.iptables.iptables_runner", kwargs=kwargs)
 
 
 def send_gost(
@@ -42,7 +41,6 @@ def send_gost(
     port: Port,
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
-    update_gost: bool = False,
 ):
     gost_config = generate_gost_config(rule)
     kwargs = {
@@ -51,24 +49,10 @@ def send_gost(
         "port_num": port.num,
         "gost_config": gost_config,
         "remote_ip": get_gost_remote_ip(gost_config),
-        "update_gost": update_gost,
         "update_status": bool(new and new.method == MethodEnum.GOST),
     }
     print(f"Sending gost_runner task, kwargs: {kwargs}")
-    celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
-
-
-def trigger_install_gost(server_id):
-    kwargs = {
-        "port_id": 0,
-        "server_id": server_id,
-        "port_num": 0,
-        "gost_config": {},
-        "update_gost": True,
-        "update_status": False,
-    }
-    print(f"Sending gost install gost_runner task, kwargs: {kwargs}")
-    celery_app.send_task("app.tasks.gost.gost_runner", kwargs=kwargs)
+    celery_app.send_task("tasks.gost.gost_runner", kwargs=kwargs)
 
 
 def trigger_forward_rule(
@@ -76,7 +60,6 @@ def trigger_forward_rule(
     port: Port,
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
-    update_gost: bool = False,
 ):
     print(
         f"Received forward rule:\n"
@@ -84,10 +67,10 @@ def trigger_forward_rule(
         + f"new:{jsonable_encoder(new) if new else None}"
     )
     if any(r.method == MethodEnum.IPTABLES for r in (old, new) if r):
-        send_iptables(rule, port, old, new, update_gost)
+        send_iptables(rule, port, old, new)
 
     if any(r.method == MethodEnum.GOST for r in (old, new) if r):
-        send_gost(rule, port, old, new, update_gost)
+        send_gost(rule, port, old, new)
 
 
 def trigger_tc(port: Port):
@@ -98,7 +81,7 @@ def trigger_tc(port: Port):
         "ingress_limit": port.config.get("ingress_limit"),
     }
     print(f"Sending tc_runner task, kwargs: {kwargs}")
-    celery_app.send_task("app.tasks.tc.tc_runner", kwargs=kwargs)
+    celery_app.send_task("tasks.tc.tc_runner", kwargs=kwargs)
 
 
 def remove_tc(server_id: int, port_num: int):
@@ -107,36 +90,33 @@ def remove_tc(server_id: int, port_num: int):
         "port_num": port_num,
     }
     print(f"Sending tc_runner task, kwargs: {kwargs}")
-    celery_app.send_task("app.tasks.tc.tc_runner", kwargs=kwargs)
+    celery_app.send_task("tasks.tc.tc_runner", kwargs=kwargs)
 
 
 def trigger_ansible_hosts():
     print(f"Sending ansible_hosts_runner task")
-    celery_app.send_task("app.tasks.ansible.ansible_hosts_runner")
+    celery_app.send_task("tasks.ansible.ansible_hosts_runner")
 
 
 def trigger_iptables_reset(port: Port):
     kwargs = {"server_id": port.server.id, "port_num": port.num}
     print(f"Sending iptables.iptables_reset_runner task")
     celery_app.send_task(
-        "app.tasks.iptables.iptables_reset_runner", kwargs=kwargs
+        "tasks.iptables.iptables_reset_runner", kwargs=kwargs
     )
 
 
-def trigger_server_connect(server_id: int):
-    print(f"Sending connect.connect_runner task")
-    celery_app.send_task(
-        "app.tasks.connect.connect_runner", kwargs={"server_id": server_id}
-    )
-
-def trigger_server_init(server_id: int):
-    print(f"Sending init.server_runner task")
-    celery_app.send_task("app.tasks.init.server_init_runner", kwargs={'server_id': server_id})
-
+def trigger_server_connect(server_id: int, init: bool = False, **kwargs):
+    kwargs['server_id'] = server_id
+    kwargs['sync_scripts'] = init
+    kwargs['init_iptables'] = init
+    print(f"Sending server.server_runner task")
+    celery_app.send_task("tasks.server.server_runner", kwargs=kwargs)
+    
 
 def trigger_server_clean(server: Server):
     print(f"Sending clean.clean_runner task")
     celery_app.send_task(
-        "app.tasks.clean.clean_runner",
+        "tasks.clean.clean_runner",
         kwargs={"server": ServerEdit(**server.__dict__).dict()},
     )

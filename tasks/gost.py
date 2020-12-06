@@ -3,14 +3,15 @@ import typing as t
 import ansible_runner
 from uuid import uuid4
 
-from . import celery_app
 from app.db.session import SessionLocal
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
 from app.db.crud.server import get_server
-from app.tasks.utils import prepare_priv_dir, iptables_finished_handler
+
+from . import celery_app
+from .utils import prepare_priv_dir, iptables_finished_handler
 
 
 @celery_app.task()
@@ -50,7 +51,6 @@ def gost_runner(
     port_num: int,
     gost_config: t.Dict,
     remote_ip: str = None,
-    update_gost: bool = False,
     update_status: bool = False,
 ):
     server = get_server(SessionLocal(), server_id)
@@ -63,8 +63,8 @@ def gost_runner(
         "port_id": port_id,
         "local_port": port_num,
         "remote_ip": remote_ip,
-        "update_gost": update_gost,
         "update_status": update_status,
+        "update_gost": len(server.config.get('gost', '')) > 0,
     }
     r = ansible_runner.run_async(
         private_data_dir=priv_data_dir,

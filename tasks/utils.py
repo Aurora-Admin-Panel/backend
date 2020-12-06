@@ -8,8 +8,8 @@ from collections import defaultdict
 from distutils.dir_util import copy_tree
 from sqlalchemy.orm import joinedload, Session
 
-from app.api.utils.tasks import trigger_forward_rule, trigger_tc
-from app.api.utils.size import get_readable_size
+from app.utils.tasks import trigger_forward_rule, trigger_tc
+from app.utils.size import get_readable_size
 from app.db.constants import LimitActionEnum
 from app.db.session import SessionLocal
 from app.db.models.port import Port
@@ -194,7 +194,7 @@ def iptables_finished_handler(server: Server, accumulate: bool = False):
         traffics = defaultdict(lambda: {"download": 0, "upload": 0})
         for line in (
             runner.get_fact_cache(server.ansible_name)
-            .get("results", "")
+            .get("traffic", "")
             .split("\n")
         ):
             match = pattern.search(line)

@@ -32,7 +32,6 @@ monitor () {
     $SUDO iptables -I OUTPUT -p tcp  --sport $LOCAL_PORT -j ACCEPT -m comment --comment "DOWNLOAD $LOCAL_PORT->$REMOTE_IP"
     $SUDO iptables -I INPUT -p udp --dport $LOCAL_PORT -j ACCEPT -m comment --comment "UPLOAD-UDP $LOCAL_PORT->$REMOTE_IP"
     $SUDO iptables -I OUTPUT -p udp --sport $LOCAL_PORT -j ACCEPT -m comment --comment "DOWNLOAD-UDP $LOCAL_PORT->$REMOTE_IP"
-    save_iptables
 }
 
 list () {
@@ -57,11 +56,7 @@ LOCAL_PORT=$1
 REMOTE_IP=$2
 [ -z $LOCAL_PORT ] && echo "Port not specfied" && exit 1
 
-[ -z $(ls /usr/local/bin/gost) ] && echo "gost not found" && exit 1
-
-[ -z $(ls /usr/lib/systemd/system/gost@.service) ] && echo "gost@.service not found" && exit 1
-
-$SUDO mkdir -p /usr/local/etc/gost
 list
 delete
 monitor
+save_iptables

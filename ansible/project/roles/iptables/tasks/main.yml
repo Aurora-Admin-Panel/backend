@@ -3,7 +3,7 @@
   block:
     - name: Exec iptables script locally
       shell: /usr/local/bin/iptables.sh {{ iptables_args }}
-      register: results
+      register: traffic
   rescue:
     - name: Sync iptables.sh
       copy:
@@ -14,9 +14,9 @@
         mode: '0755'
     - name: Exec iptables script locally again
       shell: /usr/local/bin/iptables.sh {{ iptables_args }}
-      register: results
+      register: traffic
 
-- name: Set fact for result
+- name: Set traffic result
   set_fact:
-    results: "{{ results.stdout }}"
+    traffic: "{{ traffic.stdout }}"
     cacheable: yes

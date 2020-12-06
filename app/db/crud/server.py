@@ -69,7 +69,7 @@ def create_server(db: Session, server: ServerCreate) -> Server:
     return get_server(db, db_server.id)
 
 
-def edit_server(db: Session, server_id: int, server: ServerEdit) -> Server:
+def edit_server(db: Session, server_id: int, server: ServerEdit, reset_system: bool = False) -> Server:
     db_server = get_server(db, server_id)
     if not db_server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -78,13 +78,14 @@ def edit_server(db: Session, server_id: int, server: ServerEdit) -> Server:
     for key, val in updated.items():
         setattr(db_server, key, val)
     if (
-        server.sudo_password
+        reset_system
+        or server.sudo_password
         or server.ssh_password
         or server.ansible_host
         or server.ansible_user
         or server.ansible_port
     ):
-        db_server.config["facts"] = None
+        db_server.config["system"] = None
 
     db.add(db_server)
     db.commit()

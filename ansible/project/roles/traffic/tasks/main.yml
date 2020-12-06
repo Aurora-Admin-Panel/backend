@@ -3,7 +3,7 @@
   block:
     - name: Exec get_traffic script locally
       shell: /usr/local/bin/get_traffic.sh
-      register: results
+      register: traffic
   rescue:
     - name: Sync get_traffic.sh
       copy:
@@ -14,10 +14,10 @@
         mode: '0755'
     - name: Exec get_traffci script locally again
       shell: /usr/local/bin/get_traffic.sh
-      register: results
+      register: traffic
 
 
-- name: Set fact for result
+- name: Set traffic result
   set_fact:
-    results: "{{ results.stdout }}"
+    traffic: "{{ traffic.stdout }}"
     cacheable: yes

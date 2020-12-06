@@ -10,8 +10,8 @@ from app.db.models.server import Server
 from app.db.crud.server import get_server, get_servers
 from app.db.crud.port_forward import get_all_iptables_rules
 from app.db.models.port_forward import PortForwardRule
-from app.api.utils.dns import dns_query
-from app.api.utils.ip import is_ip
+from app.utils.dns import dns_query
+from app.utils.ip import is_ip
 
 from . import celery_app
 from .utils import prepare_priv_dir, iptables_finished_handler

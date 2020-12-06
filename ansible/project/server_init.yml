@@ -1,6 +1,0 @@
----
-- hosts: "{{ host | default('web') }}"
-  become: yes
-  gather_facts: yes
-  roles:
-    - server_init

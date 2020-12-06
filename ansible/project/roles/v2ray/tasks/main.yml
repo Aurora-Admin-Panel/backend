@@ -4,7 +4,7 @@
   block:
     - name: Exec app script locally
       shell: /usr/local/bin/app.sh {{ local_port }} {{ remote_ip }}
-      register: traffic
+      register: results
   rescue:
     - name: Sync app.sh
       copy:
@@ -23,24 +23,24 @@
     cacheable: yes
   when: update_status
 
-- name: Create gost config directory if it does not exist
+- name: Create v2ray config directory if it does not exist
   file:
-    path: /usr/local/etc/gost
+    path: /usr/local/etc/v2ray
     state: directory
     mode: '0755'
   when: update_status
 
-- name: Sync gost config
+- name: Sync v2ray config
   copy:
-    src: roles/gost/files/{{ port_id }}.json
-    dest: /usr/local/etc/gost/{{ local_port }}.json
+    src: roles/v2ray/files/{{ port_id }}.json
+    dest: /usr/local/etc/v2ray/{{ local_port }}.json
     owner: root
     group: root
   when: update_status
 
-- name: enable & restart gost
+- name: enable & restart v2ray
   systemd:
-    name: gost@{{ local_port }}
+    name: v2ray@{{ local_port }}
     state: "{{ 'restarted' if update_status else 'stopped' }}"
     enabled: "{{ 'yes' if update_status else 'no' }}"
     daemon_reload: yes

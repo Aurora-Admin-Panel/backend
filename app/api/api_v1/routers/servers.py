@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.db.schemas.server import (
     ServerOut,
     ServerOpsOut,
+    ServerConnectArg,
     ServerCreate,
     ServerEdit,
     ServerUserEdit,
@@ -36,11 +37,9 @@ from app.core.auth import (
     get_current_active_superuser,
     get_current_active_admin,
 )
-from app.api.utils.tasks import (
+from app.utils.tasks import (
     trigger_ansible_hosts,
-    trigger_install_gost,
     trigger_server_connect,
-    trigger_server_init,
     trigger_server_clean,
 )
 
@@ -111,8 +110,7 @@ async def server_create(
         server.ansible_host = server.address
     server = create_server(db, server)
     trigger_ansible_hosts()
-    trigger_server_connect(server.id)
-    trigger_server_init(server.id)
+    trigger_server_connect(server.id, init=True)
     return jsonable_encoder(server)
 
 
@@ -154,6 +152,25 @@ async def server_delete(
     server = delete_server(db, server_id)
     trigger_server_clean(server)
     return server
+
+@r.post(
+    "/servers/{server_id}/connect", response_model=t.Union[ServerOpsOut,ServerOut], response_model_exclude_none=True
+)
+async def server_connect(
+    request: Request,
+    server_id: int,
+    connect_arg: ServerConnectArg,
+    db=Depends(get_db),
+    user=Depends(get_current_active_user),
+):
+    """
+    Connects a server and update something
+    """
+    if not user.is_admin() and connect_arg.dict(exclude_defaults=True):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    server = edit_server(db, server_id, ServerEdit(), reset_system=True)
+    trigger_server_connect(server.id)
+    return jsonable_encoder(server)
 
 
 @r.get(
