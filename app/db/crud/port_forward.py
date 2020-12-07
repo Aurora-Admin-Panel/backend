@@ -34,6 +34,14 @@ def get_forward_rule(
     return forward_rule
 
 
+def get_forward_rule_by_id(db: Session, rule_id: int) -> PortForwardRule:
+    return (
+        db.query(PortForwardRule)
+        .filter(PortForwardRule.id == rule_id)
+        .first()
+    )
+
+
 def create_forward_rule(
     db: Session, port: Port, forward_rule: PortForwardRuleCreate
 ) -> PortForwardRule:

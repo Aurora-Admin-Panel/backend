@@ -19,35 +19,11 @@ from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
 from . import celery_app
 from .runner import run_async
-from .utils import prepare_priv_dir, iptables_finished_handler, get_md5_for_file
+from .utils import prepare_priv_dir, get_md5_for_file, update_facts
 
 
-def update_facts(server_id: int, md5: str, facts: t.Dict):
-    db = SessionLocal()
-    db_server = get_server(db, server_id)
-    if facts.get("ansible_os_family"):
-        db_server.config["system"] = {
-            "os_family": facts.get("ansible_os_family"),
-            "architecture": facts.get("ansible_architecture"),
-            "distribution": facts.get("ansible_distribution"),
-            "distribution_version": facts.get("ansible_distribution_version"),
-            "distribution_release": facts.get("ansible_distribution_release"),
-        }
-    elif facts.get("msg"):
-        db_server.config["system"] = {"msg": facts.get("msg")}
-    # TODO: Add disable feature
-    if facts.get("iptables"):
-        db_server.config["iptables"] = facts.get("iptables")
-    if facts.get("gost"):
-        db_server.config["gost"] = facts.get("gost")
-    if facts.get("v2ray"):
-        db_server.config["v2ray"] = facts.get("v2ray")
-    db_server.config["init"] = md5
-    db.add(db_server)
-    db.commit()
 
-
-def event_handler(server: Server, md5: str):
+def event_handler(server: Server):
     def wrapper(event):
         if (
             "event_data" in event
@@ -55,7 +31,7 @@ def event_handler(server: Server, md5: str):
             and not event.get('event', '').endswith('start')
         ):
             res = event["event_data"].get("res", {})
-            update_facts(server.id, md5, res.get("ansible_facts") if "ansible_facts" in res else res)
+            update_facts(server.id, res.get("ansible_facts") if "ansible_facts" in res else res)
 
     return wrapper
 
@@ -63,7 +39,7 @@ def event_handler(server: Server, md5: str):
 def finished_handler(server: Server, md5: str):
     def wrapper(runner):
         facts = runner.get_fact_cache(server.ansible_name)
-        update_facts(server.id, md5, facts)
+        update_facts(server.id, facts, md5=md5)
     return wrapper
 
 
@@ -72,7 +48,7 @@ def run(server: Server, init_md5: str, **kwargs):
         server=server,
         playbook="server.yml",
         extravars=kwargs,
-        event_handler=event_handler(server, init_md5),
+        event_handler=event_handler(server),
         finished_callback=finished_handler(server, init_md5),
     )
 
@@ -82,6 +58,7 @@ def servers_runner(
     sync_scripts: bool = False,
     init_iptables: bool = False,
     update_gost: bool = False,
+    update_v2ray: bool = False,
 ):
     servers = get_servers(SessionLocal())
     init_md5 = get_md5_for_file("ansible/project/server.yml")
@@ -93,6 +70,7 @@ def servers_runner(
                 sync_scripts=sync_scripts,
                 init_iptables=init_iptables,
                 update_gost=update_gost,
+                update_v2ray=update_v2ray,
             )
 
 
@@ -102,6 +80,7 @@ def server_runner(
     sync_scripts: bool = False,
     init_iptables: bool = False,
     update_gost: bool = False,
+    update_v2ray: bool = False,
 ):
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     server = get_server(SessionLocal(), server_id)
@@ -111,4 +90,5 @@ def server_runner(
         sync_scripts=sync_scripts,
         init_iptables=init_iptables,
         update_gost=update_gost,
+        update_v2ray=update_v2ray,
     )

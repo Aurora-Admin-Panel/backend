@@ -12,8 +12,6 @@
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: no
-  tasks:
-    - setup:
   roles:
     - role: gost_sync
       when: update_gost is defined and update_gost

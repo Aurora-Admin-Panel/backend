@@ -1,0 +1,15 @@
+---
+- name: Sync gost config
+  copy:
+    src: roles/gost/files/{{ port_id }}.json
+    dest: /usr/local/etc/gost/{{ local_port }}.json
+    owner: root
+    group: root
+  when: update_status
+
+- name: enable & restart gost
+  systemd:
+    name: gost@{{ local_port }}
+    state: "{{ 'restarted' if update_status else 'stopped' }}"
+    enabled: "{{ 'yes' if update_status else 'no' }}"
+    daemon_reload: yes

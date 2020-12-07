@@ -1,0 +1,15 @@
+---
+- name: Check caddy exist
+  block:
+    - name: Get caddy version
+      shell: caddy version
+      register: caddy
+    - name: Set fact for caddy version
+      set_fact:
+        caddy: "{{ caddy.stdout }}"
+        cacheable: yes
+  rescue:
+    - name: Set caddy not exist
+      set_fact:
+        caddy: ""
+        cacheable: yes

@@ -23,13 +23,6 @@
     cacheable: yes
   when: update_status
 
-- name: Create gost config directory if it does not exist
-  file:
-    path: /usr/local/etc/gost
-    state: directory
-    mode: '0755'
-  when: update_status
-
 - name: Sync gost config
   copy:
     src: roles/gost/files/{{ port_id }}.json
@@ -44,3 +37,23 @@
     state: "{{ 'restarted' if update_status else 'stopped' }}"
     enabled: "{{ 'yes' if update_status else 'no' }}"
     daemon_reload: yes
+
+- name: Check if gost is active
+  when: update_status
+  block:
+    - name: Get systemd status
+      command: systemctl status gost@{{ local_port }}
+      register: systemd_status
+      failed_when: "'Active: active' not in systemd_status.stdout"
+  rescue:
+    - name: Set gost not exist
+      when: "'/usr/local/bin/gost: No such file or directory' in systemd_status.stdout"
+      set_fact:
+        gost: ""
+        cacheable: yes
+    - name: Set error
+      set_fact:
+        error: "{{ systemd_status.stdout }}"
+        cacheable: yes
+    - name: Fail
+      fail:

@@ -9,6 +9,7 @@ from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.schemas.server import ServerEdit
 
 from .gost import generate_gost_config, get_gost_remote_ip
+from .v2ray import generate_v2ray_config
 
 
 def send_iptables(
@@ -55,6 +56,24 @@ def send_gost(
     celery_app.send_task("tasks.gost.gost_runner", kwargs=kwargs)
 
 
+def send_v2ray(
+    rule: PortForwardRule,
+    port: Port,
+    old: PortForwardRuleOut = None,
+    new: PortForwardRuleOut = None,
+):
+    v2ray_config = generate_v2ray_config(rule)
+    kwargs = {
+        "port_id": port.id,
+        "server_id": port.server.id,
+        "port_num": port.num,
+        "v2ray_config": v2ray_config,
+        "update_status": bool(new and new.method == MethodEnum.V2RAY),
+    }
+    print(f"Sending v2ray_runner task, kwargs: {kwargs}")
+    celery_app.send_task("tasks.v2ray.v2ray_runner", kwargs=kwargs)
+
+
 def trigger_forward_rule(
     rule: PortForwardRule,
     port: Port,
@@ -71,6 +90,9 @@ def trigger_forward_rule(
 
     if any(r.method == MethodEnum.GOST for r in (old, new) if r):
         send_gost(rule, port, old, new)
+
+    if any(r.method == MethodEnum.V2RAY for r in (old, new) if r):
+        send_v2ray(rule, port, old, new)
 
 
 def trigger_tc(port: Port):

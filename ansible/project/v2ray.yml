@@ -17,4 +17,6 @@
   roles:
     - role: v2ray_sync
       when: update_v2ray is defined and update_v2ray
+    - role: v2ray_get
+      when: update_v2ray is defined and update_v2ray
     - v2ray

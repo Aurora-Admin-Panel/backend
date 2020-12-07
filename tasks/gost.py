@@ -12,37 +12,18 @@ from app.db.crud.server import get_server
 
 from . import celery_app
 from .runner import run_async
-from .utils import iptables_finished_handler
+from .utils import iptables_finished_handler, status_handler, update_facts, update_rule_error
 
 
-@celery_app.task()
-def gost_finished_handler(stdout_name: str):
-    pass
-    # with open(stdout_name, 'r') as f:
-    # return f.read()
-
-
-@celery_app.task()
-def gost_status_handler(port_id: int, status_data: dict, update_status: bool):
-    if not update_status:
-        return status_data
-
-    db = SessionLocal()
-    rule = (
-        db.query(PortForwardRule)
-        .filter(PortForwardRule.port_id == port_id)
-        .first()
-    )
-    if rule:
-        if (
-            status_data.get("status", None) == "starting"
-            and rule.status == "running"
-        ):
-            return status_data
-        rule.status = status_data.get("status", None)
-        db.add(rule)
-        db.commit()
-    return status_data
+def finished_handler(server: Server, server_id: int, port_id: int):
+    def wrapper(runner):
+        facts = runner.get_fact_cache(server.ansible_name)
+        if facts:
+            update_facts(server.id, facts)
+            if facts.get('error'):
+                update_rule_error(server_id, port_id, facts.get('error')) 
+        iptables_finished_handler(server, True)
+    return wrapper
 
 
 @celery_app.task()
@@ -70,10 +51,8 @@ def gost_runner(
         server=server,
         playbook="gost.yml",
         extravars=extravars,
-        status_handler=lambda s, **k: gost_status_handler.delay(
-            port_id, s, update_status
-        ),
-        finished_callback=iptables_finished_handler(server, True)
+        status_handler=lambda s, **k: status_handler(port_id, s, update_status),
+        finished_callback=finished_handler(server, server_id, port_id)
         if update_status
         else lambda r: None,
     )

@@ -1,4 +1,10 @@
 ---
+- name: Create gost config directory if it does not exist
+  file:
+    path: /usr/local/etc/gost
+    state: directory
+    mode: '0755'
+
 - name: Sync gost@.service
   copy:
     src: files/gost@.service

@@ -6,7 +6,7 @@ from sqlalchemy import Boolean, Enum, Column, Integer, String, JSON, ForeignKey,
 from .base import Base
 
 
-class TypeEnum(enum.Enum):
+class TypeEnum(str, enum.Enum):
     TCP = "TCP"
     UDP = "UDP"
     ALL = "ALL"
@@ -15,6 +15,7 @@ class TypeEnum(enum.Enum):
 class MethodEnum(enum.Enum):
     IPTABLES = "iptables"
     GOST     = "gost"
+    V2RAY    = "v2ray"
 
 
 class PortForwardRule(Base):

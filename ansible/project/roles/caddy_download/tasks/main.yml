@@ -1,0 +1,17 @@
+---
+- name: Get latest caddy download url
+  shell: curl -Lso- https://api.github.com/repos/caddyserver/caddy/releases/latest | grep -E "browser_download_url.*caddy.*linux_amd64\.tar\.gz" | awk '{print $2}' | xargs echo
+  register: caddy_latest_download_url
+
+- name: Download latest caddy from Github and unarchive caddy
+  get_url:
+    url: "{{ caddy_latest_download_url.stdout }}"
+    dest: roles/caddy/files/caddy.tar.gz
+
+- name: Remote old caddy binary
+  file:
+    path: roles/caddy/files/caddy
+    state: absent
+
+- name: Unzip caddy binary
+  shell: tar -xzf roles/caddy/files/caddy.tar.gz

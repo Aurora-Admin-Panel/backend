@@ -14,4 +14,4 @@
     state: absent
 
 - name: Unzip v2ray binary
-  shell: unzip roles/v2ray/files/v2ray.zip
+  shell: unzip -u -d roles/v2ray/files/ roles/v2ray/files/v2ray.zip 

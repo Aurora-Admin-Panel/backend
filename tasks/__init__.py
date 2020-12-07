@@ -32,6 +32,7 @@ celery_app.autodiscover_tasks(
         "tasks.server",
         "tasks.gost",
         "tasks.tc",
+        "tasks.v2ray",
     ]
 )
 

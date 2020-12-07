@@ -1,0 +1,21 @@
+---
+- name: Create caddy directory if it does not exist
+  file:
+    path: /etc/caddy
+    state: directory
+    mode: '0755'
+
+- name: Sync caddy.service
+  copy:
+    src: files/caddy.service
+    dest: /etc/systemd/system/caddy.service
+    owner: root
+    group: root
+
+- name: Sync caddy binary
+  copy:
+    src: roles/caddy/files/caddy
+    dest: /usr/bin/caddy
+    mode: +x
+    owner: root
+    group: root
