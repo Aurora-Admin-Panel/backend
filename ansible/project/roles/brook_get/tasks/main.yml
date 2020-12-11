@@ -1,0 +1,15 @@
+---
+- name: Check brook exist
+  block:
+    - name: Get brook version
+      shell: brook -v
+      register: brook
+    - name: Set fact for brook version
+      set_fact:
+        brook: "{{ brook.stdout }}"
+        cacheable: yes
+  rescue:
+    - name: Set brook not exist
+      set_fact:
+        brook: ""
+        cacheable: yes

@@ -1,0 +1,7 @@
+{
+    "Retries": 0,
+    "ServeNodes": [
+        ":3000"
+    ],
+    "ChainNodes": []
+}

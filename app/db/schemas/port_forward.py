@@ -4,8 +4,13 @@ from pydantic import BaseModel
 from app.db.models.port_forward import MethodEnum, TypeEnum
 
 class IptablesConfig(BaseModel):
-    type: t.Optional[TypeEnum]
+    type: TypeEnum
     remote_ip: t.Optional[str]
+    remote_address: str
+    remote_port: int
+
+class SocatConfig(BaseModel):
+    type: TypeEnum
     remote_address: str
     remote_port: int
 
@@ -19,6 +24,12 @@ class V2rayConfig(BaseModel):
     outbounds: t.Optional[t.List]
     routing: t.Optional[t.Dict]
     dns: t.Optional[t.Dict]
+
+class BrookConfig(BaseModel):
+    command: str
+    remote_address: t.Optional[str]
+    remote_port: t.Optional[int]
+    password: t.Optional[str]
 
 class PortForwardRuleBase(BaseModel):
     config: t.Dict
@@ -34,14 +45,14 @@ class PortForwardRuleOut(PortForwardRuleBase):
 
 
 class PortForwardRuleCreate(PortForwardRuleBase):
-    config: t.Union[IptablesConfig, GostConfig, V2rayConfig]
+    config: t.Union[BrookConfig, IptablesConfig, SocatConfig, GostConfig, V2rayConfig, t.Dict]
 
     class Config:
         orm_mode = True
 
 
 class PortForwardRuleEdit(BaseModel):
-    config: t.Union[IptablesConfig, GostConfig, V2rayConfig]
+    config: t.Union[BrookConfig, IptablesConfig, SocatConfig, GostConfig, V2rayConfig, t.Dict]
     method: t.Optional[MethodEnum]
 
     class Config:

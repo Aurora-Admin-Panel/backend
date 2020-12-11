@@ -17,9 +17,9 @@ from app.db.crud.server import get_server, get_servers
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
-from . import celery_app
-from .runner import run_async
-from .utils import iptables_finished_handler
+from tasks import celery_app
+from tasks.utils.runner import run_async
+from tasks.utils.handlers import iptables_finished_handler
 
 
 

@@ -33,9 +33,18 @@
 
 - name: Test v2ray config
   when: update_status
-  shell: v2ray -test < /usr/local/etc/v2ray/{{ local_port }}.json
-
-- name: enable & restart v2ray
+  block:
+    - name: test config
+      shell: v2ray -test < /usr/local/etc/v2ray/{{ local_port }}.json
+      register: v2ray_test_result
+  rescue:
+    - name: Set error
+      set_fact:
+        error: "{{ v2ray_test_result.stdout }}"
+        cacheable: yes
+    - fail:
+    
+- name: enable or disable v2ray
   systemd:
     name: v2ray@{{ local_port }}
     state: "{{ 'restarted' if update_status else 'stopped' }}"

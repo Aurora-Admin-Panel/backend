@@ -9,8 +9,8 @@ from app.db.models.server import Server
 from app.db.crud.server import get_server
 from app.db.models.port_forward import PortForwardRule
 
-from . import celery_app
-from .runner import run_async
+from tasks import celery_app
+from tasks.utils.runner import run_async
 
 
 def finished_handler(server: Server):

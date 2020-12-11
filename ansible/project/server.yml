@@ -8,6 +8,8 @@
       when: update_gost is defined and update_gost
     - role: v2ray_download
       when: update_v2ray is defined and update_v2ray
+    - role: brook_download
+      when: update_brook is defined and update_brook
 
 - hosts: "{{ host | default('web') }}"
   become: yes
@@ -17,8 +19,17 @@
       when: sync_scripts is defined and sync_scripts
     - role: iptables_init
       when: init_iptables is defined and init_iptables
+    - role: bbr_enable
+      when: enable_bbr is defined and enable_bbr
     - role: gost_sync
       when: update_gost is defined and update_gost
+    - role: v2ray_sync
+      when: update_v2ray is defined and update_v2ray
+    - role: brook_sync
+      when: update_brook is defined and update_brook
+    - role: socat_update
+      when: update_socat is defined and update_socat
     - role: iptables_get
     - role: gost_get
     - role: v2ray_get
+    - role: brook_get

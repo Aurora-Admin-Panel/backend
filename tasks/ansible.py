@@ -2,7 +2,7 @@ import json
 import ansible_runner
 from uuid import uuid4
 
-from . import celery_app
+from tasks import celery_app
 from app.db.session import SessionLocal
 from app.db.models.port import Port
 from app.db.models.user import User

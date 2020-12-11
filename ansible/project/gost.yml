@@ -4,17 +4,28 @@
   connection: local
   gather_facts: no
   tasks:
-    - setup:
-  roles:
-    - role: gost_download
+    - name: gost setup
       when: update_gost is defined and update_gost
+      block:
+        - setup:
+        - name: download gost
+          include_role:
+            name: gost_download
 
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: no
+  pre_tasks:
+    - name: gost setup
+      when: update_gost is defined and update_gost
+      block:
+        - setup:
+        - name: sync gost
+          include_role:
+            name: gost_sync
+        - name: get gost version
+          include_role:
+            name: gost_get
   roles:
-    - role: gost_sync
-      when: update_gost is defined and update_gost
-    - role: gost_get
-      when: update_gost is defined and update_gost
+    - traffic_delete_monitor
     - gost

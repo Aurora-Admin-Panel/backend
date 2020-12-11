@@ -1,0 +1,15 @@
+---
+- name: Check node_exporter exist
+  block:
+    - name: Get node_exporter version
+      shell: node_exporter --version
+      register: node_exporter
+    - name: Set fact for node_exporter version
+      set_fact:
+        node_exporter: "{{ node_exporter.stdout }}"
+        cacheable: yes
+  rescue:
+    - name: Set node_exporter not exist
+      set_fact:
+        node_exporter: ""
+        cacheable: yes

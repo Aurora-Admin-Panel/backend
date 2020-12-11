@@ -4,19 +4,27 @@
   connection: local
   gather_facts: no
   tasks:
-    - setup:
-  roles:
-    - role: v2ray_download
+    - name: v2ray setup
       when: update_v2ray is defined and update_v2ray
+      block:
+        - name: download v2ray
+          include_role:
+            name: v2ray_download
 
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: no
+  pre_tasks:
+    - name: v2ray setup
+      when: update_v2ray is defined and update_v2ray
+      block:
+        - name: sync v2ray
+          include_role:
+            name: v2ray_sync
+        - name: get v2ray version
+          include_role:
+            name: v2ray_get
   tasks:
     - setup:
   roles:
-    - role: v2ray_sync
-      when: update_v2ray is defined and update_v2ray
-    - role: v2ray_get
-      when: update_v2ray is defined and update_v2ray
     - v2ray

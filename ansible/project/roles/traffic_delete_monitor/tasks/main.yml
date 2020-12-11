@@ -1,0 +1,24 @@
+---
+- name: Exec app script
+  when: update_status
+  block:
+    - name: Exec app script locally
+      shell: /usr/local/bin/app.sh {{ local_port }} {{ remote_ip }}
+      register: traffic
+  rescue:
+    - name: Sync app.sh
+      copy:
+        src: files/app.sh
+        dest: /usr/local/bin/app.sh
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Exec app script locally again
+      shell: /usr/local/bin/app.sh {{ local_port }} {{ remote_ip }}
+      register: traffic
+
+- name: Set traffic result
+  set_fact:
+    traffic: "{{ traffic.stdout }}"
+    cacheable: yes
+  when: update_status

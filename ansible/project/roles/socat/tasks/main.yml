@@ -1,0 +1,43 @@
+---
+- name: prepare socat service
+  when: update_status
+  block:
+    - name: Copy socat service
+      copy:
+        src: /usr/lib/systemd/system/socat-template.service
+        dest: /usr/lib/systemd/system/socat-{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: Modify socat service
+      lineinfile:
+        path: /usr/lib/systemd/system/socat-{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart={{ socat_args }}
+
+- name: enable or disable socat
+  systemd:
+    name: socat-{{ local_port }}
+    state: "{{ 'restarted' if update_status else 'stopped' }}"
+    enabled: "{{ 'yes' if update_status else 'no' }}"
+    daemon_reload: yes
+
+- name: check socat service
+  when: update_status
+  block:
+    - name: Get systemd status
+      command: systemctl status socat-{{ local_port }}
+      register: systemd_status
+      failed_when: "'Active: active' not in systemd_status.stdout"
+  rescue:
+    - name: Set socat not exist
+      when: "'/usr/bin/socat: No such file or directory' in systemd_status.stdout"
+      set_fact:
+        gost: ""
+        cacheable: yes
+    - name: Set error
+      set_fact:
+        error: "{{ systemd_status.stdout }}"
+        cacheable: yes
+    - fail:

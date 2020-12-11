@@ -1,0 +1,7 @@
+---
+- name: Sync socat-template.service
+  copy:
+    src: files/socat-template.service
+    dest: /usr/lib/systemd/system/socat-template.service
+    owner: root
+    group: root

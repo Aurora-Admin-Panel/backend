@@ -13,9 +13,10 @@ from app.db.models.port_forward import PortForwardRule
 from app.utils.dns import dns_query
 from app.utils.ip import is_ip
 
-from . import celery_app
-from .runner import run_async
-from .utils import prepare_priv_dir, iptables_finished_handler
+from tasks import celery_app
+from tasks.utils.runner import run_async
+from tasks.utils.server import prepare_priv_dir
+from tasks.utils.handlers import iptables_finished_handler
 
 
 @celery_app.task()
@@ -74,7 +75,9 @@ def iptables_runner(
         status_handler=lambda s, **k: forward_rule_status_handler.delay(
             port_id, s, update_status
         ),
-        finished_callback=iptables_finished_handler(server, True),
+        finished_callback=iptables_finished_handler(server, port_id, True)
+        if update_status
+        else lambda r: None,
     )
     return t[1].config.artifact_dir
 

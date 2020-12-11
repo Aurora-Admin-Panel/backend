@@ -3,8 +3,8 @@ import typing as t
 import ansible_runner
 from uuid import uuid4
 
-from . import celery_app
-from .runner import run_async
+from tasks import celery_app
+from tasks.utils.runner import run_async
 
 
 def clean_finished_handler(runner):

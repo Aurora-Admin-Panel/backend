@@ -1,5 +1,5 @@
 [Unit]
-Description=Restore iptables rule
+Description=Restore iptables rule by Aurora Admin Panel
 
 [Service]
 Type=oneshot

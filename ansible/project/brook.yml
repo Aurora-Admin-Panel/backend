@@ -1,0 +1,31 @@
+---
+- name: Download latest brook
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: brook setup
+      when: update_brook is defined and update_brook
+      block:
+        - setup:
+        - name: download brook
+          include_role:
+            name: brook_download
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: no
+  pre_tasks:
+    - name: brook setup
+      when: update_brook is defined and update_brook
+      block:
+        - setup:
+        - name: sync brook
+          include_role:
+            name: brook_sync
+        - name: get brook version
+          include_role:
+            name: brook_get
+  roles:
+    - traffic_delete_monitor
+    - brook

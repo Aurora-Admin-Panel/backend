@@ -1,28 +1,4 @@
 ---
-- name: Exec app script
-  when: update_status
-  block:
-    - name: Exec app script locally
-      shell: /usr/local/bin/app.sh {{ local_port }} {{ remote_ip }}
-      register: traffic
-  rescue:
-    - name: Sync app.sh
-      copy:
-        src: files/app.sh
-        dest: /usr/local/bin/app.sh
-        owner: root
-        group: root
-        mode: '0755'
-    - name: Exec app script locally again
-      shell: /usr/local/bin/app.sh {{ local_port }} {{ remote_ip }}
-      register: traffic
-
-- name: Set traffic result
-  set_fact:
-    traffic: "{{ traffic.stdout }}"
-    cacheable: yes
-  when: update_status
-
 - name: Sync gost config
   copy:
     src: roles/gost/files/{{ port_id }}.json
@@ -31,14 +7,14 @@
     group: root
   when: update_status
 
-- name: enable & restart gost
+- name: enable or disable gost
   systemd:
     name: gost@{{ local_port }}
     state: "{{ 'restarted' if update_status else 'stopped' }}"
     enabled: "{{ 'yes' if update_status else 'no' }}"
     daemon_reload: yes
 
-- name: Check if gost is active
+- name: Check gost service
   when: update_status
   block:
     - name: Get systemd status

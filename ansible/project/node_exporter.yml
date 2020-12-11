@@ -1,0 +1,31 @@
+---
+- name: Download latest node_exporter
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: no
+  tasks:
+    - name: node_exporter setup 
+      when: update_node_exporter is defined and update_node_exporter
+      block:
+        - setup:
+        - name: download node_exporter
+          include_role:
+            name: node_exporter_download
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: no
+  pre_tasks:
+    - name: node_exporter setup
+      when: update_node_exporter is defined and update_node_exporter
+      block:
+        - setup:
+        - name: sync node_exporter
+          include_role:
+            name: node_exporter_sync
+        - name: get node_exporter version
+          include_role:
+            name: node_exporter_get
+  roles:
+    - traffic_delete_monitor
+    - node_exporter

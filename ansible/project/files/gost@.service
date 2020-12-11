@@ -1,5 +1,5 @@
 [Unit]
-Description=gost
+Description=Gost from Aurora Admin Panel
 After=network-online.target
 Wants=network-online.target systemd-networkd-wait-online.service
 

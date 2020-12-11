@@ -13,9 +13,12 @@ class TypeEnum(str, enum.Enum):
 
 
 class MethodEnum(enum.Enum):
-    IPTABLES = "iptables"
-    GOST     = "gost"
-    V2RAY    = "v2ray"
+    IPTABLES      = "iptables"
+    GOST          = "gost"
+    V2RAY         = "v2ray"
+    BROOK         = "brook"
+    SOCAT         = "socat"
+    NODE_EXPORTER = "node_exporter"
 
 
 class PortForwardRule(Base):

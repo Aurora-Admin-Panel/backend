@@ -10,9 +10,9 @@ from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
 from app.db.crud.server import get_server
 
-from . import celery_app
-from .runner import run_async
-from .utils import iptables_finished_handler
+from tasks import celery_app
+from tasks.utils.runner import run_async
+from tasks.utils.handlers import iptables_finished_handler
 
 
 @celery_app.task()
@@ -64,7 +64,7 @@ def v2ray_runner(
         playbook="v2ray.yml",
         extravars=extravars,
         status_handler=lambda s, **k: status_handler(port_id, s, update_status),
-        finished_callback=iptables_finished_handler(server, True)
+        finished_callback=iptables_finished_handler(server, port_id, True)
         if update_status
         else lambda r: None,
     )

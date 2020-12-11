@@ -1,0 +1,15 @@
+---
+- name: Sync node_exporter@.service
+  copy:
+    src: files/node_exporter@.service
+    dest: /usr/lib/systemd/system/node_exporter@.service
+    owner: root
+    group: root
+
+- name: Sync node_exporter binary
+  copy:
+    src: roles/node_exporter/files/node_exporter
+    dest: /usr/local/bin/node_exporter
+    mode: +x
+    owner: root
+    group: root
