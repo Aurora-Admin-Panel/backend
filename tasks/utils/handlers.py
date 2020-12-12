@@ -48,10 +48,12 @@ def update_facts(server_id: int, facts: t.Dict, md5: str = None):
         db_server.config["socat"] = facts.get("socat")
     if "ehco" in facts:
         db_server.config["ehco"] = facts.get("ehco")
-    if "node_exporter" in facts:
-        db_server.config["node_exporter"] = facts.get("node_exporter")
     if "wstunnel" in facts:
         db_server.config["wstunnel"] = facts.get("wstunnel")
+    if "shadowsocks" in facts:
+        db_server.config["shadowsocks"] = facts.get("shadowsocks")
+    if "node_exporter" in facts:
+        db_server.config["node_exporter"] = facts.get("node_exporter")
     if "tiny_port_mapper" in facts:
         db_server.config["tiny_port_mapper"] = facts.get("tiny_port_mapper")
     if md5 is not None:

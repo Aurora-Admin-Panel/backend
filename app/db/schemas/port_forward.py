@@ -52,6 +52,9 @@ class WsTunnelConfig(BaseModel):
     remote_address: t.Optional[str]
     remote_port: t.Optional[int]
 
+class ShadowsocksConfig(BaseModel):
+    password: str
+    encryption: str
 
 class PortForwardRuleBase(BaseModel):
     config: t.Dict
@@ -68,6 +71,7 @@ class PortForwardRuleOut(PortForwardRuleBase):
 
 class PortForwardRuleCreate(PortForwardRuleBase):
     config: t.Union[
+        ShadowsocksConfig,
         WsTunnelConfig,
         EhcoConfig,
         BrookConfig,
@@ -84,6 +88,7 @@ class PortForwardRuleCreate(PortForwardRuleBase):
 
 class PortForwardRuleEdit(BaseModel):
     config: t.Union[
+        ShadowsocksConfig,
         WsTunnelConfig,
         EhcoConfig,
         BrookConfig,

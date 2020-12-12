@@ -34,7 +34,7 @@
     - name: Set tiny_port_mapper not exist
       when: "'/usr/local/bin/tiny_port_mapper: No such file or directory' in systemd_status.stdout"
       set_fact:
-        gost: ""
+        tiny_port_mapper: ""
         cacheable: yes
     - name: Set error
       set_fact:

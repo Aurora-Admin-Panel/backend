@@ -1,0 +1,22 @@
+---
+- name: Sync shadowsocks_go-template.service
+  copy:
+    src: files/shadowsocks-template.service
+    dest: /usr/lib/systemd/system/shadowsocks-template.service
+    owner: root
+    group: root
+
+- name: Sync shadowsocks_go binary
+  copy:
+    src: roles/shadowsocks/files/shadowsocks-server
+    dest: /usr/local/bin/shadowsocks_go
+    mode: +x
+    owner: root
+    group: root
+- name: Sync shadowsocks_go2 binary
+  copy:
+    src: roles/shadowsocks/files/shadowsocks_go2
+    dest: /usr/local/bin/shadowsocks_go2
+    mode: +x
+    owner: root
+    group: root

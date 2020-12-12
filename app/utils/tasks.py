@@ -227,6 +227,31 @@ def send_tiny_port_mapper(
     print(f"Sending tiny_port_mapper_runner task, kwargs: {kwargs}")
     celery_app.send_task("tasks.tiny_port_mapper.tiny_port_mapper_runner", kwargs=kwargs)
 
+def send_shadowsocks(
+    rule: PortForwardRule,
+    port: Port,
+    old: PortForwardRuleOut = None,
+    new: PortForwardRuleOut = None,
+):
+    kwargs = {
+        "port_id": port.id,
+        "server_id": port.server.id,
+        "port_num": port.num,
+        "update_status": bool(new and new.method == MethodEnum.SHADOWSOCKS),
+    }
+    if new and new.method == MethodEnum.SHADOWSOCKS:
+        if new.config.get('encryption') in ('AEAD_AES_128_GCM', 'AEAD_AES_256_GCM', 'AEAD_CHACHA20_POLY1305'):
+            kwargs['version'] = "/usr/local/bin/shadowsocks_go2"
+            kwargs['args'] = (
+                f" -s 0.0.0.0:{port.num}"
+                f" -cipher {new.config.get('encryption')} -password {new.config.get('password')}"
+            )
+        else:
+            kwargs['version'] = "/usr/local/bin/shadowsocks_go"
+            kwargs['args'] = f" -p {port.num} -m {new.config.get('encryption')} -k {new.config.get('password')}"
+    print(f"Sending shadowsocks_runner task, kwargs: {kwargs}")
+    celery_app.send_task("tasks.shadowsocks.shadowsocks_runner", kwargs=kwargs)
+
 def trigger_forward_rule(
     rule: PortForwardRule,
     port: Port,
@@ -264,7 +289,9 @@ def trigger_forward_rule(
 
     if any(r.method == MethodEnum.TINY_PORT_MAPPER for r in (old, new) if r):
         send_tiny_port_mapper(rule, port, old, new)
-    
+
+    if any(r.method == MethodEnum.SHADOWSOCKS for r in (old, new) if r):
+        send_shadowsocks(rule, port, old, new)
 
 def trigger_tc(port: Port):
     kwargs = {

@@ -34,7 +34,7 @@
     - name: Set wstunnel not exist
       when: "'/usr/local/bin/wstunnel: No such file or directory' in systemd_status.stdout"
       set_fact:
-        gost: ""
+        wstunnel: ""
         cacheable: yes
     - name: Set error
       set_fact:

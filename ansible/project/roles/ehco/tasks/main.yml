@@ -34,7 +34,7 @@
     - name: Set ehco not exist
       when: "'/usr/local/bin/ehco: No such file or directory' in systemd_status.stdout"
       set_fact:
-        gost: ""
+        ehco: ""
         cacheable: yes
     - name: Set error
       set_fact:

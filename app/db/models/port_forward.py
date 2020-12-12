@@ -20,6 +20,7 @@ class MethodEnum(enum.Enum):
     BROOK            = "brook"
     SOCAT            = "socat"
     WSTUNNEL         = "wstunnel"
+    SHADOWSOCKS      = "shadowsocks"
     NODE_EXPORTER    = "node_exporter"
     TINY_PORT_MAPPER = "tiny_port_mapper"
 

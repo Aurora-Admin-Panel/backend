@@ -1,0 +1,44 @@
+---
+- name: prepare shadowsocks service
+  when: update_status
+  block:
+    - name: Copy shadowsocks service
+      copy:
+        src: /usr/lib/systemd/system/shadowsocks-template.service
+        dest: /usr/lib/systemd/system/shadowsocks-{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: Modify shadowsocks service
+      lineinfile:
+        path: /usr/lib/systemd/system/shadowsocks-{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart={{ shadowsocks_command }}
+
+- name: enable or disable shadowsocks
+  systemd:
+    name: shadowsocks-{{ local_port }}
+    state: "{{ 'restarted' if update_status else 'stopped' }}"
+    enabled: "{{ 'yes' if update_status else 'no' }}"
+    daemon_reload: yes
+
+- name: check shadowsocks service
+  when: update_status
+  block:
+    - name: Get systemd status
+      command: systemctl status shadowsocks-{{ local_port }}
+      register: systemd_status
+      failed_when: "'Active: active' not in systemd_status.stdout"
+  rescue:
+    - name: Set shadowsocks not exist
+      when: "'No such file or directory' in systemd_status.stdout"
+      set_fact:
+        shadowsocks: ""
+        cacheable: yes
+    - name: Set error
+      set_fact:
+        error: "{{ systemd_status.stdout }}"
+        cacheable: yes
+    - name: Fail
+      fail:

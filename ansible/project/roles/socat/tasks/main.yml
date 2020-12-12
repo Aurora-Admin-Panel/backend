@@ -34,7 +34,7 @@
     - name: Set socat not exist
       when: "'/usr/bin/socat: No such file or directory' in systemd_status.stdout"
       set_fact:
-        gost: ""
+        socat: ""
         cacheable: yes
     - name: Set error
       set_fact:

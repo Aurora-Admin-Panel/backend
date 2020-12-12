@@ -34,7 +34,7 @@
     - name: Set brook not exist
       when: "'/usr/local/bin/brook: No such file or directory' in systemd_status.stdout"
       set_fact:
-        gost: ""
+        brook: ""
         cacheable: yes
     - name: Set error
       set_fact:

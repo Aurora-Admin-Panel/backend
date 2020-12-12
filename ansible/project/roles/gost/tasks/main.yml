@@ -31,5 +31,4 @@
       set_fact:
         error: "{{ systemd_status.stdout }}"
         cacheable: yes
-    - name: Fail
-      fail:
+    - fail:

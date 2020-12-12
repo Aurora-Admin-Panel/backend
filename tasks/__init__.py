@@ -36,6 +36,7 @@ celery_app.autodiscover_tasks(
         "tasks.v2ray",
         "tasks.socat",
         "tasks.wstunnel",
+        "tasks.shadowsocks",
         "tasks.node_exporter",
         "tasks.tiny_port_mapper",
     ]
