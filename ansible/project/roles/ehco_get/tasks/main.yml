@@ -1,8 +1,16 @@
 ---
 - name: Check ehco exist
   block:
+    - name: Check ehco-template.service
+      when: update_ehco is not defined or not update_ehco
+      stat:
+        path: /usr/lib/systemd/system/ehco-template.service
+      register: ehco_template_service
+    - fail:
+      when: not ehco_template_service.stat.exists
+
     - name: Get ehco version
-      shell: ehco -v
+      shell: /usr/local/bin/ehco -v
       register: ehco
     - name: Set fact for ehco version
       set_fact:

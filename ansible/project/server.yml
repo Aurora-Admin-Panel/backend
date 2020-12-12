@@ -36,5 +36,6 @@
     - socat_get
     - ehco_get
     - wstunnel_get
+    - shadowsocks_get
     - node_exporter_get
     - tiny_port_mapper_get

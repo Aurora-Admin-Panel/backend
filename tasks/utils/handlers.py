@@ -62,16 +62,17 @@ def update_facts(server_id: int, facts: t.Dict, md5: str = None):
     db.commit()
 
 
-def update_rule_error(server_id: int, port_id: int, error: str):
+def update_rule_error(server_id: int, port_id: int, facts: t.Dict):
     db = SessionLocal()
     db_rule = get_forward_rule(db, server_id, port_id)
     db_rule.config["error"] = "\n".join(
+        [facts.get('error', "")] +
         [
             re.search(r"\w+\[[0-9]+\]: (.*)$", line).group(1)
-            for line in error.split("\n")
+            for line in facts.get('systemd_error', '').split("\n")
             if re.search(r"\w+\[[0-9]+\]: (.*)$", line)
         ]
-    )
+    ).strip()
     db.add(db_rule)
     db.commit()
 
@@ -79,11 +80,12 @@ def update_rule_error(server_id: int, port_id: int, error: str):
 def iptables_finished_handler(server: Server, port_id: int = None, accumulate: bool = False):
     def wrapper(runner):
         facts = runner.get_fact_cache(server.ansible_name)
+        print(facts)
         if facts:
             if facts.get("traffic", ""):
                 update_traffic(server, facts.get("traffic", ""), accumulate=accumulate)
-            if port_id is not None and facts.get("error", ""):
-                update_rule_error(server.id, port_id, facts.get("error"))
+            if port_id is not None and (facts.get("error") or facts.get('systemd_error')):
+                update_rule_error(server.id, port_id, facts)
             update_facts(server.id, facts)
     return wrapper
 
@@ -108,3 +110,26 @@ def status_handler(port_id: int, status_data: dict, update_status: bool):
         db.add(rule)
         db.commit()
     return status_data
+
+
+def server_facts_event_handler(server: Server):
+    def wrapper(event):
+        if (
+            "event_data" in event
+            and event["event_data"].get("task") == "Gathering Facts"
+            and not event.get("event", "").endswith("start")
+        ):
+            res = event["event_data"].get("res", {})
+            update_facts(
+                server.id,
+                res.get("ansible_facts") if "ansible_facts" in res else res,
+            )
+    return wrapper
+
+
+def rule_event_handler(server: Server):
+    def wrapper(event):
+        pass
+        # if event.get('event', '').endswith('failed'):
+            # print(event.get('stdout'))
+    return wrapper

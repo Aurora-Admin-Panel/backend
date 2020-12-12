@@ -1,34 +1,39 @@
 ---
-- name: Sync gost config
-  copy:
-    src: roles/gost/files/{{ port_id }}.json
-    dest: /usr/local/etc/gost/{{ local_port }}.json
-    owner: root
-    group: root
-  when: update_status
-
-- name: enable or disable gost
-  systemd:
-    name: gost@{{ local_port }}
-    state: "{{ 'restarted' if update_status else 'stopped' }}"
-    enabled: "{{ 'yes' if update_status else 'no' }}"
-    daemon_reload: yes
-
-- name: Check gost service
-  when: update_status
+- name: Setting gost
   block:
-    - name: Get systemd status
-      command: systemctl status gost@{{ local_port }}
-      register: systemd_status
-      failed_when: "'Active: active' not in systemd_status.stdout"
+    - name: Sync gost config
+      when: update_status
+      copy:
+        src: roles/gost/files/{{ port_id }}.json
+        dest: /usr/local/etc/gost/{{ local_port }}.json
+        owner: root
+        group: root
+    - name: enable or disable gost
+      systemd:
+        name: gost@{{ local_port }}
+        state: "{{ 'restarted' if update_status else 'stopped' }}"
+        enabled: "{{ 'yes' if update_status else 'no' }}"
+        daemon_reload: yes
+    - name: Check gost service
+      when: update_status
+      block:
+        - name: Get systemd status
+          command: systemctl status gost@{{ local_port }}
+          register: systemd_status
+          failed_when: "'Active: active' not in systemd_status.stdout"
   rescue:
-    - name: Set gost not exist
-      when: "'/usr/local/bin/gost: No such file or directory' in systemd_status.stdout"
+    - name: Retry install gost next time
       set_fact:
         gost: ""
         cacheable: yes
     - name: Set error
       set_fact:
-        error: "{{ systemd_status.stdout }}"
+        error: "{{ ansible_failed_result.msg }}"
+        cacheable: yes
+    - name: Set systemd error
+      when: systemd_status is defined
+      set_fact:
+        systemd_error: "{{ systemd_status.stdout }}"
         cacheable: yes
     - fail:
+        msg: "{{ ansible_failed_result.msg }}" 

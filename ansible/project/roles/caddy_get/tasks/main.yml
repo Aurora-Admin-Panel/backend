@@ -1,6 +1,22 @@
 ---
 - name: Check caddy exist
   block:
+    - name: Check /etc/caddy
+      when: update_caddy is not defined or not update_caddy
+      stat:
+        path: /etc/caddy
+      register: caddy_folder
+    - fail:
+      when: not caddy_service.stat.exists or not caddy_service.stat.isdir is defined or not caddy_service.stat.isdir
+
+    - name: Check caddy.service
+      when: update_caddy is not defined or not update_caddy
+      stat:
+        path: /etc/systemd/system/caddy.service
+      register: caddy_service
+    - fail:
+      when: not caddy_service.stat.exists 
+
     - name: Get caddy version
       shell: caddy version
       register: caddy

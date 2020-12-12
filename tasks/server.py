@@ -21,30 +21,13 @@ from tasks import celery_app
 from tasks.utils.runner import run_async
 from tasks.utils.server import prepare_priv_dir
 from tasks.utils.files import get_md5_for_file
-from tasks.utils.handlers import update_facts
-
-
-def event_handler(server: Server):
-    def wrapper(event):
-        if (
-            "event_data" in event
-            and event["event_data"].get("task") == "Gathering Facts"
-            and not event.get("event", "").endswith("start")
-        ):
-            res = event["event_data"].get("res", {})
-            update_facts(
-                server.id,
-                res.get("ansible_facts") if "ansible_facts" in res else res,
-            )
-
-    return wrapper
+from tasks.utils.handlers import update_facts, server_facts_event_handler
 
 
 def finished_handler(server: Server, md5: str):
     def wrapper(runner):
         facts = runner.get_fact_cache(server.ansible_name)
         update_facts(server.id, facts, md5=md5)
-
     return wrapper
 
 
@@ -53,7 +36,7 @@ def run(server: Server, init_md5: str, **kwargs):
         server=server,
         playbook="server.yml",
         extravars=kwargs,
-        event_handler=event_handler(server),
+        event_handler=server_facts_event_handler(server),
         finished_callback=finished_handler(server, init_md5),
     )
 

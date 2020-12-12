@@ -40,6 +40,7 @@ def gost_runner(
         server=server,
         playbook="gost.yml",
         extravars=extravars,
+        # event_handler=rule_event_handler(server),
         status_handler=lambda s, **k: status_handler(port_id, s, update_status),
         finished_callback=iptables_finished_handler(server, port_id, True)
         if update_status
