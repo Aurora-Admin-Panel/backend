@@ -29,12 +29,12 @@
       when: update_brook is defined and update_brook
     - role: socat_update
       when: update_socat is defined and update_socat
-    - role: iptables_get
-    - role: gost_get
-    - role: v2ray_get
-    - role: brook_get
-    - rule: socat_get
-    - rule: ehco_get
-    - rule: wstunnel_get
-    - rule: node_exporter_get
-    - rule: tiny_port_mapper_get
+    - iptables_get
+    - gost_get
+    - v2ray_get
+    - brook_get
+    - socat_get
+    - ehco_get
+    - wstunnel_get
+    - node_exporter_get
+    - tiny_port_mapper_get
