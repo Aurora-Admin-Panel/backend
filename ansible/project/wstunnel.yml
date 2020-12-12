@@ -1,0 +1,32 @@
+---
+- name: Download latest wstunnel
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: no
+  tasks:
+    - setup:
+    - name: wstunnel setup
+      when: update_wstunnel is defined and update_wstunnel
+      block:
+        - setup:
+        - name: download wstunnel
+          include_role:
+            name: wstunnel_download
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: no
+  pre_tasks:
+    - name: wstunnel setup
+      when: update_wstunnel is defined and update_wstunnel
+      block:
+        - setup:
+        - name: sync wstunnel
+          include_role:
+            name: wstunnel_sync
+        - name: get wstunnel version
+          include_role:
+            name: wstunnel_get
+  roles:
+    - traffic_delete_monitor
+    - wstunnel

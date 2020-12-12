@@ -1,0 +1,32 @@
+---
+- name: Download latest ehco
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: no
+  tasks:
+    - setup:
+    - name: ehco setup
+      when: update_ehco is defined and update_ehco
+      block:
+        - setup:
+        - name: download ehco
+          include_role:
+            name: ehco_download
+
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: no
+  pre_tasks:
+    - name: ehco setup
+      when: update_ehco is defined and update_ehco
+      block:
+        - setup:
+        - name: sync ehco
+          include_role:
+            name: ehco_sync
+        - name: get ehco version
+          include_role:
+            name: ehco_get
+  roles:
+    - traffic_delete_monitor
+    - ehco

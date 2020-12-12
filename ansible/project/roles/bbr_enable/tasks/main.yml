@@ -4,7 +4,7 @@
     name: net.core.default_qdisc
     value: fq
     sysctl_set: yes
-    state: present
+    state: "{{ 'present' if enable_bbr else 'absent' }}"
     reload: yes
 
 - name: Enable BBR bbr
@@ -12,5 +12,5 @@
     name: net.ipv4.tcp_congestion_control
     value: bbr
     sysctl_set: yes
-    state: present
+    state: "{{ 'present' if enable_bbr else 'absent' }}"
     reload: yes

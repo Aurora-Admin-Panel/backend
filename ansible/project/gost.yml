@@ -4,6 +4,7 @@
   connection: local
   gather_facts: no
   tasks:
+    - setup:
     - name: gost setup
       when: update_gost is defined and update_gost
       block:

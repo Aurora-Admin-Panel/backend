@@ -1,0 +1,15 @@
+---
+- name: Sync wstunnel-template.service
+  copy:
+    src: files/wstunnel-template.service
+    dest: /usr/lib/systemd/system/wstunnel-template.service
+    owner: root
+    group: root
+
+- name: Sync wstunnel binary
+  copy:
+    src: roles/wstunnel/files/wstunnel
+    dest: /usr/local/bin/wstunnel
+    mode: +x
+    owner: root
+    group: root

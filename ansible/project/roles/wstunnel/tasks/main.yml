@@ -1,0 +1,44 @@
+---
+- name: prepare wstunnel service
+  when: update_status
+  block:
+    - name: Copy wstunnel service
+      copy:
+        src: /usr/lib/systemd/system/wstunnel-template.service
+        dest: /usr/lib/systemd/system/wstunnel-{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: Modify wstunnel service
+      lineinfile:
+        path: /usr/lib/systemd/system/wstunnel-{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart=/usr/local/bin/wstunnel {{ wstunnel_args }}
+
+- name: enable or disable wstunnel
+  systemd:
+    name: wstunnel-{{ local_port }}
+    state: "{{ 'restarted' if update_status else 'stopped' }}"
+    enabled: "{{ 'yes' if update_status else 'no' }}"
+    daemon_reload: yes
+
+- name: check wstunnel service
+  when: update_status
+  block:
+    - name: Get systemd status
+      command: systemctl status wstunnel-{{ local_port }}
+      register: systemd_status
+      failed_when: "'Active: active' not in systemd_status.stdout"
+  rescue:
+    - name: Set wstunnel not exist
+      when: "'/usr/local/bin/wstunnel: No such file or directory' in systemd_status.stdout"
+      set_fact:
+        gost: ""
+        cacheable: yes
+    - name: Set error
+      set_fact:
+        error: "{{ systemd_status.stdout }}"
+        cacheable: yes
+    - name: Fail
+      fail:

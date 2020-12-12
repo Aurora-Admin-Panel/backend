@@ -107,6 +107,29 @@ def send_brook(
     celery_app.send_task("tasks.brook.brook_runner", kwargs=kwargs)
 
 
+def send_ehco(
+    rule: PortForwardRule,
+    port: Port,
+    old: PortForwardRuleOut = None,
+    new: PortForwardRuleOut = None,
+):
+    kwargs = {
+        "port_id": port.id,
+        "server_id": port.server.id,
+        "port_num": port.num,
+        "update_status": bool(new and new.method == MethodEnum.EHCO),
+    }
+    if new and new.method == MethodEnum.EHCO:
+        kwargs["args"] = (
+                f"-l 0.0.0.0:{port.num} "
+                f"--lt {new.config.get('listen_type', 'raw')} "
+                f"-r {new.config.get('remote_address')}:{new.config.get('remote_port')} "
+                f"--tt {new.config.get('transport_type', 'raw')}"
+            )
+    print(f"Sending ehco_runner task, kwargs: {kwargs}")
+    celery_app.send_task("tasks.ehco.ehco_runner", kwargs=kwargs)
+
+
 def send_socat(
     rule: PortForwardRule,
     port: Port,
@@ -153,6 +176,57 @@ def send_node_exporter(
     celery_app.send_task("tasks.node_exporter.node_exporter_runner", kwargs=kwargs)
 
 
+def send_wstunnel(
+    rule: PortForwardRule,
+    port: Port,
+    old: PortForwardRuleOut = None,
+    new: PortForwardRuleOut = None,
+):
+    kwargs = {
+        "port_id": port.id,
+        "server_id": port.server.id,
+        "port_num": port.num,
+        "update_status": bool(new and new.method == MethodEnum.WSTUNNEL),
+    }
+    if new and new.method == MethodEnum.WSTUNNEL:
+        if new.config.get('client_type') == 'client':
+            kwargs["args"] = (
+                f"{'-u ' if new.config.get('forward_type') == 'UDP' else ''}"
+                f"-L 0.0.0.0:{port.num}:127.0.0.1:{new.config.get('proxy_port')} "
+                f"{new.config.get('protocol')}://{new.config.get('remote_address')}:{new.config.get('remote_port')} "
+            )
+        else:
+            kwargs["args"] = (
+                f"--server "
+                f"{new.config.get('protocol')}://0.0.0.0:{port.num} "
+                f"-r 127.0.0.1:{new.config.get('proxy_port')} "
+            )
+    print(f"Sending wstunnel_runner task, kwargs: {kwargs}")
+    celery_app.send_task("tasks.wstunnel.wstunnel_runner", kwargs=kwargs)
+
+
+def send_tiny_port_mapper(
+    rule: PortForwardRule,
+    port: Port,
+    old: PortForwardRuleOut = None,
+    new: PortForwardRuleOut = None,
+):
+    kwargs = {
+        "port_id": port.id,
+        "server_id": port.server.id,
+        "port_num": port.num,
+        "update_status": bool(new and new.method == MethodEnum.TINY_PORT_MAPPER),
+    }
+    if new and new.method == MethodEnum.TINY_PORT_MAPPER:
+        kwargs["args"] = (
+                f"-l0.0.0.0:{port.num} "
+                f"-r{new.config.get('remote_address')}:{new.config.get('remote_port')} "
+                f"{'-t ' if new.config.get('type') == 'ALL' or new.config.get('type') == 'TCP' else ''}"
+                f"{'-u ' if new.config.get('type') == 'ALL' or new.config.get('type') == 'UDP' else ''}"
+            )
+    print(f"Sending tiny_port_mapper_runner task, kwargs: {kwargs}")
+    celery_app.send_task("tasks.tiny_port_mapper.tiny_port_mapper_runner", kwargs=kwargs)
+
 def trigger_forward_rule(
     rule: PortForwardRule,
     port: Port,
@@ -170,6 +244,9 @@ def trigger_forward_rule(
     if any(r.method == MethodEnum.GOST for r in (old, new) if r):
         send_gost(rule, port, old, new)
 
+    if any(r.method == MethodEnum.EHCO for r in (old, new) if r):
+        send_ehco(rule, port, old, new)
+
     if any(r.method == MethodEnum.V2RAY for r in (old, new) if r):
         send_v2ray(rule, port, old, new)
 
@@ -179,9 +256,15 @@ def trigger_forward_rule(
     if any(r.method == MethodEnum.SOCAT for r in (old, new) if r):
         send_socat(rule, port, old, new)
 
+    if any(r.method == MethodEnum.WSTUNNEL for r in (old, new) if r):
+        send_wstunnel(rule, port, old, new)
+
     if any(r.method == MethodEnum.NODE_EXPORTER for r in (old, new) if r):
         send_node_exporter(rule, port, old, new)
 
+    if any(r.method == MethodEnum.TINY_PORT_MAPPER for r in (old, new) if r):
+        send_tiny_port_mapper(rule, port, old, new)
+    
 
 def trigger_tc(port: Port):
     kwargs = {

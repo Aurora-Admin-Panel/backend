@@ -33,3 +33,8 @@
     - role: gost_get
     - role: v2ray_get
     - role: brook_get
+    - rule: socat_get
+    - rule: ehco_get
+    - rule: wstunnel_get
+    - rule: node_exporter_get
+    - rule: tiny_port_mapper_get

@@ -14,4 +14,4 @@
     state: absent
 
 - name: Unzip caddy binary
-  shell: tar -xzf roles/caddy/files/caddy.tar.gz
+  shell: tar -xzf roles/caddy/files/caddy.tar.gz -C roles/caddy/files
