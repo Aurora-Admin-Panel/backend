@@ -4,7 +4,6 @@
   connection: local
   gather_facts: no
   tasks:
-    - setup:
     - name: ehco setup
       when: update_ehco is defined and update_ehco
       block:

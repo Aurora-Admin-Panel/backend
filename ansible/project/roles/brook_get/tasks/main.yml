@@ -1,14 +1,6 @@
 ---
 - name: Check brook exist
   block:
-    - name: Check brook-template.service
-      when: update_brook is not defined or not update_brook
-      stat:
-        path: /usr/lib/systemd/system/brook-template.service
-      register: brook_template_service
-    - fail:
-      when: not brook_template_service.stat.exists
-
     - name: Get brook version
       shell: /usr/loca/bin/brook -v
       register: brook
