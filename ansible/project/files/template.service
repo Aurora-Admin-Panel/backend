@@ -1,0 +1,13 @@
+[Unit]
+Description=App from Aurora Admin Panel
+After=network-online.target
+Wants=network-online.target systemd-networkd-wait-online.service
+
+[Service]
+Type=simple
+User=root
+DynamicUser=true
+ExecStart=
+
+[Install]
+WantedBy=multi-user.target

@@ -31,8 +31,10 @@ class GostConfig(BaseModel):
 
 
 class V2rayConfig(BaseModel):
-    inbounds: t.List
-    outbounds: t.Optional[t.List]
+    inbound: t.Dict
+    outbound: t.Dict
+    custom_inbound: t.Optional[bool]
+    custom_outbound: t.Optional[bool]
     routing: t.Optional[t.Dict]
     dns: t.Optional[t.Dict]
 
@@ -67,6 +69,10 @@ class PortForwardRuleOut(PortForwardRuleBase):
 
     class Config:
         orm_mode = True
+
+
+class PortForwardRuleArtifacts(BaseModel):
+    stdout: t.Optional[str]
 
 
 class PortForwardRuleCreate(PortForwardRuleBase):

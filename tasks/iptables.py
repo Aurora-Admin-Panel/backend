@@ -16,31 +16,7 @@ from app.utils.ip import is_ip
 from tasks import celery_app
 from tasks.utils.runner import run_async
 from tasks.utils.server import prepare_priv_dir
-from tasks.utils.handlers import iptables_finished_handler
-
-
-@celery_app.task()
-def forward_rule_status_handler(
-    port_id: int, status_data: dict, update_status: bool
-):
-    if not update_status:
-        return status_data
-    db = SessionLocal()
-    rule = (
-        db.query(PortForwardRule)
-        .filter(PortForwardRule.port_id == port_id)
-        .first()
-    )
-    if rule:
-        if (
-            status_data.get("status", None) == "starting"
-            and rule.status == "running"
-        ):
-            return status_data
-        rule.status = status_data.get("status", None)
-        db.add(rule)
-        db.commit()
-    return status_data
+from tasks.utils.handlers import status_handler, iptables_finished_handler
 
 
 @celery_app.task()
@@ -72,9 +48,7 @@ def iptables_runner(
         server=server,
         playbook="iptables.yml",
         extravars=extravars,
-        status_handler=lambda s, **k: forward_rule_status_handler.delay(
-            port_id, s, update_status
-        ),
+        status_handler=lambda s, **k: status_handler(port_id, s, update_status),
         finished_callback=iptables_finished_handler(server, port_id, True)
         if update_status
         else lambda r: None,

@@ -19,6 +19,7 @@ from app.db.schemas.port_forward import (
     PortForwardRuleCreate,
     PortForwardRuleEdit,
     PortForwardRuleOut,
+    PortForwardRuleArtifacts,
 )
 from app.db.crud.port_forward import (
     get_forward_rule,
@@ -162,6 +163,39 @@ async def forward_rule_delete(
     )
     trigger_forward_rule(forward_rule, port, old=forward_rule)
     return forward_rule
+
+
+@r.get(
+    "/servers/{server_id}/ports/{port_id}/forward_rule/artifacts",
+    response_model=PortForwardRuleArtifacts,
+)
+async def forward_rule_runner_get(
+    response: Response,
+    server_id: int,
+    port_id: int,
+    db=Depends(get_db),
+    user=Depends(get_current_active_user),
+):
+    """
+    Get port forward rule
+    """
+    forward_rule = get_forward_rule(db, server_id, port_id, user)
+    if not forward_rule:
+        raise HTTPException(
+            status_code=404, detail="Port forward rule not found"
+        )
+    if not user.is_admin():
+        if not any(
+            user.id == u.user_id for u in forward_rule.port.allowed_users
+        ):
+            raise HTTPException(
+                status_code=404, detail="Port forward rule not found"
+            )
+    artifacts = PortForwardRuleArtifacts()
+    if forward_rule.config.get('runner'):
+        with open(f"ansible/priv_data_dirs/{server_id}/artifacts/{forward_rule.config.get('runner')}/stdout", 'r') as f:
+            artifacts.stdout = f.read()
+    return artifacts
 
 
 def verify_iptables_config(

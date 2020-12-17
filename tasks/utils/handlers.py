@@ -105,6 +105,8 @@ def status_handler(port_id: int, status_data: dict, update_status: bool):
             and rule.status == "running"
         ):
             return status_data
+        if status_data.get("runner_ident"):
+            rule.config['runner'] = status_data.get("runner_ident")
         rule.status = status_data.get("status", None)
         db.add(rule)
         db.commit()
