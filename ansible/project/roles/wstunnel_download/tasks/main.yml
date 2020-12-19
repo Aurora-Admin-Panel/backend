@@ -5,13 +5,13 @@
 
 - name: Remote old wstunnel binary
   file:
-    path: roles/wstunnel/files/wstunnel
+    path: roles/app/files/wstunnel
     state: absent
 
 - name: Download latest wstunnel from Github
   get_url:
     url: "{{ wstunnel_latest_download_url.stdout }}"
-    dest: roles/wstunnel/files/wstunnel.zip
+    dest: roles/app/files/wstunnel.zip
 
 - name: Unzip wstunnel.zip
-  shell: unzip -u -d roles/wstunnel/files/ roles/wstunnel/files/wstunnel.zip 
+  shell: unzip -u -d roles/app/files/ roles/app/files/wstunnel.zip 

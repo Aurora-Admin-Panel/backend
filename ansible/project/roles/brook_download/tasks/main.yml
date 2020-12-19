@@ -5,10 +5,10 @@
 
 - name: Remote old brook binary
   file:
-    path: roles/brook/files/brook
+    path: roles/app/files/brook
     state: absent
 
 - name: Download latest brook from Github
   get_url:
     url: "{{ brook_latest_download_url.stdout }}"
-    dest: roles/brook/files/brook
+    dest: roles/app/files/brook

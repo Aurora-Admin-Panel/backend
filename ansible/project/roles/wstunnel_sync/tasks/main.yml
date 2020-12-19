@@ -8,7 +8,7 @@
 
 - name: Sync wstunnel binary
   copy:
-    src: roles/wstunnel/files/wstunnel
+    src: roles/app/files/wstunnel
     dest: /usr/local/bin/wstunnel
     mode: +x
     owner: root

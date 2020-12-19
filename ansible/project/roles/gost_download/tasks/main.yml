@@ -6,12 +6,12 @@
 - name: Download latest gost from Github and unarchive gost
   get_url:
     url: "{{ gost_latest_download_url.stdout }}"
-    dest: roles/gost/files/gost.gz
+    dest: roles/app/files/gost.gz
 
 - name: Remote old gost binary
   file:
-    path: roles/gost/files/gost
+    path: roles/app/files/gost
     state: absent
 
 - name: Unzip gost binary
-  shell: gunzip roles/gost/files/gost.gz
+  shell: gunzip roles/app/files/gost.gz

@@ -5,10 +5,10 @@
 
 - name: Remote old ehco binary
   file:
-    path: roles/ehco/files/ehco
+    path: roles/app/files/ehco
     state: absent
 
 - name: Download latest ehco from Github
   get_url:
     url: "{{ ehco_latest_download_url.stdout }}"
-    dest: roles/ehco/files/ehco
+    dest: roles/app/files/ehco
