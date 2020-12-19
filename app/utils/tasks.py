@@ -46,6 +46,7 @@ def send_gost(
     gost_config = generate_gost_config(rule)
     kwargs = {
         "app_name": "gost",
+        "app_version_arg": "-V",
         "port_id": port.id,
         "server_id": port.server.id,
         "port_num": port.num,
@@ -94,6 +95,7 @@ def send_brook(
 ):
     kwargs = {
         "app_name": "brook",
+        "app_version_arg": "-v",
         "port_id": port.id,
         "server_id": port.server.id,
         "port_num": port.num,
@@ -132,6 +134,7 @@ def send_ehco(
 ):
     kwargs = {
         "app_name": "ehco",
+        "app_version_arg": "-v",
         "port_id": port.id,
         "server_id": port.server.id,
         "port_num": port.num,
@@ -147,7 +150,6 @@ def send_ehco(
             f"--tt {new.config.get('transport_type', 'raw')}"
         )
         kwargs["app_command"] = f"/usr/local/bin/ehco {args}"
-        kwargs["app_version_arg"] = "-v"
         print(f"Sending app_runner task, kwargs: {kwargs}")
         celery_app.send_task("tasks.app.app_runner", kwargs=kwargs)
     else:
@@ -185,8 +187,6 @@ def send_socat(
             kwargs[
                 "app_command"
             ] = f'/bin/sh -c \\"socat TCP4-LISTEN:{port.num},fork,reuseaddr TCP4:{remote}\\"'
-        kwargs["app_name"] = "socat"
-        kwargs["app_version_arg"] = "-V"
         print(f"Sending app_runner task, kwargs: {kwargs}")
         celery_app.send_task("tasks.app.app_runner", kwargs=kwargs)
     else:
