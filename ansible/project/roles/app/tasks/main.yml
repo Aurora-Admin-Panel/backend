@@ -16,6 +16,11 @@
         regex: ^ExecStart
         line: ExecStart={{ app_command }}
   rescue:
+    - name: Create aurora directory
+      file:
+        path: /usr/local/etc/aurora
+        state: directory
+        mode: '0755'
     - name: Sync template.service
       copy:
         src: files/template.service
