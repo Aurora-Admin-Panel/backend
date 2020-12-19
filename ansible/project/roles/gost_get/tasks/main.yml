@@ -1,15 +1,6 @@
 ---
 - name: Check gost exist
-  block:
-    - name: Get gost version
-      shell: gost -V
-      register: gost
-    - name: Set fact for gost version
-      set_fact:
-        gost: "{{ gost.stdout }}"
-        cacheable: yes
-  rescue:
-    - name: Set gost not exist
-      set_fact:
-        gost: ""
-        cacheable: yes
+  include_role:
+    name: app_get
+  vars:
+    app_version_arg: "-V"

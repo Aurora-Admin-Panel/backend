@@ -11,7 +11,7 @@
   when: ansible_facts.os_family == 'CentOS'
   copy:
     src: files/iptables-restore-centos.service
-    dest: /usr/lib/systemd/system/iptables-restore.service
+    dest: /etc/systemd/system/iptables-restore.service
     owner: root
     group: root
 
@@ -19,17 +19,12 @@
   when: ansible_facts.os_family != 'CentOS'
   copy:
     src: files/iptables-restore.service
-    dest: /usr/lib/systemd/system/iptables-restore.service
+    dest: /etc/systemd/system/iptables-restore.service
     owner: root
     group: root
 
-- name: get service facts
-  service_facts:
-  register: services
-  when: ansible_facts.os_family == 'CentOS'
-
 - name: Stop firewalld
-  when: ansible_facts.distribution == 'CentOS' and ansible_facts.services["firewalld.service"] is defined
+  when: ansible_facts.services is defined and ansible_facts.services["firewalld.service"] is defined
   systemd:
     name: firewalld
     enabled: 'no'

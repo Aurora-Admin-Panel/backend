@@ -24,6 +24,7 @@ def ehco_runner(
     args: str = None,
     remote_ip: str = None,
     update_status: bool = False,
+    **kwargs,
 ):
     server = get_server(SessionLocal(), server_id)
 

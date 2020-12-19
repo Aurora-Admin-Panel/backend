@@ -1,0 +1,91 @@
+---
+- name: "Setting {{ app_name }}"
+  when: update_status
+  block:
+    - name: "Copy {{ app_name }} service"
+      copy:
+        src: /usr/local/etc/aurora/template.service
+        dest: /etc/systemd/system/aurora@{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: "Modify {{ app_name }} service"
+      lineinfile:
+        path: /etc/systemd/system/aurora@{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart={{ app_command }}
+  rescue:
+    - name: Sync template.service
+      copy:
+        src: files/template.service
+        dest: /usr/local/etc/aurora/template.service
+        owner: root
+        group: root
+    - name: "Copy {{ app_name }} service"
+      copy:
+        src: /usr/local/etc/aurora/template.service
+        dest: /etc/systemd/system/aurora@{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: "Modify {{ app_name }} service"
+      lineinfile:
+        path: /etc/systemd/system/aurora@{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart={{ app_command }}
+
+
+- name: "Sync {{ app_name }} config"
+  when: app_config is defined
+  block:
+    - name: "Sync {{ app_config }}"
+      copy:
+        src: roles/app/files/{{ app_config }}
+        dest: /usr/local/etc/aurora/{{ local_port }}.json
+        owner: root
+        group: root
+  rescue:
+    - name: Create aurora directory
+      file:
+        path: /usr/local/etc/aurora
+        state: directory
+        mode: '0755'
+    - name: "Sync {{ app_config }}"
+      copy:
+        src: "roles/app/files/{{ app_config }}"
+        dest: "/usr/local/etc/aurora/{{ app_config }}"
+        owner: root
+        group: root
+
+
+- name: "enable or disable {{ app_name }}"
+  systemd:
+    name: aurora@{{ local_port }}
+    state: "{{ 'restarted' if update_status else 'stopped' }}"
+    enabled: "{{ 'yes' if update_status else 'no' }}"
+    daemon_reload: yes
+
+
+- name: "Checking {{ app_name }} status"
+  block:
+    - name: Get systemd status
+      when: update_status
+      command: systemctl status aurora@{{ local_port }}
+      register: systemd_status
+      failed_when: "'Active: active' not in systemd_status.stdout"
+  rescue:
+    - name: "Retry install {{ app_name }} next time"
+      set_fact: {"{{ app_name }}": "", "cacheable": yes}
+    - name: Set error
+      set_fact:
+        error: "{{ ansible_failed_result.msg }}"
+        cacheable: yes
+    - name: Set systemd error
+      when: systemd_status is defined
+      set_fact:
+        systemd_error: "{{ systemd_status.stdout }}"
+        cacheable: yes
+    - fail:
+        msg: "{{ ansible_failed_result.msg }}" 

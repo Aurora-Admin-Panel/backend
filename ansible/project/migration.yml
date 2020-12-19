@@ -1,0 +1,32 @@
+---
+- hosts: "{{ host | default('web') }}"
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Create aurora directory
+      file:
+        path: /usr/local/etc/aurora
+        state: directory
+        mode: '0755'
+    - name: copy service
+      copy:
+        src: /usr/lib/systemd/system/{{ item.service_name }}.service
+        dest: /etc/systemd/system/aurora@{{ item.port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+      with_items: "{{ app_list }}"
+    - name: disable new {{ item.service_name }}
+      systemd:
+        name: "{{ item.service_name }}"
+        state: stopped
+        enabled: no
+      with_items: "{{ app_list }}"
+    - name: enable new {{ item.service_name }}
+      systemd:
+        name: aurora@{{ item.port }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+      with_items: "{{ app_list }}"

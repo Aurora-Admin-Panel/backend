@@ -24,6 +24,7 @@ celery_app.conf.task_routes = {"tasks.*": "main-queue"}
 celery_app.autodiscover_tasks(
     [
         "tasks.ansible",
+        "tasks.app",
         "tasks.ehco",
         "tasks.brook",
         "tasks.connect",

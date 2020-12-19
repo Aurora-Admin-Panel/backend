@@ -134,5 +134,4 @@ ansible/artifacts/**/*
 ansible/env/ssh_key
 ansible/inventory/hosts
 ansible/priv_data_dirs/*
-ansible/project/roles/gost/files/gost
-ansible/project/roles/gost/files/*.json
+ansible/project/roles/**/files/*

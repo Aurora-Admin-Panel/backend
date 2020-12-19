@@ -23,6 +23,7 @@ def v2ray_runner(
     v2ray_config: t.Dict,
     remote_ip: str = None,
     update_status: bool = False,
+    **kwargs,
 ):
     server = get_server(SessionLocal(), server_id)
     with open(f"ansible/project/roles/v2ray/files/{port_id}.json", "w") as f:

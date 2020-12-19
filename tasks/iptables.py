@@ -1,4 +1,5 @@
 import os
+import typing as t
 import ansible_runner
 from uuid import uuid4
 from distutils.dir_util import copy_tree
@@ -18,6 +19,11 @@ from tasks.utils.runner import run_async
 from tasks.utils.server import prepare_priv_dir
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
+def iptables_restore_service_enabled(config: t.Dict) -> bool:
+    status = config.get('services',{}).get('iptables-restore', {})
+    if status.get('status') == 'enabled':
+        return True
+    return False
 
 @celery_app.task()
 def iptables_runner(
@@ -42,6 +48,7 @@ def iptables_runner(
         "host": server.ansible_name,
         "local_port": local_port,
         "iptables_args": args,
+        "init_iptables": not iptables_restore_service_enabled(server.config),
     }
 
     t = run_async(

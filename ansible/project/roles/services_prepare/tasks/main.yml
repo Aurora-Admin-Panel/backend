@@ -1,0 +1,14 @@
+---
+- name: Create aurora directory
+  file:
+    path: /usr/local/etc/aurora
+    state: directory
+    mode: '0755'
+
+- name: Sync template.service
+  copy:
+    src: files/template.service
+    dest: /usr/local/etc/aurora/template.service
+    owner: root
+    group: root
+    mode: '0755'

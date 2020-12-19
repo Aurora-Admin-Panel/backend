@@ -128,3 +128,10 @@ def get_all_iptables_rules(db: Session) -> t.List[PortForwardRule]:
         .filter(PortForwardRule.method == MethodEnum.IPTABLES)
         .all()
     )
+
+def get_all_non_iptables_rules(db: Session) -> t.List[PortForwardRule]:
+    return (
+        db.query(PortForwardRule)
+        .filter(PortForwardRule.method != MethodEnum.IPTABLES)
+        .all()
+    )

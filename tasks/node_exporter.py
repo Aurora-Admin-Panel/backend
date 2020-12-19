@@ -21,6 +21,7 @@ def node_exporter_runner(
     server_id: int,
     port_num: int,
     update_status: bool = False,
+    **kwargs,
 ):
     server = get_server(SessionLocal(), server_id)
 

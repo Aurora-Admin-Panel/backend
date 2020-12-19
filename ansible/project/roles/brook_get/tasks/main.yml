@@ -1,15 +1,6 @@
 ---
 - name: Check brook exist
-  block:
-    - name: Get brook version
-      shell: /usr/loca/bin/brook -v
-      register: brook
-    - name: Set fact for brook version
-      set_fact:
-        brook: "{{ brook.stdout }}"
-        cacheable: yes
-  rescue:
-    - name: Set brook not exist
-      set_fact:
-        brook: ""
-        cacheable: yes
+  include_role:
+    name: app_get
+  vars:
+    app_version_arg: "-v"

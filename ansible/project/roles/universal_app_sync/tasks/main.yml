@@ -1,8 +1,0 @@
----
-- name: Sync {{ app_name }} binary
-  copy:
-    src: roles/brook/files/{{ app_name }}
-    dest: /usr/local/bin/{{ app_name }}
-    mode: +x
-    owner: root
-    group: root

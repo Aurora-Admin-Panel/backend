@@ -23,6 +23,7 @@ def gost_runner(
     gost_config: t.Dict,
     remote_ip: str = None,
     update_status: bool = False,
+    **kwargs,
 ):
     server = get_server(SessionLocal(), server_id)
     with open(f"ansible/project/roles/gost/files/{port_id}.json", "w") as f:

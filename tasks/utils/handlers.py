@@ -35,6 +35,8 @@ def update_facts(server_id: int, facts: t.Dict, md5: str = None):
         }
     elif facts.get("msg"):
         db_server.config["system"] = {"msg": facts.get("msg")}
+    if "services" in facts:
+        db_server.config["services"] = facts.get("services")
     # TODO: Add disable feature
     if "iptables" in facts:
         db_server.config["iptables"] = facts.get("iptables")

@@ -9,22 +9,22 @@
 - name: Download latest shadowsocks_go from Github
   get_url:
     url: "{{ shadowsocks_go_latest_download_url.stdout }}"
-    dest: roles/shadowsocks/files/shadowsocks_go.tar.gz
+    dest: roles/app/files/shadowsocks_go.tar.gz
 - name: Download latest shadowsocks_go2 from Github
   get_url:
     url: "{{ shadowsocks_go2_latest_download_url.stdout }}"
-    dest: roles/shadowsocks/files/shadowsocks_go2.gz
+    dest: roles/app/files/shadowsocks_go2.gz
 
 - name: Remote old shadowsocks_go binary
   file:
-    path: roles/shadowsocks/files/shadowsocks_go
+    path: roles/app/files/shadowsocks_go
     state: absent
 - name: Remote old shadowsocks_go2 binary
   file:
-    path: roles/shadowsocks/files/shadowsocks_go2
+    path: roles/app/files/shadowsocks_go2
     state: absent
 
 - name: Unzip shadowsocks_go binary
-  shell: tar -xzf roles/shadowsocks/files/shadowsocks_go.tar.gz -C roles/shadowsocks/files
+  shell: tar -xzf roles/app/files/shadowsocks_go.tar.gz -C roles/app/files
 - name: Unzip shadowsocks_go2 binary
-  shell: gunzip roles/shadowsocks/files/shadowsocks_go2.gz
+  shell: gunzip roles/app/files/shadowsocks_go2.gz

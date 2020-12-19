@@ -5,10 +5,10 @@
 
 - name: Remote old node_exporter binary
   file:
-    path: roles/node_exporter/files/node_exporter
+    path: roles/app/files/node_exporter
     state: absent
 
 - name: Download latest node_exporter from Github
   get_url:
     url: "{{ node_exporter_latest_download_url.stdout }}"
-    dest: roles/node_exporter/files/node_exporter
+    dest: roles/app/files/node_exporter

@@ -1,41 +1,64 @@
 ---
-- name: Prepare binary locally
-  hosts: 127.0.0.1
-  connection: local
-  gather_facts: no
-  roles:
-    - role: gost_download
-      when: update_gost is defined and update_gost
-    - role: v2ray_download
-      when: update_v2ray is defined and update_v2ray
-    - role: brook_download
-      when: update_brook is defined and update_brook
+# - name: Prepare binary locally
+#   hosts: 127.0.0.1
+#   connection: local
+#   gather_facts: no
+#   roles:
+#     - role: gost_download
+#       when: update_gost is defined and update_gost
 
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: yes
+  pre_tasks:
+    - name: get service facts
+      service_facts:
+      register: services
   roles:
+    - role: services_prepare
+      when: prepare_services is defined and prepare_services
     - role: scripts_sync
       when: sync_scripts is defined and sync_scripts
-    - role: iptables_init
-      when: init_iptables is defined and init_iptables
-    - role: bbr_enable
-      when: enable_bbr is defined and enable_bbr
-    - role: gost_sync
-      when: update_gost is defined and update_gost
-    - role: v2ray_sync
-      when: update_v2ray is defined and update_v2ray
-    - role: brook_sync
-      when: update_brook is defined and update_brook
-    - role: socat_update
-      when: update_socat is defined and update_socat
     - iptables_get
-    - gost_get
-    - v2ray_get
-    - brook_get
-    - socat_get
-    - ehco_get
-    - wstunnel_get
-    - shadowsocks_get
-    - node_exporter_get
-    - tiny_port_mapper_get
+    - name: Get gost version
+      role: app_get
+      vars:
+        app_name: gost
+        app_version_arg: "-V"
+    - name: Get v2ray version
+      role: app_get
+      vars:
+        app_name: v2ray
+        app_version_arg: "-version"
+    - name: Get brook version
+      role: app_get
+      vars:
+        app_name: brook
+        app_version_arg: "-v"
+    - name: Get socat version
+      role: app_get
+      vars:
+        app_name: socat
+        app_version_arg: "-V"
+    - name: Get ehco version
+      role: app_get
+      vars:
+        app_name: ehco
+        app_version_arg: "-v"
+    - name: Get wstunnel version
+      role: app_get
+      vars:
+        app_name: wstunnel
+        app_version_arg: "-V"
+    - name: Get shadowsocks version
+      role: shadowsocks_get
+    - name: Get node_exporter version
+      role: app_get
+      vars:
+        app_name: node_exporter
+        app_version_arg: "--version"
+    - name: Get tiny_port_mapper version
+      role: app_get
+      vars:
+        app_name: tiny_port_mapper
+        app_version_arg: "--h"
