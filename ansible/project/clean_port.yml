@@ -1,0 +1,7 @@
+---
+- name: Exec clean role
+  gather_facts: false
+  hosts: "{{ host | default('web') }}"
+  become: yes
+  roles:
+  - clean_port

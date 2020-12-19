@@ -411,3 +411,10 @@ def trigger_server_clean(server: Server):
         "tasks.clean.clean_runner",
         kwargs={"server": ServerEdit(**server.__dict__).dict()},
     )
+
+def trigger_port_clean(server: Server, port: Port):
+    print(f"Sending clean.clean_port_runner task")
+    celery_app.send_task(
+        "tasks.clean.clean_port_runner",
+        kwargs={"server": ServerEdit(**server.__dict__).dict(), "port_num": port.num},
+    )

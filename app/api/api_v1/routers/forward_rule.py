@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 from app.db.session import get_db
 from app.utils.ip import is_ip
 from app.utils.dns import dns_query
-from app.utils.tasks import trigger_forward_rule
+from app.utils.tasks import trigger_forward_rule, trigger_port_clean
 from app.db.models.port import Port
 from app.db.models.port_forward import MethodEnum, TypeEnum
 from app.db.schemas.port_forward import (
@@ -161,7 +161,7 @@ async def forward_rule_delete(
     forward_rule, port = delete_forward_rule(
         db, server_id, port_id, current_user
     )
-    trigger_forward_rule(forward_rule, port, old=forward_rule)
+    trigger_port_clean(port.server, port)
     return forward_rule
 
 

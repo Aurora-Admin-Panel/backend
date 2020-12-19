@@ -13,9 +13,9 @@ clean_iptables () {
     done
 }
 
-clean_gost () {
-    $SUDO systemctl stop system-gost.slice
-    ls /etc/systemd/system/multi-user.target.wants | grep -E 'gost@[0-9]+\.service' | xargs $SUDO systemctl disable
+clean_aurora () {
+    $SUDO systemctl stop system-aurora.slice
+    ls /etc/systemd/system/multi-user.target.wants | grep -E 'aurora@[0-9]+\.service' | xargs $SUDO systemctl disable
 }
 
 clean_scripts () {
@@ -26,4 +26,5 @@ clean_scripts () {
 }
 
 clean_iptables
-clean_gost
+clean_aurora
+clean_scripts
