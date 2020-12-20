@@ -57,6 +57,7 @@ class WsTunnelConfig(BaseModel):
 class ShadowsocksConfig(BaseModel):
     password: str
     encryption: str
+    udp: t.Optional[bool]
 
 class PortForwardRuleBase(BaseModel):
     config: t.Dict

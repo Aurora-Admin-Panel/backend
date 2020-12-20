@@ -2,7 +2,7 @@
 - name: Check shadowsocks exist
   block:
     - name: Get shadowsocks go 2 version
-      shell: shadowsocks_go -h
+      shell: shadowsocks_go2 -h
     - name: Get shadowsocks version
       shell: shadowsocks_go -version
       register: shadowsocks

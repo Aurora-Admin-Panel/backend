@@ -311,11 +311,13 @@ def send_shadowsocks(
                 f"/usr/local/bin/shadowsocks_go2"
                 f" -s 0.0.0.0:{port.num}"
                 f" -cipher {new.config.get('encryption')} -password {new.config.get('password')}"
+                f" {'-udp' if new.config.get('udp') else ''}"
             )
         else:
             kwargs["app_command"] = (
                 f"/usr/local/bin/shadowsocks_go"
                 f" -p {port.num} -m {new.config.get('encryption')} -k {new.config.get('password')}"
+                f" {'-u' if new.config.get('udp') else ''}"
             )
         print(f"Sending app_runner task, kwargs: {kwargs}")
         celery_app.send_task("tasks.app.app_runner", kwargs=kwargs)
