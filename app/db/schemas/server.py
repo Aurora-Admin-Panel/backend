@@ -75,9 +75,26 @@ class ServerFacts(BaseModel):
 
 class ServerConfig(BaseModel):
     system: t.Optional[ServerFacts]
-    iptables: t.Optional[str]
+    brook: t.Optional[str]
+    brook_disabled: t.Optional[bool]
+    caddy: t.Optional[str]
+    caddy_disabled: t.Optional[bool]
+    ehco: t.Optional[str]
+    ehco_disabled: t.Optional[bool]
     gost: t.Optional[str]
+    gost_disabled: t.Optional[bool]
+    node_exporter: t.Optional[str]
+    node_exporter_disabled: t.Optional[bool]
+    shadowsocks: t.Optional[str]
+    shadowsocks_disabled: t.Optional[bool]
+    socat: t.Optional[str]
+    socat_disabled: t.Optional[bool]
+    tiny_port_mapper: t.Optional[str]
+    tiny_port_mapper_disabled: t.Optional[bool]
     v2ray: t.Optional[str]
+    v2ray_disabled: t.Optional[bool]
+    wstunnel: t.Optional[str]
+    wstunnel_disabled: t.Optional[bool]
 
 
 class ServerBase(BaseModel):
@@ -139,6 +156,22 @@ class ServerEdit(BaseModel):
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
     is_active: t.Optional[bool]
+    config: ServerConfig
+
+    class Config:
+        orm_mode = True
+
+class ServerConfigEdit(BaseModel):
+    brook_disabled: t.Optional[bool]
+    caddy_disabled: t.Optional[bool]
+    ehco_disabled: t.Optional[bool]
+    gost_disabled: t.Optional[bool]
+    node_exporter_disabled: t.Optional[bool]
+    shadowsocks_disabled: t.Optional[bool]
+    socat_disabled: t.Optional[bool]
+    tiny_port_mapper_disabled: t.Optional[bool]
+    v2ray_disabled: t.Optional[bool]
+    wstunnel_disabled: t.Optional[bool]
 
     class Config:
         orm_mode = True

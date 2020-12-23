@@ -16,6 +16,7 @@ from app.db.schemas.server import (
     ServerConnectArg,
     ServerCreate,
     ServerEdit,
+    ServerConfigEdit,
     ServerUserEdit,
     ServerUserOut,
     ServerUserOpsOut,
@@ -26,6 +27,7 @@ from app.db.crud.server import (
     get_server,
     create_server,
     edit_server,
+    edit_server_config,
     delete_server,
     get_server_users,
     add_server_user,
@@ -134,6 +136,23 @@ async def server_edit(
     trigger_server_connect(server.id)
     return jsonable_encoder(server)
 
+@r.put(
+    "/servers/{server_id}/config",
+    response_model=ServerOpsOut,
+    response_model_exclude_none=True,
+)
+async def server_config_edit(
+    request: Request,
+    server_id: int,
+    server: ServerConfigEdit,
+    db=Depends(get_db),
+    current_user=Depends(get_current_active_admin),
+):
+    """
+    Update an existing server
+    """
+    server = edit_server_config(db, server_id, server)
+    return jsonable_encoder(server)
 
 @r.delete(
     "/servers/{server_id}",

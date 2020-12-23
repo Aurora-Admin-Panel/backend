@@ -9,6 +9,7 @@ from app.db.schemas.server import (
     ServerBase,
     ServerCreate,
     ServerEdit,
+    ServerConfigEdit,
     ServerOut,
     ServerOpsOut,
     ServerUserEdit,
@@ -91,6 +92,21 @@ def edit_server(db: Session, server_id: int, server: ServerEdit, reset_system: b
     db.commit()
     db.refresh(db_server)
     return get_server(db, db_server.id)
+
+
+def edit_server_config(db: Session, server_id: int, config: ServerConfigEdit) -> Server:
+    db_server = get_server(db, server_id)
+    if not db_server:
+        raise HTTPException(status_code=404, detail="Server not found")
+
+    for key, val in config.dict(exclude_unset=True).items():
+        db_server.config[key] = val
+
+    db.add(db_server)
+    db.commit()
+    db.refresh(db_server)
+    return get_server(db, db_server.id)
+
 
 
 def delete_server(db: Session, server_id: int) -> Server:

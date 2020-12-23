@@ -133,6 +133,11 @@ async def forward_rule_edit(
             status_code=403,
             detail="User not allowed to create forward rule on this port",
         )
+    print(f"{forward_rule.method.value}_disabled")
+    if db_port.server.config.get(f"{forward_rule.method.value}_disabled"):
+        raise HTTPException(
+            status_code=403,
+            detail=f"{forward_rule.method.value} is not allowed")
 
     if forward_rule.method == MethodEnum.IPTABLES:
         forward_rule = verify_iptables_config(forward_rule)
