@@ -1,15 +1,135 @@
 ---
-- name: Sync gost config
+- name: Sync app config
+  block:
+    - name: Sync Caddyfile
+      copy:
+        src: roles/app/files/{{ app_config }}
+        dest: /usr/local/etc/aurora/{{ local_port }}-temp
+        owner: root
+        group: root
+  rescue:
+    - name: Create aurora directory
+      file:
+        path: /usr/local/etc/aurora
+        state: directory
+        mode: '0755'
+    - name: Sync Caddyfile
+      copy:
+        src: roles/app/files/{{ app_config }}
+        dest: /usr/local/etc/aurora/{{ local_port }}-temp
+        owner: root
+        group: root
+
+- name: test caddy config
+  shell: caddy validate --adapter caddyfile --config /usr/local/etc/aurora/{{ local_port }}-temp
+- name: Copy caddy temp to formal config
   copy:
-    src: roles/gost/files/{{ port_id }}.json
-    dest: /usr/local/etc/gost/{{ local_port }}.json
+    src: /usr/local/etc/aurora/{{ local_port }}-temp
+    dest: /usr/local/etc/aurora/{{ local_port }}
     owner: root
     group: root
-  when: update_status
+    remote_src: yes
+    follow: yes
 
-- name: enable & restart gost
+- name: Check caddy.service
+  when: update_status
+  stat:
+    path: /etc/systemd/system/aurora@{{ local_port }}.service
+  register: caddy_service
+
+- name: Setting caddy service
+  when: update_status and not caddy_service.stat.exists
+  block:
+    - name: Copy caddy service
+      copy:
+        src: /usr/local/etc/aurora/caddy-template.service
+        dest: /etc/systemd/system/aurora@{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: Modify caddy service
+      lineinfile:
+        path: /etc/systemd/system/aurora@{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart=/usr/local/bin/caddy run --environ --adapter caddyfile --config /usr/local/etc/aurora/{{ local_port }}
+    - name: Modify caddy service 2
+      lineinfile:
+        path: /etc/systemd/system/aurora@{{ local_port }}.service
+        regex: ^ExecReload
+        line: ExecReload=/usr/local/bin/caddy reload --adapter caddyfile --config /usr/local/etc/aurora/{{ local_port }}
+  rescue:
+    - name: Create aurora directory
+      file:
+        path: /usr/local/etc/aurora
+        state: directory
+        mode: '0755'
+    - name: Sync template.service
+      copy:
+        src: files/caddy-template.service
+        dest: /usr/local/etc/aurora/caddy-template.service
+        owner: root
+        group: root
+    - name: Copy caddy service
+      copy:
+        src: /usr/local/etc/aurora/caddy-template.service
+        dest: /etc/systemd/system/aurora@{{ local_port }}.service
+        owner: root
+        group: root
+        remote_src: yes
+        follow: yes
+    - name: Modify caddy service
+      lineinfile:
+        path: /etc/systemd/system/aurora@{{ local_port }}.service
+        regex: ^ExecStart
+        line: ExecStart=/usr/local/bin/caddy run --adapter caddyfile --config /usr/local/etc/aurora/{{ local_port }}
+    - name: Modify caddy service 2
+      lineinfile:
+        path: /etc/systemd/system/aurora@{{ local_port }}.service
+        regex: ^ExecReload
+        line: ExecReload=/usr/local/bin/caddy reload --adapter caddyfile --config /usr/local/etc/aurora/{{ local_port }}
+
+- name: reload or restart caddy
+  block:
+    - name: reload caddy
+      systemd:
+        name: aurora@{{ local_port }}
+        state: reloaded
+  rescue:
+    - name: restart caddy
+      systemd:
+        name: aurora@{{ local_port }}
+        state: restarted
+        enabled: yes
+        daemon_reload: yes
+
+- name: disable caddy
+  when: not update_status
   systemd:
-    name: gost@{{ local_port }}
-    state: "{{ 'restarted' if update_status else 'stopped' }}"
-    enabled: "{{ 'yes' if update_status else 'no' }}"
-    daemon_reload: yes
+    name: aurora@{{ local_port }}
+    state: stopped
+    enabled: no
+
+- name: Checking caddy status
+  when: update_status
+  block:
+    - name: Get systemd status
+      command: systemctl status aurora@{{ local_port }}
+      register: systemd_status
+      failed_when: "'Active: active' not in systemd_status.stdout"
+  rescue:
+    - name: "Retry install {{ app_name }} next time"
+      set_fact: 
+        caddy: ""
+        cacheable: yes
+    - name: Set error
+      set_fact:
+        error: "{{ ansible_failed_result.msg }}"
+        cacheable: yes
+    - name: Set systemd error
+      when: systemd_status is defined
+      set_fact:
+        systemd_error: "{{ systemd_status.stdout }}"
+        cacheable: yes
+    - fail:
+        msg: "{{ ansible_failed_result.msg }}" 

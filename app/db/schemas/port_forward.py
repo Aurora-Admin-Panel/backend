@@ -35,6 +35,9 @@ class V2rayConfig(BaseModel):
     outbound: t.Dict
     custom_inbound: t.Optional[bool]
     custom_outbound: t.Optional[bool]
+    tls_provider: t.Optional[str]
+    tls_settings: t.Optional[t.Dict]
+    reverse_proxy: t.Optional[int]
     routing: t.Optional[t.Dict]
     dns: t.Optional[t.Dict]
 

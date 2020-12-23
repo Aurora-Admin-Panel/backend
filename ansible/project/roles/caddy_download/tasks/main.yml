@@ -6,12 +6,12 @@
 - name: Download latest caddy from Github and unarchive caddy
   get_url:
     url: "{{ caddy_latest_download_url.stdout }}"
-    dest: roles/caddy/files/caddy.tar.gz
+    dest: roles/app/files/caddy.tar.gz
 
 - name: Remote old caddy binary
   file:
-    path: roles/caddy/files/caddy
+    path: roles/app/files/caddy
     state: absent
 
 - name: Unzip caddy binary
-  shell: tar -xzf roles/caddy/files/caddy.tar.gz -C roles/caddy/files
+  shell: tar -xzf roles/app/files/caddy.tar.gz -C roles/app/files

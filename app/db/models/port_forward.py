@@ -16,6 +16,7 @@ class MethodEnum(enum.Enum):
     IPTABLES         = "iptables"
     EHCO             = "ehco"
     GOST             = "gost"
+    CADDY            = "caddy"
     V2RAY            = "v2ray"
     BROOK            = "brook"
     SOCAT            = "socat"

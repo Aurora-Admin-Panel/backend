@@ -48,7 +48,7 @@
     - name: "Sync {{ app_config }}"
       copy:
         src: roles/app/files/{{ app_config }}
-        dest: /usr/local/etc/aurora/{{ local_port }}.json
+        dest: /usr/local/etc/aurora/{{ local_port }}
         owner: root
         group: root
   rescue:

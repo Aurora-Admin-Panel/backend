@@ -6,10 +6,11 @@ Wants=network-online.target systemd-networkd-wait-online.service
 [Service]
 Type=simple
 User=root
-DynamicUser=true
 ExecStart=
+ExecReload=
+TimeoutStopSec=5s
 LimitNOFILE=1048576
-LimitNPROC=51200
+LimitNPROC=512
 
 [Install]
 WantedBy=multi-user.target

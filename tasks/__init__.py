@@ -40,6 +40,7 @@ celery_app.autodiscover_tasks(
         "tasks.shadowsocks",
         "tasks.node_exporter",
         "tasks.tiny_port_mapper",
+        "tasks.reverse_proxy",
     ]
 )
 

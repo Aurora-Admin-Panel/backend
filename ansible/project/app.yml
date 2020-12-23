@@ -26,5 +26,6 @@
           include_role:
             name: "{{ app_get_role_name }}"
   roles:
-    - traffic_delete_monitor
-    - app
+    - role: traffic_delete_monitor
+      when: traffic_meter is defined and traffic_meter
+    - role: "{{ app_role_name }}"

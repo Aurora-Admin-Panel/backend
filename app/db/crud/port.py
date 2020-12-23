@@ -72,6 +72,13 @@ def get_port_with_num(db: Session, server_id: int, port_num: int) -> Port:
         .first()
     )
 
+def get_port_by_id(db: Session, port_id: int) -> Port:
+    return (
+        db.query(Port)
+        .filter(Port.id == port_id)
+        .options(joinedload(Port.forward_rule))
+        .first()
+    )
 
 def create_port(db: Session, server_id: int, port: PortCreate) -> Port:
     db_port = Port(**port.dict(), server_id=server_id)

@@ -1,21 +1,26 @@
 ---
-- name: Create caddy directory if it does not exist
-  file:
-    path: /etc/caddy
-    state: directory
-    mode: '0755'
-
-- name: Sync caddy.service
-  copy:
-    src: files/caddy.service
-    dest: /etc/systemd/system/caddy.service
-    owner: root
-    group: root
-
 - name: Sync caddy binary
   copy:
-    src: roles/caddy/files/caddy
-    dest: /usr/bin/caddy
+    src: roles/app/files/caddy
+    dest: /usr/local/bin/caddy
     mode: +x
     owner: root
     group: root
+
+- name: Gather facts
+  gather_facts:
+    parallel: yes
+
+- name: Install nss-tools for CentOS
+  when: ansible_facts.os_family == 'CentOS'
+  yum:
+    name: nss-tools
+    state: latest
+    update_cache: yes
+
+- name: Install libnss3-tools for Debian/Ubuntu
+  when: ansible_facts.os_family == 'Debian' or ansible_facts.os_family == 'Ubuntu'
+  apt:
+    name: libnss3-tools
+    state: latest
+    update_cache: yes

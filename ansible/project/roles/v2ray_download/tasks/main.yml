@@ -6,12 +6,12 @@
 - name: Download latest v2ray from Github and unarchive
   get_url:
     url: "{{ v2ray_latest_download_url.stdout }}"
-    dest: roles/v2ray/files/v2ray.zip
+    dest: roles/app/files/v2ray.zip
 
 - name: Remote old v2ray binary
   file:
-    path: roles/v2ray/files/v2ray
+    path: roles/app/files/v2ray
     state: absent
 
 - name: Unzip v2ray binary
-  shell: unzip -u -d roles/v2ray/files/ roles/v2ray/files/v2ray.zip 
+  shell: unzip -u -d roles/app/files/ roles/app/files/v2ray.zip 

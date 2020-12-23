@@ -38,6 +38,8 @@ def update_facts(server_id: int, facts: t.Dict, md5: str = None):
     if "services" in facts:
         db_server.config["services"] = facts.get("services")
     # TODO: Add disable feature
+    if "caddy" in facts:
+        db_server.config["caddy"] = facts.get("caddy")
     if "iptables" in facts:
         db_server.config["iptables"] = facts.get("iptables")
     if "gost" in facts:
