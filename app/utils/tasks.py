@@ -308,7 +308,6 @@ def send_shadowsocks(
 def trigger_forward_rule(
     rule: PortForwardRule,
     port: Port,
-    reverse_proxy_port: Port = None,
     old: PortForwardRuleOut = None,
     new: PortForwardRuleOut = None,
 ):
