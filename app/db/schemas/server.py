@@ -156,7 +156,7 @@ class ServerEdit(BaseModel):
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
     is_active: t.Optional[bool]
-    config: ServerConfig
+    config: t.Optional[ServerConfig]
 
     class Config:
         orm_mode = True
