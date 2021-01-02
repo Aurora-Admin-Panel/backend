@@ -20,7 +20,7 @@ def finished_handler(server: Server):
     return wrapper
         
 
-@celery_app.task()
+@celery_app.task(priority=3)
 def connect_runner(
     server_id: int,
 ):

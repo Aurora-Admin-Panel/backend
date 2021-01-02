@@ -31,23 +31,23 @@ def finished_handler(server: Server, md5: str):
     return wrapper
 
 
+@celery_app.task(priority=9)
+def server_runner(server_id: int, **kwargs):
+    init_md5 = get_md5_for_file("ansible/project/server.yml")
+    server = get_server(SessionLocal(), server_id)
+    run(
+        server=server,
+        playbook="server.yml",
+        extravars=kwargs,
+        event_handler=server_facts_event_handler(server),
+        finished_callback=finished_handler(server, init_md5),
+    )
+
+
 @celery_app.task()
 def servers_runner(**kwargs):
     servers = get_servers(SessionLocal())
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     for server in servers:
         if "init" not in server.config or server.config["init"] != init_md5:
-            run(
-                server=server,
-                playbook="server.yml",
-                extravars=kwargs,
-                event_handler=server_facts_event_handler(server),
-                finished_callback=finished_handler(server, init_md5),
-            )
-
-
-@celery_app.task()
-def server_runner(server_id: int, **kwargs):
-    init_md5 = get_md5_for_file("ansible/project/server.yml")
-    server = get_server(SessionLocal(), server_id)
-    run(server, init_md5, **kwargs)
+            server_runner.apply_async((server.id,), kwargs, priority=9)

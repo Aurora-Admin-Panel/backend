@@ -25,7 +25,7 @@ from tasks.utils.rule import get_app_config
 AppConfig = namedtuple("AppConfig", ["playbook", "vars"])
 
 
-@celery_app.task()
+@celery_app.task(priority=0)
 def app_runner(
     port_id: int,
     server_id: int,
@@ -36,7 +36,7 @@ def app_runner(
     app_version_arg: str = "-v",
     traffic_meter: bool = True,
     app_role_name: str = "app",
-    app_download_role_name: str = "app_download",
+    app_download_role_name: str = None,
     app_sync_role_name: str = "app_sync",
     app_get_role_name: str = "app_get",
     remote_ip: str = "ANYWHERE",
@@ -52,7 +52,9 @@ def app_runner(
         "app_command": app_command,
         "app_version_arg": app_version_arg,
         "traffic_meter": traffic_meter,
-        "app_download_role_name": app_download_role_name,
+        "app_download_role_name": app_download_role_name
+        if app_download_role_name is not None
+        else f"{app_name}_download",
         "app_role_name": app_role_name,
         "app_sync_role_name": app_sync_role_name,
         "app_get_role_name": app_get_role_name,
@@ -79,7 +81,7 @@ def app_runner(
     )
 
 
-@celery_app.task()
+@celery_app.task(priority=0)
 def rule_runner(rule_id: int):
     db = SessionLocal()
     rule = get_forward_rule_by_id(db, rule_id)
@@ -87,7 +89,9 @@ def rule_runner(rule_id: int):
         ident = uuid4()
         app_configs = []
         if rule.config.get("reverse_proxy"):
-            reverse_proxy_port = get_port_by_id(db, rule.config.get("reverse_proxy"))
+            reverse_proxy_port = get_port_by_id(
+                db, rule.config.get("reverse_proxy")
+            )
             app_configs.append(get_app_config(reverse_proxy_port))
         app_configs.append(get_app_config(rule.port))
         for config in app_configs:
@@ -103,7 +107,7 @@ def rule_runner(rule_id: int):
                     rule.port.server, rule.port.id, True
                 ),
             )
-            if runner.status != 'successful':
+            if runner.status != "successful":
                 break
     except Exception:
         rule.status = "failed"

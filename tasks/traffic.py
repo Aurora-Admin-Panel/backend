@@ -23,7 +23,7 @@ from tasks.utils.runner import run, run_async
 from tasks.utils.handlers import iptables_finished_handler
 
 
-@celery_app.task()
+@celery_app.task(priority=6)
 def traffic_server_runner(server_id: Server):
     server = get_server(SessionLocal(), server_id)
     return run(
@@ -37,4 +37,4 @@ def traffic_server_runner(server_id: Server):
 def traffic_runner():
     servers = get_servers(SessionLocal())
     for server in servers:
-        traffic_server_runner.delay(server.id)
+        traffic_server_runner.apply_async((server.id,), priority=6)

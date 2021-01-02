@@ -20,7 +20,7 @@ from tasks.utils.server import prepare_priv_dir, iptables_restore_service_enable
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
 
-@celery_app.task()
+@celery_app.task(priority=0)
 def iptables_runner(
     port_id: int,
     server_id: int,

@@ -1,11 +1,4 @@
 ---
-# - name: Prepare binary locally
-#   hosts: 127.0.0.1
-#   connection: local
-#   gather_facts: no
-#   roles:
-#     - role: gost_download
-#       when: update_gost is defined and update_gost
 
 - hosts: "{{ host | default('web') }}"
   become: yes
