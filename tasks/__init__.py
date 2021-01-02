@@ -24,6 +24,7 @@ celery_app.conf.task_routes = {"tasks.*": "main-queue"}
 celery_app.autodiscover_tasks(
     [
         "tasks.ansible",
+        "tasks.artifacts",
         "tasks.app",
         "tasks.ehco",
         "tasks.brook",
@@ -40,7 +41,6 @@ celery_app.autodiscover_tasks(
         "tasks.shadowsocks",
         "tasks.node_exporter",
         "tasks.tiny_port_mapper",
-        "tasks.reverse_proxy",
     ]
 )
 
@@ -52,6 +52,10 @@ celery_app.conf.beat_schedule = {
     "run-ddns": {
         "task": "tasks.iptables.ddns_runner",
         "schedule": schedule(timedelta(seconds=int(config.DDNS_INTERVAL_SECONDS))),
+    },
+    "run-clean-artifacts": {
+        "task": "tasks.artifacts.clean_artifacts_runner",
+        "schedule": crontab(minute=0, hour=0),
     }
 }
 

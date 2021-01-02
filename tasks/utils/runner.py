@@ -12,6 +12,7 @@ def run_async(
     server: t.Union[Server, t.Dict],
     playbook: str,
     extravars: t.Dict = None,
+    ident: str = None,
     **kwargs
 ):
     if extravars is None:
@@ -23,7 +24,7 @@ def run_async(
         priv_data_dir = prepare_priv_dir(server)
         extravars["host"] = server.ansible_name
     return ansible_runner.run_async(
-        ident=uuid4(),
+        ident=uuid4() if ident is None else ident,
         private_data_dir=priv_data_dir,
         project_dir="ansible/project",
         playbook=playbook,

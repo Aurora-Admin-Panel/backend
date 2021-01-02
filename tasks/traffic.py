@@ -18,9 +18,8 @@ from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
 from tasks import celery_app
-from tasks.utils.runner import run_async
+from tasks.utils.runner import run, run_async
 from tasks.utils.handlers import iptables_finished_handler
-
 
 
 @celery_app.task()
@@ -30,6 +29,5 @@ def traffic_runner():
         run_async(
             server=server,
             playbook="traffic.yml",
-            extravars={"host": server.ansible_name},
             finished_callback=iptables_finished_handler(server),
         )
