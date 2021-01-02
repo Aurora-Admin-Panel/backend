@@ -16,14 +16,9 @@ from app.utils.ip import is_ip
 
 from tasks import celery_app
 from tasks.utils.runner import run_async
-from tasks.utils.server import prepare_priv_dir
+from tasks.utils.server import prepare_priv_dir, iptables_restore_service_enabled
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
-def iptables_restore_service_enabled(config: t.Dict) -> bool:
-    status = config.get('services',{}).get('iptables-restore', {})
-    if status.get('status') == 'enabled':
-        return True
-    return False
 
 @celery_app.task()
 def iptables_runner(

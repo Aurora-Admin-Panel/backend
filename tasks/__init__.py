@@ -63,4 +63,10 @@ celery_app.conf.beat_schedule = {
 @celeryd_init.connect
 def configure_workers(sender=None, conf=None, **kwargs):
     celery_app.send_task("tasks.ansible.ansible_hosts_runner")
-    celery_app.send_task("tasks.server.servers_runner")
+    celery_app.send_task(
+        "tasks.server.servers_runner", 
+        kwargs={
+            "prepare_services": True,
+            "sync_scripts": True,
+            "init_iptables": True,
+        })

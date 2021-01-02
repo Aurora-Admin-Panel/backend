@@ -197,8 +197,11 @@ async def forward_rule_runner_get(
             )
     artifacts = PortForwardRuleArtifacts()
     if forward_rule.config.get('runner'):
-        with open(f"ansible/priv_data_dirs/{server_id}/artifacts/{forward_rule.config.get('runner')}/stdout", 'r') as f:
-            artifacts.stdout = f.read()
+        try:
+            with open(f"ansible/priv_data_dirs/{server_id}/artifacts/{forward_rule.config.get('runner')}/stdout", 'r') as f:
+                artifacts.stdout = f.read()
+        except:
+            artifacts.stdout = "No stdout found!"
     return artifacts
 
 

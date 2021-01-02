@@ -18,6 +18,7 @@ from app.utils.v2ray import generate_v2ray_config
 
 from tasks import celery_app
 from tasks.utils.runner import run
+from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import iptables_finished_handler, status_handler
 from tasks.utils.rule import get_app_config
 
@@ -51,12 +52,13 @@ def app_runner(
         "app_command": app_command,
         "app_version_arg": app_version_arg,
         "traffic_meter": traffic_meter,
-        "app_download_role_name": f"{app_name}_download",
+        "app_download_role_name": app_download_role_name,
         "app_role_name": app_role_name,
         "app_sync_role_name": app_sync_role_name,
         "app_get_role_name": app_get_role_name,
         "update_status": update_status,
         "update_app": update_status and not server.config.get(app_name),
+        "init_iptables": not iptables_restore_service_enabled(server.config),
     }
     if app_config is not None:
         with open(
