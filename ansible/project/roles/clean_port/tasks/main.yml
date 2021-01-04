@@ -2,6 +2,9 @@
 - name: Exec iptables script
   block:
     - name: Exec iptables script locally
+      shell: /usr/local/bin/iptables.sh list {{ local_port }}
+      register: traffic
+    - name: Exec iptables script locally
       shell: /usr/local/bin/iptables.sh delete {{ local_port }}
   rescue:
     - name: Sync iptables.sh
@@ -11,6 +14,9 @@
         owner: root
         group: root
         mode: '0755'
+    - name: Exec iptables script locally
+      shell: /usr/local/bin/iptables.sh list {{ local_port }}
+      register: traffic
     - name: Exec iptables script locally again
       shell: /usr/local/bin/iptables.sh delete {{ local_port }}
 

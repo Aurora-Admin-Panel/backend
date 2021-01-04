@@ -12,7 +12,7 @@
     parallel: yes
 
 - name: Sync iptables-restore.service for centos
-  when: ansible_facts.os_family == 'CentOS'
+  when: ansible_facts.os_family == 'RedHat'
   copy:
     src: files/iptables-restore-centos.service
     dest: /etc/systemd/system/iptables-restore.service
@@ -20,7 +20,7 @@
     group: root
 
 - name: Sync iptables-restore.service for debian/ubuntu
-  when: ansible_facts.os_family != 'CentOS'
+  when: ansible_facts.os_family == 'Debian'
   copy:
     src: files/iptables-restore.service
     dest: /etc/systemd/system/iptables-restore.service

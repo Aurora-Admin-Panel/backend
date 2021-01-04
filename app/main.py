@@ -2,6 +2,7 @@ import os
 import uvicorn
 import sentry_sdk
 import typing as t
+from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from app.db.session import SessionLocal
 from app.core import config
 from app.core.auth import get_current_active_user
 from tasks import celery_app
+from tasks.traffic import traffic_runner
 
 
 app = FastAPI(

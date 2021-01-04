@@ -12,14 +12,14 @@
     parallel: yes
 
 - name: Install nss-tools for CentOS
-  when: ansible_facts.os_family == 'CentOS'
+  when: ansible_facts.os_family == 'RedHat'
   yum:
     name: nss-tools
     state: latest
     update_cache: yes
 
 - name: Install libnss3-tools for Debian/Ubuntu
-  when: ansible_facts.os_family == 'Debian' or ansible_facts.os_family == 'Ubuntu'
+  when: ansible_facts.os_family == 'Debian'
   apt:
     name: libnss3-tools
     state: latest

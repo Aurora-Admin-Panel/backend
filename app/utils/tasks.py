@@ -146,6 +146,7 @@ def send_socat(
         "app_name": "socat",
         "app_version_arg": "-V",
         "app_sync_role_name": "socat_update",
+        "app_download_role_name": "void",
         "port_id": port.id,
         "server_id": port.server.id,
         "port_num": port.num,
@@ -400,5 +401,5 @@ def trigger_port_clean(server: Server, port: Port):
     print(f"Sending clean.clean_port_runner task")
     celery_app.send_task(
         "tasks.clean.clean_port_runner",
-        kwargs={"server": ServerEdit(**server.__dict__).dict(), "port_num": port.num},
+        kwargs={"server_id": server.id, "port_num": port.num},
     )
