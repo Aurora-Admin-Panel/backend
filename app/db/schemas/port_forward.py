@@ -29,6 +29,8 @@ class GostConfig(BaseModel):
     ServeNodes: t.List
     ChainNodes: t.Optional[t.List]
 
+class IperfConfig(BaseModel):
+    expire_second: int
 
 class V2rayConfig(BaseModel):
     inbound: t.Dict
@@ -104,6 +106,7 @@ class PortForwardRuleEdit(BaseModel):
         BrookConfig,
         IptablesConfig,
         SocatConfig,
+        IperfConfig,
         GostConfig,
         V2rayConfig,
         t.Dict,

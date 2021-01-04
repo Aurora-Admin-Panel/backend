@@ -18,6 +18,7 @@ class MethodEnum(enum.Enum):
     GOST             = "gost"
     CADDY            = "caddy"
     V2RAY            = "v2ray"
+    IPERF            = "iperf"
     BROOK            = "brook"
     SOCAT            = "socat"
     WSTUNNEL         = "wstunnel"

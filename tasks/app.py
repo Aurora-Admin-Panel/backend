@@ -4,6 +4,7 @@ import typing as t
 import ansible_runner
 from uuid import uuid4
 from collections import namedtuple
+from datetime import datetime, timedelta
 
 from app.db.session import SessionLocal
 from app.db.models.port import Port
@@ -17,10 +18,11 @@ from app.utils.caddy import generate_caddy_config
 from app.utils.v2ray import generate_v2ray_config
 
 from tasks import celery_app
+from tasks.clean import clean_port_runner
 from tasks.utils.runner import run
 from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import iptables_finished_handler, status_handler
-from tasks.utils.rule import get_app_config
+from tasks.utils.rule import get_app_config, get_clean_port_config
 
 AppConfig = namedtuple("AppConfig", ["playbook", "vars"])
 
@@ -93,7 +95,9 @@ def rule_runner(rule_id: int):
                 db, rule.config.get("reverse_proxy")
             )
             app_configs.append(get_app_config(reverse_proxy_port))
+
         app_configs.append(get_app_config(rule.port))
+
         for config in app_configs:
             runner = run(
                 rule.port.server,
@@ -109,6 +113,13 @@ def rule_runner(rule_id: int):
             )
             if runner.status != "successful":
                 break
+
+        if rule.config.get("expire_second"):
+            clean_port_runner.apply_async(
+                (rule.port.server.id, rule.port.num),
+                eta=datetime.now()
+                + timedelta(seconds=rule.config.get("expire_second")),
+            )
     except Exception:
         rule.status = "failed"
         rule.config["error"] = traceback.format_exc()

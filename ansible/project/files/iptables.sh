@@ -153,4 +153,6 @@ elif [ $OPERATION == "reset" ]; then
     reset
 else
     echo "Unrecognized command: $OPERATION"
+    exit 1
 fi
+exit 0

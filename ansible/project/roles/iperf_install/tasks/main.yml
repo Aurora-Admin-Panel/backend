@@ -6,7 +6,7 @@
 - name: Install iperf3 for CentOS
   when: ansible_facts.os_family == 'RedHat'
   block:
-    - name: install iperf3
+    - name: install iperf3 for CentOS
       yum:
         name: https://iperf.fr/download/fedora/iperf3-3.1.3-1.fc24.x86_64.rpm
         state: present

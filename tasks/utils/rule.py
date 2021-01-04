@@ -52,6 +52,23 @@ def get_app_config(port: Port):
                 "update_app": not port.server.config.get("caddy"),
             },
         )
+    elif port.forward_rule.method == MethodEnum.IPERF:
+        return AppConfig(
+            "app.yml",
+            {
+                **default_vars,
+                "local_port": port.num,
+                "app_name": "iperf",
+                "app_version_arg": "-version",
+                "traffic_meter": True,
+                "app_command": f"/usr/bin/iperf3 -s -p {port.num}",
+                "app_download_role_name": "void",
+                "app_get_role_name": "iperf_get",
+                "app_sync_role_name": "iperf_install",
+                "update_status": True,
+                "update_app": not port.server.config.get("iperf"),
+            },
+        )
     elif port.forward_rule.method == MethodEnum.V2RAY:
         v2ray_config = generate_v2ray_config(port.forward_rule)
         with open(
@@ -74,3 +91,11 @@ def get_app_config(port: Port):
         )
     else:
         AppConfig("app.yml", {})
+
+
+def get_clean_port_config(port: Port):
+    return AppConfig(
+        "clean_port.yml", 
+        {
+            "local_port": port.num
+        })

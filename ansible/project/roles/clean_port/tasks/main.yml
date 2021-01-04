@@ -1,7 +1,7 @@
 ---
 - name: Exec iptables script
   block:
-    - name: Exec iptables script locally
+    - name: Exec iptables script locally to list usage
       shell: /usr/local/bin/iptables.sh list {{ local_port }}
       register: traffic
     - name: Exec iptables script locally
@@ -19,6 +19,11 @@
       register: traffic
     - name: Exec iptables script locally again
       shell: /usr/local/bin/iptables.sh delete {{ local_port }}
+
+- name: Set traffic result
+  set_fact:
+    traffic: "{{ traffic.stdout }}"
+    cacheable: yes
 
 - name: disable aurora
   systemd:

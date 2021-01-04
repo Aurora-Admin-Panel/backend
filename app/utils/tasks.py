@@ -318,9 +318,7 @@ def trigger_forward_rule(
         + f"new:{jsonable_encoder(new) if new else None}"
     )
 
-    if rule.method == MethodEnum.CADDY:
-        celery_app.send_task("tasks.app.rule_runner", kwargs={"rule_id": rule.id})
-    elif rule.method == MethodEnum.V2RAY:
+    if rule.method in (MethodEnum.CADDY, MethodEnum.V2RAY, MethodEnum.IPERF):
         celery_app.send_task("tasks.app.rule_runner", kwargs={"rule_id": rule.id})
 
     if any(r.method == MethodEnum.IPTABLES for r in (old, new) if r):

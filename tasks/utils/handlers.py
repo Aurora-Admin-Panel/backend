@@ -48,6 +48,8 @@ def update_facts(server_id: int, facts: t.Dict, md5: str = None):
         db_server.config["v2ray"] = facts.get("v2ray")
     if "brook" in facts:
         db_server.config["brook"] = facts.get("brook")
+    if "iperf" in facts:
+        db_server.config["iperf"] = facts.get("iperf")
     if "socat" in facts:
         db_server.config["socat"] = facts.get("socat")
     if "ehco" in facts:

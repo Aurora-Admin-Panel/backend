@@ -1,0 +1,9 @@
+---
+- name: Get iperf version
+  shell: iperf3 -version
+  register: iperf
+
+- name: Set iperf result
+  set_fact:
+    iperf: "{{ iperf.stdout }}"
+    cacheable: yes
