@@ -11,7 +11,7 @@ from app.core import config
 if config.ENABLE_SENTRY:
     sentry_sdk.init(
         release=f"{config.BACKEND_VERSION}",
-        dsn="https://5270ad88bab643a98799d2e20a2d4c9a@o176406.ingest.sentry.io/5545255",
+        dsn="https://74ad2dcda2794afa9a207be8e9c17ea5@sentry.leishi.io/4",
         traces_sample_rate=1.0,
         integrations=[CeleryIntegration()],
     )
