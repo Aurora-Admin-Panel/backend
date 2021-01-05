@@ -110,6 +110,13 @@ async def server_create(
     """
     if server.ansible_host is None:
         server.ansible_host = server.address
+    if server.ssh_password:
+        server.ssh_password = server.ssh_password.replace('\\', '\\\\')
+        server.ssh_password = server.ssh_password.replace('"', '\\"')
+    if server.sudo_password:
+        server.sudo_password = server.sudo_password.replace('\\', '\\\\')
+        server.sudo_password = server.sudo_password.replace('"', '\\"')
+
     server = create_server(db, server)
     trigger_ansible_hosts()
     trigger_server_connect(server.id, init=True)
@@ -131,6 +138,12 @@ async def server_edit(
     """
     Update an existing server
     """
+    if server.ssh_password:
+        server.ssh_password = server.ssh_password.replace('\\', '\\\\')
+        server.ssh_password = server.ssh_password.replace('"', '\\"')
+    if server.sudo_password:
+        server.sudo_password = server.sudo_password.replace('\\', '\\\\')
+        server.sudo_password = server.sudo_password.replace('"', '\\"')
     server = edit_server(db, server_id, server)
     trigger_ansible_hosts()
     trigger_server_connect(server.id)
