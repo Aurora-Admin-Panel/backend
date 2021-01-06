@@ -1,5 +1,4 @@
 ---
-
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: yes
