@@ -24,6 +24,7 @@ celery_app.conf.broker_transport_options = {
     'priority_steps': list(range(10)),
     'queue_order_strategy': 'priority',
 }
+celery_app.conf.worker_prefetch_multiplier = 1
 
 celery_app.autodiscover_tasks(
     [

@@ -2,6 +2,8 @@
 Description=App from Aurora Admin Panel
 After=network-online.target
 Wants=network-online.target systemd-networkd-wait-online.service
+StartLimitBurst=5
+StartLimitIntervalSec=500
 
 [Service]
 Type=simple
@@ -10,6 +12,8 @@ DynamicUser=true
 ExecStart=
 LimitNOFILE=1048576
 LimitNPROC=51200
+RestartSec=2s
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
