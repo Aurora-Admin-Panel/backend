@@ -38,6 +38,9 @@ def prepare_priv_dir_dict(server: t.Dict) -> str:
         if server.get("sudo_password"):
             passwords["^BECOME [pP]assword"] = server.get("sudo_password")
             cmdline += " -K"
+    if not server.get("sudo_password"):
+        with open(f"{priv_dir}/env/envvars", "a+") as f:
+            f.write("ANSIBLE_PIPELINING: True\n")
     if passwords:
         with open(f"{priv_dir}/env/passwords", "w+") as f:
             f.write("---\n")
