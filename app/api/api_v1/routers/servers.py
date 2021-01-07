@@ -146,7 +146,8 @@ async def server_edit(
         server.sudo_password = server.sudo_password.replace('"', '\\"')
     server = edit_server(db, server_id, server)
     trigger_ansible_hosts()
-    trigger_server_connect(server.id)
+    if server.config["system"] is None:
+        trigger_server_connect(server.id)
     return jsonable_encoder(server)
 
 @r.put(
