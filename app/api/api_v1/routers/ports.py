@@ -48,8 +48,8 @@ from app.core.auth import (
 from app.utils.tasks import (
     trigger_tc,
     remove_tc,
-    trigger_forward_rule,
     trigger_iptables_reset,
+    trigger_port_clean,
 )
 
 ports_router = r = APIRouter()
@@ -172,12 +172,12 @@ async def port_delete(
     Delete an existing port on server
     """
     db_port = get_port(db, server_id, port_id)
-    if db_port:
-        if db_port.forward_rule:
-            trigger_forward_rule(
-                db_port.forward_rule, db_port, old=db_port.forward_rule
-            )
-        delete_port(db, server_id, port_id)
+    if not db_port:
+        raise HTTPException(status_code=404, detail="Port not found")
+
+    if db_port.forward_rule:
+        trigger_port_clean(db_port.server, db_port)
+    delete_port(db, server_id, port_id)
     remove_tc(server_id, db_port.num)
     return db_port
 

@@ -4,19 +4,22 @@ import ansible_runner
 from uuid import uuid4
 from distutils.dir_util import copy_tree
 
-from app.db.session import SessionLocal
+from app.db.session import SessionLocal, get_db
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
+from app.db.models.port_forward import MethodEnum
 from app.db.crud.server import get_server, get_servers
-from app.db.crud.port_forward import get_all_iptables_rules
+from app.db.crud.port import get_port
+from app.db.crud.port_forward import get_all_ddns_rules
 from app.db.models.port_forward import PortForwardRule
 from app.utils.dns import dns_query
 from app.utils.ip import is_ip
 
 from tasks import celery_app
+from tasks.app import rule_runner
 from tasks.utils.runner import run_async
-from tasks.utils.server import prepare_priv_dir, iptables_restore_service_enabled
+from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
 
@@ -25,15 +28,24 @@ def iptables_runner(
     port_id: int,
     server_id: int,
     local_port: int,
-    remote_ip: str = None,
+    remote_address: str,
     remote_port: int = None,
     forward_type: str = None,
     update_status: bool = False,
 ):
-    server = get_server(SessionLocal(), server_id)
+    db = next(get_db())
+    port = get_port(db, server_id, port_id)
+    server = port.server
     if not forward_type:
         args = f" delete {local_port}"
-    elif remote_ip and remote_port:
+    elif remote_port:
+        if not is_ip(remote_address):
+            remote_ip = dns_query(remote_address)
+        else:
+            remote_ip = remote_address
+        port.forward_rule.config['remote_ip'] = remote_ip
+        db.add(port.forward_rule)
+        db.commit()
         args = (
             f" -t={forward_type} forward {local_port} {remote_ip} {remote_port}"
         )
@@ -80,7 +92,7 @@ def iptables_reset_runner(
 
 @celery_app.task()
 def ddns_runner():
-    rules = get_all_iptables_rules(SessionLocal())
+    rules = get_all_ddns_rules(next(get_db()))
     for rule in rules:
         if (
             rule.config.get("remote_address")
@@ -93,12 +105,19 @@ def ddns_runner():
                     f"DNS changed for address {rule.config['remote_address']}, "
                     + f"{rule.config['remote_ip']}->{updated_ip}"
                 )
-                iptables_runner.delay(
-                    rule.port.id,
-                    rule.port.server.id,
-                    rule.port.num,
+                if rule.method == MethodEnum.IPTABLES:
+                    port_id = rule.port.id
+                    server_id = rule.port.server.id
+                    port_num = rule.port.num
+                    iptables_runner.delay(
+                    port_id,
+                    server_id,
+                    port_num,
                     remote_ip=updated_ip,
                     remote_port=rule.config["remote_port"],
                     forward_type=rule.config.get("type", "ALL"),
                     update_status=True,
-                )
+                    )
+                else:
+                    rule_runner.delay(rule_id=rule.id)
+

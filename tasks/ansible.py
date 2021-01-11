@@ -1,20 +1,12 @@
-import json
-import ansible_runner
-from uuid import uuid4
-
 from tasks import celery_app
-from app.db.session import SessionLocal
-from app.db.models.port import Port
-from app.db.models.user import User
+from app.db.session import get_db
 from app.db.models.server import Server
-from app.db.models.port_forward import PortForwardRule
 
 
 @celery_app.task()
 def ansible_hosts_runner():
-    servers = (
-        SessionLocal().query(Server).filter(Server.is_active == True).all()
-    )
+    db = next(get_db())
+    servers = db.query(Server).filter(Server.is_active == True).all()
 
     with open("ansible/inventory/hosts", 'w+') as f:
         f.write("### START AUTO GENERATION ###\n")

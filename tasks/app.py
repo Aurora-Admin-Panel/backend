@@ -6,28 +6,21 @@ from uuid import uuid4
 from collections import namedtuple
 from datetime import datetime, timedelta
 
-from app.db.session import SessionLocal
-from app.db.models.port import Port
-from app.db.models.user import User
-from app.db.models.server import Server
-from app.db.models.port_forward import PortForwardRule, MethodEnum
+from app.db.session import get_db
 from app.db.crud.server import get_server
 from app.db.crud.port import get_port_by_id
 from app.db.crud.port_forward import get_forward_rule_by_id
-from app.utils.caddy import generate_caddy_config
-from app.utils.v2ray import generate_v2ray_config
 
 from tasks import celery_app
 from tasks.clean import clean_port_runner
+from tasks.functions import AppConfig
 from tasks.utils.runner import run
 from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import iptables_finished_handler, status_handler
 from tasks.utils.rule import get_app_config, get_clean_port_config
 
-AppConfig = namedtuple("AppConfig", ["playbook", "vars"])
 
-
-@celery_app.task(priority=0)
+@celery_app.task
 def app_runner(
     port_id: int,
     server_id: int,
@@ -45,7 +38,7 @@ def app_runner(
     ident: str = None,
     update_status: bool = False,
 ):
-    server = get_server(SessionLocal(), server_id)
+    server = get_server(next(get_db()), server_id)
     extravars = {
         "host": server.ansible_name,
         "local_port": port_num,
@@ -83,9 +76,9 @@ def app_runner(
     )
 
 
-@celery_app.task(priority=0)
+@celery_app.task
 def rule_runner(rule_id: int):
-    db = SessionLocal()
+    db = next(get_db())
     rule = get_forward_rule_by_id(db, rule_id)
     try:
         ident = uuid4()
@@ -94,15 +87,16 @@ def rule_runner(rule_id: int):
             reverse_proxy_port = get_port_by_id(
                 db, rule.config.get("reverse_proxy")
             )
-            app_configs.append(get_app_config(reverse_proxy_port))
+            app_configs.append(
+                AppConfig.configs[reverse_proxy_port.forward_rule.method].apply(db, reverse_proxy_port))
 
-        app_configs.append(get_app_config(rule.port))
+        app_configs.append(AppConfig.configs[rule.method].apply(db, rule.port))
 
         for config in app_configs:
             runner = run(
                 rule.port.server,
                 config.playbook,
-                extravars=config.vars,
+                extravars=config.extravars,
                 ident=ident,
                 status_handler=lambda s, **k: status_handler(
                     rule.port.id, s, True
@@ -118,9 +112,9 @@ def rule_runner(rule_id: int):
             clean_port_runner.apply_async(
                 (rule.port.server.id, rule.port.num),
                 eta=datetime.now()
-                + timedelta(seconds=rule.config.get("expire_second")),
+                    + timedelta(seconds=rule.config.get("expire_second")),
             )
-    except Exception:
+    except:
         rule.status = "failed"
         rule.config["error"] = traceback.format_exc()
         db.add(rule)

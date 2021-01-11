@@ -28,6 +28,4 @@
   roles:
     - role: traffic_delete_monitor
       when: traffic_meter is defined and traffic_meter
-    - role: iptables_init
-      when: init_iptables is defined and init_iptables
     - role: "{{ app_role_name }}"

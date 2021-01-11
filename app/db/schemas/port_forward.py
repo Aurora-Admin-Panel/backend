@@ -64,6 +64,7 @@ class ShadowsocksConfig(BaseModel):
     encryption: str
     udp: t.Optional[bool]
 
+
 class PortForwardRuleBase(BaseModel):
     config: t.Dict
     method: MethodEnum

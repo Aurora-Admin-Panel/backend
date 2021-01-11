@@ -1,5 +1,5 @@
 import typing as t
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 from urllib.parse import urlparse
 from fastapi import HTTPException, status
@@ -23,13 +23,13 @@ def get_forward_rule(
 ) -> PortForwardRule:
     forward_rule = (
         db.query(PortForwardRule)
-        .join(Port)
-        .filter(
+            .join(Port)
+            .filter(
             and_(
                 PortForwardRule.port_id == port_id, Port.server_id == server_id
             )
         )
-        .first()
+            .first()
     )
     return forward_rule
 
@@ -37,8 +37,8 @@ def get_forward_rule(
 def get_forward_rule_by_id(db: Session, rule_id: int) -> PortForwardRule:
     return (
         db.query(PortForwardRule)
-        .filter(PortForwardRule.id == rule_id)
-        .first()
+            .filter(PortForwardRule.id == rule_id)
+            .first()
     )
 
 
@@ -85,7 +85,7 @@ def edit_forward_rule(
     db.add(db_forward_rule)
     db.commit()
     db.refresh(db_forward_rule)
-    return old, db_forward_rule
+    return db_forward_rule
 
 
 def delete_forward_rule(
@@ -112,26 +112,37 @@ def delete_forward_rule(
 def get_all_gost_rules(db: Session, server_id: int) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-        .join(Port)
-        .filter(
+            .join(Port)
+            .filter(
             and_(
                 PortForwardRule.method == MethodEnum.GOST,
                 Port.server_id == server_id,
             )
         )
-        .all()
+            .all()
     )
+
 
 def get_all_iptables_rules(db: Session) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-        .filter(PortForwardRule.method == MethodEnum.IPTABLES)
-        .all()
+            .filter(PortForwardRule.method == MethodEnum.IPTABLES)
+            .all()
     )
+
+
+def get_all_ddns_rules(db: Session) -> t.List[PortForwardRule]:
+    return (
+        db.query(PortForwardRule)
+            .filter(or_(PortForwardRule.method == MethodEnum.IPTABLES, PortForwardRule.method == MethodEnum.BROOK,
+                        PortForwardRule.method == MethodEnum.TINY_PORT_MAPPER))
+            .all()
+    )
+
 
 def get_all_non_iptables_rules(db: Session) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-        .filter(PortForwardRule.method != MethodEnum.IPTABLES)
-        .all()
+            .filter(PortForwardRule.method != MethodEnum.IPTABLES)
+            .all()
     )

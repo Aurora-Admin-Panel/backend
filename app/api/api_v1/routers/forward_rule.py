@@ -96,17 +96,11 @@ async def forward_rule_create(
             detail="Cannot create more than one rule on same port",
         )
 
-    if forward_rule.method == MethodEnum.IPTABLES:
-        forward_rule = verify_iptables_config(forward_rule)
-    elif forward_rule.method == MethodEnum.GOST:
+    if forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_gost_config(db_port, forward_rule)
 
     forward_rule = create_forward_rule(db, db_port, forward_rule)
-    trigger_forward_rule(
-        forward_rule,
-        forward_rule.port,
-        new=forward_rule,
-    )
+    trigger_forward_rule(forward_rule)
     return forward_rule
 
 
@@ -138,13 +132,11 @@ async def forward_rule_edit(
             status_code=403,
             detail=f"{forward_rule.method.value} is not allowed")
 
-    if forward_rule.method == MethodEnum.IPTABLES:
-        forward_rule = verify_iptables_config(forward_rule)
-    elif forward_rule.method == MethodEnum.GOST:
+    if forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_gost_config(db_port, forward_rule)
 
-    old, updated = edit_forward_rule(db, server_id, port_id, forward_rule)
-    trigger_forward_rule(updated, updated.port, old, updated)
+    updated = edit_forward_rule(db, server_id, port_id, forward_rule)
+    trigger_forward_rule(updated)
     return updated
 
 
@@ -204,27 +196,6 @@ async def forward_rule_runner_get(
             artifacts.stdout = "No stdout found!"
     return artifacts
 
-
-def verify_iptables_config(
-    rule: t.Union[PortForwardRuleCreate, PortForwardRuleEdit]
-) -> t.Union[PortForwardRuleCreate, PortForwardRuleEdit]:
-    if not rule.method == MethodEnum.IPTABLES:
-        return rule
-    if rule.config:
-        if not rule.config.remote_ip:
-            if rule.config.remote_address:
-                if is_ip(rule.config.remote_address):
-                    rule.config.remote_ip = rule.config.remote_address
-                else:
-                    rule.config.remote_ip = dns_query(
-                        rule.config.remote_address
-                    )
-        elif not is_ip(rule.config.remote_ip):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Not a valid ip address: {rule.config.remote_ip}",
-            )
-    return rule
 
 
 def verify_gost_config(

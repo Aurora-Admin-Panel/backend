@@ -1,16 +1,8 @@
-import json
-import ansible_runner
-from uuid import uuid4
-
-from app.db.session import SessionLocal
-from app.db.models.port import Port
-from app.db.models.user import User
-from app.db.models.server import Server
+from app.db.session import get_db
 from app.db.crud.server import get_server
-from app.db.models.port_forward import PortForwardRule
 
 from tasks import celery_app
-from tasks.utils.runner import run_async
+from tasks.utils.runner import run
 
 
 @celery_app.task()
@@ -20,7 +12,7 @@ def tc_runner(
     egress_limit: int = None,
     ingress_limit: int = None
 ):
-    server = get_server(SessionLocal(), server_id)
+    server = get_server(next(get_db()), server_id)
     args = ""
     if egress_limit:
         args += f' -e={egress_limit}kbit'
@@ -28,9 +20,8 @@ def tc_runner(
         args += f' -i={ingress_limit}kbit'
     args += f' {port_num}'
 
-    t = run_async(
+    return run(
         server=server,
         playbook="tc.yml",
         extravars={"host": server.ansible_name, "tc_args": args},
     )
-    return t[1].config.artifact_dir

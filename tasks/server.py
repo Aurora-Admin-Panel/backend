@@ -50,4 +50,4 @@ def servers_runner(**kwargs):
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     for server in servers:
         if "init" not in server.config or server.config["init"] != init_md5:
-            server_runner.apply_async((server.id,), kwargs, priority=9)
+            server_runner.delay(server.id, **kwargs)

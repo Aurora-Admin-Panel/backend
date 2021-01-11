@@ -13,18 +13,18 @@ class TypeEnum(str, enum.Enum):
 
 
 class MethodEnum(enum.Enum):
-    IPTABLES         = "iptables"
+    BROOK            = "brook"
+    CADDY            = "caddy"
     EHCO             = "ehco"
     GOST             = "gost"
-    CADDY            = "caddy"
-    V2RAY            = "v2ray"
     IPERF            = "iperf"
-    BROOK            = "brook"
-    SOCAT            = "socat"
-    WSTUNNEL         = "wstunnel"
-    SHADOWSOCKS      = "shadowsocks"
+    IPTABLES         = "iptables"
     NODE_EXPORTER    = "node_exporter"
+    SHADOWSOCKS      = "shadowsocks"
+    SOCAT            = "socat"
     TINY_PORT_MAPPER = "tiny_port_mapper"
+    V2RAY            = "v2ray"
+    WSTUNNEL         = "wstunnel"
 
 
 class PortForwardRule(Base):

@@ -19,11 +19,24 @@ if config.ENABLE_SENTRY:
 
 celery_app = Celery("worker", broker="redis://redis:6379/0")
 
-celery_app.conf.task_routes = {"tasks.*": "main-queue"}
-celery_app.conf.broker_transport_options = {
-    'priority_steps': list(range(10)),
-    'queue_order_strategy': 'priority',
+celery_app.conf.task_routes = {
+    "tasks.ansible.*": "high-queue",
+    "tasks.app.*": "high-queue",
+    "tasks.ehco.*": "high-queue",
+    "tasks.brook.*": "high-queue",
+    "tasks.iptables.*": "high-queue",
+    "tasks.gost.*": "high-queue",
+    "tasks.tc.*": "high-queue",
+    "tasks.v2ray.*": "high-queue",
+    "tasks.socat.*": "high-queue",
+    "tasks.wstunnel.*": "high-queue",
+    "tasks.shadowsocks.*": "high-queue",
+    "tasks.node_exporter.*": "high-queue",
+    "tasks.tiny_port_mapper.*": "high-queue",
+
+    "tasks.*": "low-queue",
 }
+celery_app.conf.task_acks_late = True
 celery_app.conf.worker_prefetch_multiplier = 1
 
 celery_app.autodiscover_tasks(

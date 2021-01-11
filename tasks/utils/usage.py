@@ -1,14 +1,9 @@
 import re
-import os
-import hashlib
 import typing as t
 from datetime import datetime
 from collections import defaultdict
-from distutils.dir_util import copy_tree
-from sqlalchemy.orm import joinedload, Session
+from sqlalchemy.orm import Session
 
-from app.utils.tasks import trigger_forward_rule, trigger_tc
-from app.utils.size import get_readable_size
 from app.db.constants import LimitActionEnum
 from app.db.session import SessionLocal
 from app.db.models.port import Port
@@ -23,6 +18,8 @@ from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.schemas.server import ServerEdit
 
+from tasks import celery_app
+from tasks.tc import tc_runner
 
 
 def update_usage(
@@ -95,8 +92,9 @@ def apply_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
     elif action == LimitActionEnum.DELETE_RULE:
         if not port.forward_rule:
             return
-        forward_urle, _ = delete_forward_rule(db, port.server_id, port.id)
-        trigger_forward_rule(forward_urle, port, old=forward_urle)
+        delete_forward_rule(db, port.server_id, port.id)
+        celery_app.send_task("tasks.clean.clean_port_runner",
+                             kwargs={"server_id": port.server.id, "port_num": port.num})
     elif action in action_to_speed:
         db.refresh(port)
         if (
@@ -107,7 +105,12 @@ def apply_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
             port.config["ingress_limit"] = action_to_speed[action]
             db.add(port)
             db.commit()
-            trigger_tc(port)
+            tc_runner.apply_async(kwargs={
+                "server_id": port.server.id,
+                "port_num": port.num,
+                "egress_limit": port.config.get("egress_limit"),
+                "ingress_limit": port.config.get("ingress_limit"),
+            }, priority=0)
     else:
         print(f"No action found {action} for port (id: {port.id})")
 
@@ -177,16 +180,16 @@ def update_traffic(server: Server, traffic: str, accumulate: bool = False):
     for port_num, usage in traffics.items():
         update_usage(
             db, prev_ports, db_ports, server.id, port_num, usage, accumulate
-            )
+        )
     server_users_usage = defaultdict(lambda: {"download": 0, "upload": 0})
     for port in get_server(db, server.id).ports:
         if port.usage:
             check_port_limits(db, port)
             for port_user in port.allowed_users:
                 server_users_usage[port_user.user_id][
-                        "download"
-                    ] += port.usage.download
+                    "download"
+                ] += port.usage.download
                 server_users_usage[port_user.user_id][
-                        "upload"
-                    ] += port.usage.upload
+                    "upload"
+                ] += port.usage.upload
     check_server_user_limit(db, server.id, server_users_usage)

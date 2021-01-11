@@ -6,7 +6,7 @@
       register: node_exporter
     - name: Set fact for node_exporter version
       set_fact:
-        node_exporter: "{{ node_exporter.stdout }}"
+        node_exporter: "{{ node_exporter.stderr }}"
         cacheable: yes
   rescue:
     - name: Set node_exporter not exist

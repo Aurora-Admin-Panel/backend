@@ -1,9 +1,9 @@
-import os
 import uvicorn
-import sentry_sdk
 import typing as t
-from datetime import datetime, timedelta
 from fastapi import FastAPI, Depends
+import sentry_sdk
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+from sentry_sdk.integrations.redis import RedisIntegration
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,7 +17,6 @@ from app.db.session import SessionLocal
 from app.core import config
 from app.core.auth import get_current_active_user
 from tasks import celery_app
-from tasks.traffic import traffic_runner
 
 
 app = FastAPI(
@@ -43,7 +42,8 @@ app.add_middleware(
 
 sentry_sdk.init(
     release=f"{config.BACKEND_VERSION}",
-    dsn="https://ef5bcad7a6e146bebfcd1f254af258a8@sentry.leishi.io/2"
+    dsn="https://ef5bcad7a6e146bebfcd1f254af258a8@sentry.leishi.io/2",
+    integrations=[SqlalchemyIntegration(), RedisIntegration()],
 )
 
 
