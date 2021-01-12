@@ -1,6 +1,6 @@
 import os
 import typing as t
-from distutils.dir_util import copy_tree
+from shutil import copytree
 
 from app.db.models.port import Port
 from app.db.models.user import User
@@ -11,8 +11,8 @@ from app.db.models.port_forward import PortForwardRule
 def prepare_priv_dir_dict(server: t.Dict) -> str:
     priv_dir = f"ansible/priv_data_dirs/{server.get('id', 0)}"
     os.makedirs(priv_dir, exist_ok=True)
-    copy_tree("ansible/inventory", f"{priv_dir}/inventory")
-    copy_tree("ansible/env", f"{priv_dir}/env")
+    copytree("ansible/inventory", f"{priv_dir}/inventory", dirs_exist_ok=True)
+    copytree("ansible/env", f"{priv_dir}/env", dirs_exist_ok=True)
     passwords = {}
     cmdline = ""
     if server.get("ssh_password") or server.get("sudo_password"):

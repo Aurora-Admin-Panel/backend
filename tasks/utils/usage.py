@@ -5,7 +5,7 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from app.db.constants import LimitActionEnum
-from app.db.session import SessionLocal
+from app.db.session import get_db
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
@@ -160,7 +160,7 @@ def check_server_user_limit(
 
 
 def update_traffic(server: Server, traffic: str, accumulate: bool = False):
-    db = SessionLocal()
+    db = next(get_db())
     pattern = re.compile(r"\/\* (UPLOAD|DOWNLOAD)(?:\-UDP)? ([0-9]+)->")
     prev_ports = {port.num: port for port in server.ports}
     db_ports = {}

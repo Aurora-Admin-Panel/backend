@@ -15,6 +15,9 @@ def run_async(
     ident: str = None,
     **kwargs
 ):
+    if not server:
+        print("Server not found!")
+        return
     if extravars is None:
         extravars = {}
     if isinstance(server, dict):
@@ -40,6 +43,9 @@ def run(
     ident: str = None,
     **kwargs
 ):
+    if not server:
+        print("Server not found!")
+        return
     if extravars is None:
         extravars = {}
     if isinstance(server, dict):
