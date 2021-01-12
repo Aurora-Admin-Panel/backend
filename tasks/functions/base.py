@@ -42,6 +42,7 @@ class AppConfig(metaclass=ConfigMount):
         self.app_role_name = "app"
         self.app_sync_role_name = "app_sync"
         self.app_get_role_name = "app_get"
+        self.app_download_role_name = f"{self.method.value.lower()}_download"
 
         self.remote_ip = "ANYWHERE"
 
