@@ -113,7 +113,7 @@ def ddns_runner():
                     port_id,
                     server_id,
                     port_num,
-                    remote_ip=updated_ip,
+                    remote_address=updated_ip,
                     remote_port=rule.config["remote_port"],
                     forward_type=rule.config.get("type", "ALL"),
                     update_status=True,
