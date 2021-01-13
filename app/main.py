@@ -16,6 +16,7 @@ from app.core import config
 from app.db.session import SessionLocal
 from app.core import config
 from app.core.auth import get_current_active_user
+from app.utils.ip import get_external_ip
 from tasks import celery_app
 
 
@@ -42,9 +43,11 @@ app.add_middleware(
 
 sentry_sdk.init(
     release=f"{config.BACKEND_VERSION}",
+    environment=f"{config.ENVIRONMENT}",
     dsn="https://ef5bcad7a6e146bebfcd1f254af258a8@sentry.leishi.io/2",
     integrations=[SqlalchemyIntegration(), RedisIntegration()],
 )
+sentry_sdk.set_tag('panel.ip', get_external_ip())
 
 
 @app.middleware("http")
