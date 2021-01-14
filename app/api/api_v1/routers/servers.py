@@ -111,10 +111,10 @@ async def server_create(
     if server.ansible_host is None:
         server.ansible_host = server.address
     if server.ssh_password:
-        server.ssh_password = server.ssh_password.replace('\\', '\\\\')
+        server.ssh_password = server.ssh_password.replace("\\", "\\\\")
         server.ssh_password = server.ssh_password.replace('"', '\\"')
     if server.sudo_password:
-        server.sudo_password = server.sudo_password.replace('\\', '\\\\')
+        server.sudo_password = server.sudo_password.replace("\\", "\\\\")
         server.sudo_password = server.sudo_password.replace('"', '\\"')
 
     server = create_server(db, server)
@@ -139,16 +139,17 @@ async def server_edit(
     Update an existing server
     """
     if server.ssh_password:
-        server.ssh_password = server.ssh_password.replace('\\', '\\\\')
+        server.ssh_password = server.ssh_password.replace("\\", "\\\\")
         server.ssh_password = server.ssh_password.replace('"', '\\"')
     if server.sudo_password:
-        server.sudo_password = server.sudo_password.replace('\\', '\\\\')
+        server.sudo_password = server.sudo_password.replace("\\", "\\\\")
         server.sudo_password = server.sudo_password.replace('"', '\\"')
     server = edit_server(db, server_id, server)
     trigger_ansible_hosts()
     if server.config["system"] is None:
         trigger_server_connect(server.id)
     return jsonable_encoder(server)
+
 
 @r.put(
     "/servers/{server_id}/config",
@@ -168,6 +169,7 @@ async def server_config_edit(
     server = edit_server_config(db, server_id, server)
     return jsonable_encoder(server)
 
+
 @r.delete(
     "/servers/{server_id}",
     response_model=ServerOpsOut,
@@ -186,8 +188,11 @@ async def server_delete(
     trigger_server_clean(server)
     return server
 
+
 @r.post(
-    "/servers/{server_id}/connect", response_model=t.Union[ServerOpsOut,ServerOut], response_model_exclude_none=True
+    "/servers/{server_id}/connect",
+    response_model=t.Union[ServerOpsOut, ServerOut],
+    response_model_exclude_none=True,
 )
 async def server_connect(
     request: Request,
