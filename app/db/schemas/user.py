@@ -19,11 +19,14 @@ class UserOut(UserBase):
     class Config:
         orm_mode = True
 
+
 class UserPort(BaseModel):
     port_id: int
 
+
 class UserServer(BaseModel):
     server_id: int
+
 
 class UserOpsOut(UserBase):
     id: int
@@ -60,6 +63,10 @@ class UserEdit(BaseModel):
         orm_mode = True
 
 
+class UserDelete(BaseModel):
+    remove_rule: t.Optional[bool] = False
+
+
 class MeEdit(BaseModel):
     email: t.Optional[str]
     first_name: t.Optional[str]
@@ -77,7 +84,6 @@ class User(UserBase):
     class Config:
         orm_mode = True
 
-    
     def is_admin(self) -> bool:
         return self.is_ops or self.is_superuser
 
@@ -94,6 +100,7 @@ class TokenData(BaseModel):
 
 class PortUserConfig(BaseModel):
     quota: t.Optional[int]
+
 
 class UserPortOut(BaseModel):
     port_id: int

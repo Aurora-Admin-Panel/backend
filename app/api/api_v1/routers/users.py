@@ -1,7 +1,6 @@
 import typing as t
-from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from fastapi import APIRouter, Request, Depends, Response, encoders
+from fastapi import APIRouter, Request, Depends, Response
 from fastapi.encoders import jsonable_encoder
 
 from app.core.security import verify_password
@@ -16,9 +15,14 @@ from app.db.crud.user import (
     get_user_servers,
     get_user_ports,
 )
+from app.db.crud.port_forward import (
+    get_forward_rule_for_user,
+    delete_forward_rule_by_id,
+)
 from app.db.schemas.user import (
     UserCreate,
     UserEdit,
+    UserDelete,
     User,
     UserOut,
     UserOpsOut,
@@ -27,6 +31,7 @@ from app.db.schemas.user import (
 )
 from app.core.auth import get_current_active_user, get_current_active_superuser
 from app.utils.size import get_readable_size
+from app.utils.tasks import trigger_port_clean
 
 users_router = r = APIRouter()
 
@@ -113,9 +118,6 @@ async def user_details(
     """
     user = get_user(db, user_id)
     return jsonable_encoder(user)
-    # return encoders.jsonable_encoder(
-    #     user, skip_defaults=True, exclude_none=True,
-    # )
 
 
 @r.post("/users", response_model=UserOpsOut, response_model_exclude_none=True)
@@ -132,7 +134,9 @@ async def user_create(
 
 
 @r.put(
-    "/users/{user_id}", response_model=UserOpsOut, response_model_exclude_none=True
+    "/users/{user_id}",
+    response_model=UserOpsOut,
+    response_model_exclude_none=True,
 )
 async def user_edit(
     request: Request,
@@ -148,18 +152,26 @@ async def user_edit(
 
 
 @r.delete(
-    "/users/{user_id}", response_model=User, response_model_exclude_none=True
+    "/users/{user_id}", response_model=UserOut, response_model_exclude_none=True
 )
 async def user_delete(
     request: Request,
     user_id: int,
+    user_delete: UserDelete,
     db=Depends(get_db),
     current_user=Depends(get_current_active_superuser),
 ):
     """
     Delete existing user
     """
-    return delete_user(db, user_id)
+    user = get_user(db, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user_delete.remove_rule:
+        for rule in get_forward_rule_for_user(db, user_id):
+            trigger_port_clean(rule.port.server, rule.port)
+            delete_forward_rule_by_id(db, rule.id)
+    return delete_user(db, user)
 
 
 @r.get(

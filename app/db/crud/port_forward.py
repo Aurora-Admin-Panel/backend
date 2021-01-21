@@ -4,17 +4,15 @@ from sqlalchemy.orm import Session
 from urllib.parse import urlparse
 from fastapi import HTTPException, status
 
-from app.utils.ip import is_ip
-from app.utils.dns import dns_query
-from app.core.security import get_password_hash
 from app.db.models.user import User
+from app.db.models.server import Server
 from app.db.schemas.port_forward import (
     PortForwardRuleBase,
     PortForwardRuleOut,
     PortForwardRuleCreate,
     PortForwardRuleEdit,
 )
-from app.db.models.port import Port
+from app.db.models.port import Port, PortUser
 from app.db.models.port_forward import PortForwardRule, TypeEnum, MethodEnum
 
 
@@ -23,22 +21,33 @@ def get_forward_rule(
 ) -> PortForwardRule:
     forward_rule = (
         db.query(PortForwardRule)
-            .join(Port)
-            .filter(
+        .join(Port)
+        .filter(
             and_(
                 PortForwardRule.port_id == port_id, Port.server_id == server_id
             )
         )
-            .first()
+        .first()
     )
     return forward_rule
 
 
 def get_forward_rule_by_id(db: Session, rule_id: int) -> PortForwardRule:
     return (
+        db.query(PortForwardRule).filter(PortForwardRule.id == rule_id).first()
+    )
+
+
+def get_forward_rule_for_user(
+    db: Session, user_id: int
+) -> t.List[PortForwardRule]:
+    return (
         db.query(PortForwardRule)
-            .filter(PortForwardRule.id == rule_id)
-            .first()
+        .join(Port)
+        .join(PortUser)
+        .join(Server)
+        .filter(PortUser.user_id == user_id)
+        .all()
     )
 
 
@@ -96,8 +105,12 @@ def delete_forward_rule(
         raise HTTPException(
             status_code=404, detail="Port forward rule not found"
         )
-    if user is not None and not user.is_admin() and not any(
-        user.id == u.user_id for u in db_forward_rule.port.allowed_users
+    if (
+        user is not None
+        and not user.is_admin()
+        and not any(
+            user.id == u.user_id for u in db_forward_rule.port.allowed_users
+        )
     ):
         raise HTTPException(
             status_code=403,
@@ -109,40 +122,54 @@ def delete_forward_rule(
     return db_forward_rule, port
 
 
+def delete_forward_rule_by_id(db: Session, rule_id: int):
+    db_forward_rule = get_forward_rule_by_id(db, rule_id)
+    if not db_forward_rule:
+        return None
+    db.delete(db_forward_rule)
+    db.commit()
+    return db_forward_rule
+
+
 def get_all_gost_rules(db: Session, server_id: int) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-            .join(Port)
-            .filter(
+        .join(Port)
+        .filter(
             and_(
                 PortForwardRule.method == MethodEnum.GOST,
                 Port.server_id == server_id,
             )
         )
-            .all()
+        .all()
     )
 
 
 def get_all_iptables_rules(db: Session) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-            .filter(PortForwardRule.method == MethodEnum.IPTABLES)
-            .all()
+        .filter(PortForwardRule.method == MethodEnum.IPTABLES)
+        .all()
     )
 
 
 def get_all_ddns_rules(db: Session) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-            .filter(or_(PortForwardRule.method == MethodEnum.IPTABLES, PortForwardRule.method == MethodEnum.BROOK,
-                        PortForwardRule.method == MethodEnum.TINY_PORT_MAPPER))
-            .all()
+        .filter(
+            or_(
+                PortForwardRule.method == MethodEnum.IPTABLES,
+                PortForwardRule.method == MethodEnum.BROOK,
+                PortForwardRule.method == MethodEnum.TINY_PORT_MAPPER,
+            )
+        )
+        .all()
     )
 
 
 def get_all_non_iptables_rules(db: Session) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
-            .filter(PortForwardRule.method != MethodEnum.IPTABLES)
-            .all()
+        .filter(PortForwardRule.method != MethodEnum.IPTABLES)
+        .all()
     )

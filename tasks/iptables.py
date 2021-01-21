@@ -43,7 +43,7 @@ def iptables_runner(
             remote_ip = dns_query(remote_address)
         else:
             remote_ip = remote_address
-        port.forward_rule.config['remote_ip'] = remote_ip
+        port.forward_rule.config["remote_ip"] = remote_ip
         db.add(port.forward_rule)
         db.commit()
         args = (
@@ -58,7 +58,7 @@ def iptables_runner(
         "init_iptables": not iptables_restore_service_enabled(server.config),
     }
 
-    t = run_async(
+    return run(
         server=server,
         playbook="iptables.yml",
         extravars=extravars,
@@ -67,7 +67,6 @@ def iptables_runner(
         if update_status
         else lambda r: None,
     )
-    return t[1].config.artifact_dir
 
 
 @celery_app.task()
@@ -110,14 +109,13 @@ def ddns_runner():
                     server_id = rule.port.server.id
                     port_num = rule.port.num
                     iptables_runner.delay(
-                    port_id,
-                    server_id,
-                    port_num,
-                    remote_address=updated_ip,
-                    remote_port=rule.config["remote_port"],
-                    forward_type=rule.config.get("type", "ALL"),
-                    update_status=True,
+                        port_id,
+                        server_id,
+                        port_num,
+                        remote_address=updated_ip,
+                        remote_port=rule.config["remote_port"],
+                        forward_type=rule.config.get("type", "ALL"),
+                        update_status=True,
                     )
                 else:
                     rule_runner.delay(rule_id=rule.id)
-

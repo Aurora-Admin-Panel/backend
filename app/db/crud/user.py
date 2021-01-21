@@ -43,6 +43,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100) -> t.List[UserOut]:
             .joinedload(Port.usage)
         )
         .options(joinedload(User.allowed_servers))
+        .order_by(User.email.asc())
         .offset(skip)
         .limit(limit)
         .all()
@@ -66,10 +67,7 @@ def create_user(db: Session, user: UserCreate):
     return get_user(db, db_user.id)
 
 
-def delete_user(db: Session, user_id: int):
-    user = get_user(db, user_id)
-    if not user:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+def delete_user(db: Session, user: User) -> User:
     db.delete(user)
     db.commit()
     return user
