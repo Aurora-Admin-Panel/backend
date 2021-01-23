@@ -64,12 +64,13 @@ async def servers_list(
     """
     Get all servers
     """
-    servers = jsonable_encoder(get_servers(db, user, offset, limit))
+    servers = get_servers(db, user, offset, limit)
     # This is necessary for react-admin to work
-    response.headers["Content-Range"] = f"0-9/{len(servers)}"
-    if user.is_ops or user.is_superuser:
-        return [ServerOpsOut(**server) for server in servers]
-    return [ServerOut(**server) for server in servers]
+    # response.headers["Content-Range"] = f"0-9/{len(servers)}"
+    return servers
+    # if user.is_ops or user.is_superuser:
+    #     return [ServerOpsOut(**server.__dict__) for server in servers]
+    # return [ServerOut(**server.__dict__) for server in servers]
 
 
 @r.get(
@@ -90,10 +91,10 @@ async def server_get(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     if user.is_admin():
-        return ServerOpsOut(**jsonable_encoder(server))
+        return ServerOpsOut(**server.__dict__)
     if not any(user.id == u.user_id for u in server.allowed_users):
         raise HTTPException(status_code=404, detail="Server not found")
-    return ServerOut(**jsonable_encoder(server))
+    return ServerOut(**server.__dict__)
 
 
 @r.post(

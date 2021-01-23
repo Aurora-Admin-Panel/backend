@@ -41,5 +41,5 @@ class Server(Base):
 
     ports = relationship("Port", cascade="all,delete", back_populates="server")
     users = relationship("User", secondary="server_user", back_populates="servers")
-    allowed_users = relationship("ServerUser", cascade="all,delete", back_populates="server")
+    allowed_users = relationship("ServerUser", cascade="all,delete", back_populates="server", lazy='joined')
 

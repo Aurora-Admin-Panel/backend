@@ -1,4 +1,6 @@
 import uvicorn
+import cProfile
+import pstats
 import typing as t
 from fastapi import FastAPI, Depends
 import sentry_sdk
@@ -19,6 +21,8 @@ from app.core.auth import get_current_active_user
 from app.utils.ip import get_external_ip
 from tasks import celery_app
 
+import yappi
+from pyinstrument import Profiler
 
 app = FastAPI(
     title=config.PROJECT_NAME,
@@ -49,6 +53,16 @@ sentry_sdk.init(
 )
 sentry_sdk.set_tag('panel.ip', get_external_ip())
 
+@app.middleware("http")
+async def profile_middleware(request: Request, call_next):
+    profiler = Profiler()
+    profiler.start()
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        profiler.stop()
+        print(profiler.output_text(unicode=True, color=True))
 
 @app.middleware("http")
 async def sentry_exception(request: Request, call_next):

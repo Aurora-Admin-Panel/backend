@@ -104,7 +104,6 @@ class ServerBase(BaseModel):
 
 class ServerOut(ServerBase):
     id: int
-    config: ServerConfig
 
     class Config:
         orm_mode = True
@@ -116,7 +115,6 @@ class ServerOpsOut(ServerOut):
     ansible_host: t.Optional[str]
     ansible_port: t.Optional[int]
     ansible_user: t.Optional[str]
-    config: ServerConfig
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
     allowed_users: t.List[ServerUserOpsOut]

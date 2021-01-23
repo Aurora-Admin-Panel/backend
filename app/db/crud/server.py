@@ -55,9 +55,6 @@ def get_server(db: Session, server_id: int) -> Server:
         db.query(Server)
         .filter(and_(Server.id == server_id, Server.is_active == True))
         .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
-        .options(joinedload(Server.users).joinedload(User.ports))
-        .options(joinedload(Server.ports).joinedload(Port.usage))
-        .options(joinedload(Server.ports).joinedload(Port.allowed_users))
         .first()
     )
 

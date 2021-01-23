@@ -39,3 +39,7 @@
     name: iptables-restore
     enabled: 'yes'
     daemon_reload: yes
+
+- name: get service facts
+  service_facts:
+  register: service

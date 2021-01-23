@@ -3,7 +3,7 @@ Description=Restore iptables rule by Aurora Admin Panel
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c '/usr/sbin/iptables-restore < /etc/sysconfig/iptables'
+ExecStart=/bin/sh -c '/usr/sbin/iptables-restore -c < /etc/sysconfig/iptables'
 
 [Install]
 WantedBy=multi-user.target
