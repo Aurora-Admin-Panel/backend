@@ -71,7 +71,7 @@ async def ports_list(
     """
     Get all ports related to server
     """
-    ports = get_ports(db, server_id, user, offset, limit)
+    ports = get_ports(db, server_id, user)
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(ports)}"
 
