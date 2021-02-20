@@ -53,9 +53,7 @@ class UserOpsOut(UserBase):
 
 class UserCreate(UserBase):
     password: str
-
-    class Config:
-        orm_mode = True
+    notes: t.Optional[str]
 
 
 class UserEdit(BaseModel):

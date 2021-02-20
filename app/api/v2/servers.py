@@ -84,9 +84,8 @@ async def server_get(
     server = get_server(db, server_id)
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
-    if not user.is_superuser or (
-        user.is_ops
-        and not any(user.id == u.user_id for u in server.allowed_users)
+    if not user.is_superuser and not any(
+        user.id == u.user_id for u in server.allowed_users
     ):
         raise HTTPException(status_code=404, detail="Server not found")
     return server
@@ -109,8 +108,9 @@ async def detailed_server_get(
     server = get_server(db, server_id)
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
-    if not user.is_superuser or (
-        user.is_ops
+    if (
+        not user.is_superuser
+        and user.is_ops
         and not any(user.id == u.user_id for u in server.allowed_users)
     ):
         raise HTTPException(status_code=404, detail="Server not found")
