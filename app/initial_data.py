@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 from getpass import getpass
 
-from app.db.session import get_db
-from app.db.session import SessionLocal
+from app.db.session import db_session
 from app.db.crud.user import create_user
 from app.db.schemas.user import UserCreate
 
 
 def init() -> None:
-    db = SessionLocal()
     email = input("请输入管理员邮箱：")
-    if not email or '@' not in email:
+    if not email or "@" not in email:
         print(" 邮箱格式不正确　！")
         return
     password = getpass("请输入密码：")
@@ -19,15 +17,16 @@ def init() -> None:
         print("两次密码不一致！")
         return
 
-    create_user(
-        db,
-        UserCreate(
-            email=email,
-            password=password,
-            is_active=True,
-            is_superuser=True,
-        ),
-    )
+    with db_session() as db:
+        create_user(
+            db,
+            UserCreate(
+                email=email,
+                password=password,
+                is_active=True,
+                is_superuser=True,
+            ),
+        )
 
 
 if __name__ == "__main__":

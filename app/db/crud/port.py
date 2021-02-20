@@ -22,7 +22,7 @@ from app.db.models.port_forward import PortForwardRule
 
 
 def get_ports(
-    db: Session, server_id: int, user: User, offset: int = 0, limit: int = 100
+    db: Session, server_id: int, user: User
 ) -> t.List[Port]:
     if user.is_admin():
         return (
@@ -32,8 +32,6 @@ def get_ports(
             .options(joinedload(Port.forward_rule))
             .options(joinedload(Port.usage))
             .order_by(Port.num)
-            .offset(offset)
-            .limit(limit)
             .all()
         )
     return (
@@ -48,8 +46,6 @@ def get_ports(
         .options(joinedload(Port.forward_rule))
         .options(joinedload(Port.usage))
         .order_by(Port.num)
-        .offset(offset)
-        .limit(limit)
         .all()
     )
 
@@ -64,6 +60,7 @@ def get_port(db: Session, server_id: int, port_id: int) -> Port:
         .first()
     )
 
+
 def get_port_with_num(db: Session, server_id: int, port_num: int) -> Port:
     return (
         db.query(Port)
@@ -72,6 +69,7 @@ def get_port_with_num(db: Session, server_id: int, port_num: int) -> Port:
         .first()
     )
 
+
 def get_port_by_id(db: Session, port_id: int) -> Port:
     return (
         db.query(Port)
@@ -79,6 +77,7 @@ def get_port_by_id(db: Session, port_id: int) -> Port:
         .options(joinedload(Port.forward_rule))
         .first()
     )
+
 
 def create_port(db: Session, server_id: int, port: PortCreate) -> Port:
     db_port = Port(**port.dict(), server_id=server_id)

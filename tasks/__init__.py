@@ -25,17 +25,8 @@ celery_app = Celery("worker", broker="redis://redis:6379/0")
 celery_app.conf.task_routes = {
     "tasks.ansible.*": "high-queue",
     "tasks.app.*": "high-queue",
-    "tasks.ehco.*": "high-queue",
-    "tasks.brook.*": "high-queue",
     "tasks.iptables.*": "high-queue",
-    "tasks.gost.*": "high-queue",
     "tasks.tc.*": "high-queue",
-    "tasks.v2ray.*": "high-queue",
-    "tasks.socat.*": "high-queue",
-    "tasks.wstunnel.*": "high-queue",
-    "tasks.shadowsocks.*": "high-queue",
-    "tasks.node_exporter.*": "high-queue",
-    "tasks.tiny_port_mapper.*": "high-queue",
 
     "tasks.*": "low-queue",
 }
@@ -85,7 +76,7 @@ celery_app.conf.beat_schedule = {
 def configure_workers(sender=None, conf=None, **kwargs):
     celery_app.send_task("tasks.ansible.ansible_hosts_runner")
     celery_app.send_task(
-        "tasks.server.servers_runner", 
+        "tasks.server.servers_runner",
         kwargs={
             "prepare_services": True,
             "sync_scripts": True,

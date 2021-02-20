@@ -4,7 +4,6 @@ from tasks import celery_app
 from app.db.models.port import Port
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule, MethodEnum
-from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.schemas.server import ServerEdit
 
 from tasks.app import rule_runner
@@ -92,9 +91,9 @@ def trigger_server_clean(server: Server):
     )
 
 
-def trigger_port_clean(server: Server, port: Port):
+def trigger_port_clean(server: Server, port: Port, update_traffic: bool = True):
     print(f"Sending clean.clean_port_runner task")
     celery_app.send_task(
         "tasks.clean.clean_port_runner",
-        kwargs={"server_id": server.id, "port_num": port.num},
+        kwargs={"server_id": server.id, "port_num": port.num, "update_traffic": update_traffic},
     )

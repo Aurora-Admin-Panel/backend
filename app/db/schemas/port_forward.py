@@ -29,8 +29,10 @@ class GostConfig(BaseModel):
     ServeNodes: t.List
     ChainNodes: t.Optional[t.List]
 
+
 class IperfConfig(BaseModel):
     expire_second: int
+
 
 class V2rayConfig(BaseModel):
     inbound: t.Dict
@@ -58,6 +60,7 @@ class WsTunnelConfig(BaseModel):
     proxy_port: int
     remote_address: t.Optional[str]
     remote_port: t.Optional[int]
+
 
 class ShadowsocksConfig(BaseModel):
     password: str

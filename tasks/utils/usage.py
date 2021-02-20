@@ -5,15 +5,15 @@ from collections import defaultdict
 from sqlalchemy.orm import Session
 
 from app.db.constants import LimitActionEnum
-from app.db.session import get_db
+from app.db.session import db_session
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
-from app.db.crud.port import get_port_with_num
+from app.db.crud.port import get_port_with_num, get_port_by_id
 from app.db.crud.port_forward import delete_forward_rule, get_forward_rule
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
-from app.db.crud.server import get_server, get_servers, get_server_users
+from app.db.crud.server import get_server_with_ports_usage, get_servers, get_server_users
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.schemas.server import ServerEdit
@@ -72,12 +72,11 @@ def update_usage(
         port_usage.upload = upload_usage
         if accumulate:
             port_usage.upload_accumulate = upload_usage
-
     edit_port_usage(db, db_ports[port_num].id, port_usage)
     db.refresh(db_ports[port_num])
 
 
-def apply_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
+def apply_port_limits(db: Session, port: Port, action: LimitActionEnum):
     action_to_speed = {
         LimitActionEnum.SPEED_LIMIT_10K: 10,
         LimitActionEnum.SPEED_LIMIT_100K: 100,
@@ -87,16 +86,18 @@ def apply_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
         LimitActionEnum.SPEED_LIMIT_100M: 100000,
         LimitActionEnum.SPEED_LIMIT_1G: 1000000,
     }
+    db.refresh(port)
     if action == LimitActionEnum.NO_ACTION:
         return
     elif action == LimitActionEnum.DELETE_RULE:
         if not port.forward_rule:
             return
         delete_forward_rule(db, port.server_id, port.id)
-        celery_app.send_task("tasks.clean.clean_port_runner",
-                             kwargs={"server_id": port.server.id, "port_num": port.num})
+        celery_app.send_task(
+            "tasks.clean.clean_port_runner",
+            kwargs={"server_id": port.server.id, "port_num": port.num},
+        )
     elif action in action_to_speed:
-        db.refresh(port)
         if (
             port.config["egress_limit"] != action_to_speed[action]
             or port.config["ingress_limit"] != action_to_speed[action]
@@ -105,12 +106,15 @@ def apply_port_limits(db: Session, port: Port, action: LimitActionEnum) -> None:
             port.config["ingress_limit"] = action_to_speed[action]
             db.add(port)
             db.commit()
-            tc_runner.apply_async(kwargs={
-                "server_id": port.server.id,
-                "port_num": port.num,
-                "egress_limit": port.config.get("egress_limit"),
-                "ingress_limit": port.config.get("ingress_limit"),
-            }, priority=0)
+            tc_runner.apply_async(
+                kwargs={
+                    "server_id": port.server.id,
+                    "port_num": port.num,
+                    "egress_limit": port.config.get("egress_limit"),
+                    "ingress_limit": port.config.get("ingress_limit"),
+                },
+                priority=0,
+            )
     else:
         print(f"No action found {action} for port (id: {port.id})")
 
@@ -134,12 +138,9 @@ def check_port_limits(db: Session, port: Port) -> None:
 
 
 def check_server_user_limit(
-    db: Session, server_id: int, server_users_usage: t.DefaultDict
+    db: Session, server: Server, server_users_usage: t.DefaultDict
 ):
-    server_users = get_server_users(db, server_id)
-    if not server_users:
-        return
-    for server_user in server_users:
+    for server_user in server.allowed_users:
         server_user.download = server_users_usage[server_user.user_id][
             "download"
         ]
@@ -159,8 +160,9 @@ def check_server_user_limit(
                     apply_port_limits(db, port, action)
 
 
-def update_traffic(server: Server, traffic: str, accumulate: bool = False):
-    db = next(get_db())
+def update_traffic(
+    server: Server, traffic: str, accumulate: bool = False
+):
     pattern = re.compile(r"\/\* (UPLOAD|DOWNLOAD)(?:\-UDP)? ([0-9]+)->")
     prev_ports = {port.num: port for port in server.ports}
     db_ports = {}
@@ -168,28 +170,27 @@ def update_traffic(server: Server, traffic: str, accumulate: bool = False):
 
     for line in traffic.split("\n"):
         match = pattern.search(line)
-        if (
-            match
-            and len(match.groups()) > 1
-            and match.groups()[1].isdigit()
-        ):
+        if match and len(match.groups()) > 1 and match.groups()[1].isdigit():
             port_num = int(match.groups()[1])
             traffics[port_num][match.groups()[0].lower()] += int(
                 line.split()[1]
             )
-    for port_num, usage in traffics.items():
-        update_usage(
-            db, prev_ports, db_ports, server.id, port_num, usage, accumulate
-        )
+    with db_session() as db:
+        for port_num, usage in traffics.items():
+            update_usage(
+                db, prev_ports, db_ports, server.id, port_num, usage, accumulate
+            )
     server_users_usage = defaultdict(lambda: {"download": 0, "upload": 0})
-    for port in get_server(db, server.id).ports:
-        if port.usage:
-            check_port_limits(db, port)
-            for port_user in port.allowed_users:
-                server_users_usage[port_user.user_id][
-                    "download"
-                ] += port.usage.download
-                server_users_usage[port_user.user_id][
-                    "upload"
-                ] += port.usage.upload
-    check_server_user_limit(db, server.id, server_users_usage)
+    with db_session() as db:
+        server = get_server_with_ports_usage(db, server.id)
+        for port in server.ports:
+            if port.usage:
+                check_port_limits(db, port)
+                for port_user in port.allowed_users:
+                    server_users_usage[port_user.user_id][
+                        "download"
+                    ] += port.usage.download
+                    server_users_usage[port_user.user_id][
+                        "upload"
+                    ] += port.usage.upload
+        check_server_user_limit(db, server, server_users_usage)

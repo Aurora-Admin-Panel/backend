@@ -1,6 +1,6 @@
 import typing as t
 from sqlalchemy import and_, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from urllib.parse import urlparse
 from fastapi import HTTPException, status
 
@@ -34,7 +34,9 @@ def get_forward_rule(
 
 def get_forward_rule_by_id(db: Session, rule_id: int) -> PortForwardRule:
     return (
-        db.query(PortForwardRule).filter(PortForwardRule.id == rule_id).first()
+        db.query(PortForwardRule)
+          .options(joinedload(PortForwardRule.port))
+          .filter(PortForwardRule.id == rule_id).first()
     )
 
 
@@ -75,7 +77,6 @@ def edit_forward_rule(
             status_code=404, detail="Port forward rule not found"
         )
 
-    old = PortForwardRuleOut(**db_forward_rule.__dict__)
     updated = forward_rule.dict(exclude_unset=True)
     if db_forward_rule.method == forward_rule.method:
         for key, val in updated["config"].items():
@@ -156,6 +157,7 @@ def get_all_iptables_rules(db: Session) -> t.List[PortForwardRule]:
 def get_all_ddns_rules(db: Session) -> t.List[PortForwardRule]:
     return (
         db.query(PortForwardRule)
+        .options(joinedload(PortForwardRule.port).joinedload(Port.server))
         .filter(
             or_(
                 PortForwardRule.method == MethodEnum.IPTABLES,

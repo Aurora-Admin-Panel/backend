@@ -13,19 +13,28 @@ class UserBase(BaseModel):
     last_name: str = None
 
 
-class UserOut(UserBase):
-    id: int
+class UserPort(BaseModel):
+    port_id: int
 
     class Config:
         orm_mode = True
 
 
-class UserPort(BaseModel):
-    port_id: int
-
-
 class UserServer(BaseModel):
-    server_id: int
+    server_id: t.Optional[int]
+
+    class Config:
+        orm_mode = True
+
+
+class UserOut(UserBase):
+    id: int
+    notes: t.Optional[str] = None
+    allowed_ports: t.List[UserPort]
+    allowed_servers: t.List[UserServer]
+
+    class Config:
+        orm_mode = True
 
 
 class UserOpsOut(UserBase):
@@ -56,11 +65,9 @@ class UserEdit(BaseModel):
     is_superuser: t.Optional[bool]
     first_name: t.Optional[str]
     last_name: t.Optional[str]
-    password: t.Optional[str] = None
     notes: t.Optional[str]
-
-    class Config:
-        orm_mode = True
+    password: t.Optional[str] = None
+    clear_rules: t.Optional[bool] = None
 
 
 class UserDelete(BaseModel):
@@ -73,9 +80,6 @@ class MeEdit(BaseModel):
     last_name: t.Optional[str]
     prev_password: t.Optional[str] = None
     new_password: t.Optional[str] = None
-
-    class Config:
-        orm_mode = True
 
 
 class User(UserBase):
@@ -102,18 +106,38 @@ class PortUserConfig(BaseModel):
     quota: t.Optional[int]
 
 
+class UserPortPortOut(BaseModel):
+    id: int
+    num: int
+    external_num: t.Optional[int]
+
+    class Config:
+        orm_mode = True
+
+
 class UserPortOut(BaseModel):
     port_id: int
     usage: t.Optional[PortUsageOut]
     config: PortUserConfig
+    port: UserPortPortOut
+
+    class Config:
+        orm_mode = True
 
 
 class ServerUserConfig(BaseModel):
     quota: t.Optional[int]
 
 
+class UserServerServerOut(BaseModel):
+    id: int
+    name: str
+    address: str
+
+
 class UserServerOut(BaseModel):
     server_id: int
+    server: UserServerServerOut
     ports: t.List[UserPortOut]
     config: ServerUserConfig
     download: t.Optional[int]
@@ -124,10 +148,10 @@ class UserServerOut(BaseModel):
     class Config:
         orm_mode = True
 
-    @validator('readable_download', pre=True, always=True)
+    @validator("readable_download", pre=True, always=True)
     def default_readable_download(cls, v, *, values, **kwargs):
-        return v or get_readable_size(values['download'])
+        return v or get_readable_size(values["download"])
 
-    @validator('readable_upload', pre=True, always=True)
+    @validator("readable_upload", pre=True, always=True)
     def default_readable_upload(cls, v, *, values, **kwargs):
-        return v or get_readable_size(values['upload'])
+        return v or get_readable_size(values["upload"])

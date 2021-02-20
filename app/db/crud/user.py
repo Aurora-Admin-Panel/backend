@@ -2,16 +2,16 @@ import typing as t
 from fastapi import HTTPException, status
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
+from sqlalchemy import and_, or_
 
 from app.core.security import get_password_hash
 from app.db.models.port import Port, PortUser
 from app.db.models.server import Server, ServerUser
 from app.db.models.user import User
 from app.db.schemas.user import (
-    UserBase,
     UserCreate,
     UserEdit,
-    UserOut,
     MeEdit,
 )
 
@@ -33,19 +33,19 @@ def get_user_by_email(db: Session, email: str) -> User:
     return db.query(User).filter(User.email == email).first()
 
 
-def get_users(db: Session, skip: int = 0, limit: int = 100) -> t.List[UserOut]:
-    return (
-        db.query(User)
-        .filter(and_(User.is_superuser == False, User.is_ops == False))
-        .options(
-            joinedload(User.allowed_ports)
-            .joinedload(PortUser.port)
-            .joinedload(Port.usage)
+def get_users(db: Session, query: str = None):
+    q = db.query(User).filter(User.is_superuser == False)
+    if query is not None:
+        q = q.filter(
+            or_(
+                func.lower(User.email).like(f"%{query}%"),
+                func.lower(User.notes).like(f"%{query}%"),
+            )
         )
-        .options(joinedload(User.allowed_servers))
-        .order_by(User.email.asc())
-        .offset(skip)
-        .limit(limit)
+    return (
+        q.options(joinedload(User.allowed_servers))
+        .options(joinedload(User.allowed_ports))
+        .order_by(User.is_active.desc(), User.notes.asc(), User.email.asc())
         .all()
     )
 
@@ -110,9 +110,17 @@ def edit_me(db: Session, db_user: User, user: MeEdit) -> User:
 
 def get_user_servers(db: Session, user_id: int) -> t.List[ServerUser]:
     return (
-        db.query(ServerUser).filter(and_(ServerUser.user_id == user_id)).all()
+        db.query(ServerUser)
+        .filter(and_(ServerUser.user_id == user_id))
+        .options(joinedload(ServerUser.server))
+        .all()
     )
 
 
 def get_user_ports(db: Session, user_id: int) -> t.List[PortUser]:
-    return db.query(PortUser).filter(PortUser.user_id == user_id).all()
+    return (
+        db.query(PortUser)
+        .filter(PortUser.user_id == user_id)
+        .options(joinedload(PortUser.port))
+        .all()
+    )

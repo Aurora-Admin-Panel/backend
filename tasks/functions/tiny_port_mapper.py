@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 
 from app.db.models.port import Port
 
-from app.db.session import get_db
 from app.db.models.port_forward import MethodEnum
 from app.utils.dns import dns_query
 from app.utils.ip import is_ip

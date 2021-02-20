@@ -2,7 +2,7 @@ import json
 import ansible_runner
 from uuid import uuid4
 
-from app.db.session import SessionLocal
+from app.db.session import db_session
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
@@ -24,7 +24,8 @@ def finished_handler(server: Server):
 def connect_runner(
     server_id: int,
 ):
-    server = get_server(SessionLocal(), server_id)
+    with db_session() as db:
+        server = get_server(db, server_id)
     return run(
         server=server,
         playbook="connect.yml",

@@ -1,6 +1,6 @@
-from app.db.session import get_db
+from app.db.session import db_session
 from app.db.models.server import Server
-from app.db.crud.server import get_server, get_servers
+from app.db.crud.server import get_server_with_ports_usage, get_servers
 
 from tasks import celery_app
 from tasks.utils.runner import run
@@ -9,7 +9,8 @@ from tasks.utils.handlers import iptables_finished_handler
 
 @celery_app.task(priority=6)
 def traffic_server_runner(server_id: Server):
-    server = get_server(next(get_db()), server_id)
+    with db_session() as db:
+        server = get_server_with_ports_usage(db, server_id)
     return run(
         server=server,
         playbook="traffic.yml",
@@ -19,6 +20,7 @@ def traffic_server_runner(server_id: Server):
 
 @celery_app.task()
 def traffic_runner():
-    servers = get_servers(next(get_db()))
+    with db_session() as db:
+        servers = get_servers(db)
     for server in servers:
         traffic_server_runner.delay(server.id)

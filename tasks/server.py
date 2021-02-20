@@ -7,7 +7,7 @@ from collections import defaultdict
 from distutils.dir_util import copy_tree
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.db.session import db_session
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
@@ -34,19 +34,21 @@ def finished_handler(server: Server, md5: str):
 @celery_app.task(priority=9)
 def server_runner(server_id: int, **kwargs):
     init_md5 = get_md5_for_file("ansible/project/server.yml")
-    server = get_server(SessionLocal(), server_id)
+    with db_session() as db:
+        server = get_server(db, server_id)
     run(
         server=server,
         playbook="server.yml",
         extravars=kwargs,
-        event_handler=server_facts_event_handler(server),
+        event_handler=server_facts_event_handler(server.id),
         finished_callback=finished_handler(server, init_md5),
     )
 
 
 @celery_app.task()
 def servers_runner(**kwargs):
-    servers = get_servers(SessionLocal())
+    with db_session() as db:
+        servers = get_servers(db)
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     for server in servers:
         if "init" not in server.config or server.config["init"] != init_md5:
