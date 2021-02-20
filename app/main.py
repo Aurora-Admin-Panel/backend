@@ -70,8 +70,6 @@ async def db_session_middleware(request: Request, call_next):
     with db_session() as db:
         request.state.db = db
         try:
-            from asyncio import sleep
-            await sleep(0.3)
             response = await call_next(request)
             return response
         except IntegrityError as e:
