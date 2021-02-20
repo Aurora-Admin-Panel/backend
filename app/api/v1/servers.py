@@ -64,12 +64,8 @@ async def servers_list(
     """
     Get all servers
     """
-    servers = jsonable_encoder(get_servers(db, user, offset, limit))
-    # This is necessary for react-admin to work
-    response.headers["Content-Range"] = f"0-9/{len(servers)}"
-    if user.is_ops or user.is_superuser:
-        return [ServerOpsOut(**server) for server in servers]
-    return [ServerOut(**server) for server in servers]
+    servers = get_servers(db, user)
+    return servers
 
 
 @r.get(
@@ -90,14 +86,14 @@ async def server_get(
     if not server:
         raise HTTPException(status_code=404, detail="Server not found")
     if user.is_admin():
-        return ServerOpsOut(**jsonable_encoder(server))
+        return ServerOpsOut(**server.__dict__)
     if not any(user.id == u.user_id for u in server.allowed_users):
         raise HTTPException(status_code=404, detail="Server not found")
-    return ServerOut(**jsonable_encoder(server))
+    return ServerOut(**server.__dict__)
 
 
 @r.post(
-    "/servers", response_model=ServerOpsOut, response_model_exclude_none=True
+    "/servers", response_model=ServerOut, response_model_exclude_none=True
 )
 async def server_create(
     request: Request,
@@ -118,14 +114,16 @@ async def server_create(
         server.sudo_password = server.sudo_password.replace('"', '\\"')
 
     server = create_server(db, server)
+    if not server or not server.id:
+        raise HTTPException(status_code=400, detail="Server creation failed")
     trigger_ansible_hosts()
     trigger_server_connect(server.id, init=True)
-    return jsonable_encoder(server)
+    return server
 
 
 @r.put(
     "/servers/{server_id}",
-    response_model=ServerOpsOut,
+    response_model=ServerOut,
     response_model_exclude_none=True,
 )
 async def server_edit(
@@ -148,7 +146,7 @@ async def server_edit(
     trigger_ansible_hosts()
     if server.config["system"] is None:
         trigger_server_connect(server.id)
-    return jsonable_encoder(server)
+    return server
 
 
 @r.put(
@@ -166,8 +164,7 @@ async def server_config_edit(
     """
     Update an existing server
     """
-    server = edit_server_config(db, server_id, server)
-    return jsonable_encoder(server)
+    return edit_server_config(db, server_id, server)
 
 
 @r.delete(
@@ -226,7 +223,6 @@ async def server_users_get(
     Get server users by id
     """
     server_users = get_server_users(db, server_id)
-    print(jsonable_encoder(server_users))
     return server_users
 
 

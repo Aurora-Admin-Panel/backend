@@ -1,4 +1,4 @@
-from app.db.session import get_db
+from app.db.session import db_session
 from app.db.crud.server import get_server
 
 from tasks import celery_app
@@ -12,7 +12,8 @@ def tc_runner(
     egress_limit: int = None,
     ingress_limit: int = None
 ):
-    server = get_server(next(get_db()), server_id)
+    with db_session() as db:
+        server = get_server(db, server_id)
     args = ""
     if egress_limit:
         args += f' -e={egress_limit}kbit'

@@ -1,7 +1,7 @@
 import typing as t
-from sqlalchemy.orm import Session
+from collections import defaultdict
 from fastapi import HTTPException, status
-from fastapi import APIRouter, Request, Depends, Response, encoders
+from fastapi import APIRouter, Request, Depends, Response
 from fastapi.encoders import jsonable_encoder
 
 from app.core.security import verify_password
@@ -16,17 +16,27 @@ from app.db.crud.user import (
     get_user_servers,
     get_user_ports,
 )
+from app.db.crud.server import delete_server_user
+from app.db.crud.port import delete_port_user
+from app.db.crud.port_usage import edit_port_usage
+from app.db.crud.port_forward import (
+    get_forward_rule_for_user,
+    delete_forward_rule_by_id,
+)
 from app.db.schemas.user import (
     UserCreate,
     UserEdit,
+    UserDelete,
     User,
     UserOut,
     UserOpsOut,
     MeEdit,
     UserServerOut,
 )
+from app.db.schemas.port_usage import PortUsageEdit
 from app.core.auth import get_current_active_user, get_current_active_superuser
 from app.utils.size import get_readable_size
+from app.utils.tasks import trigger_port_clean
 
 users_router = r = APIRouter()
 
@@ -113,9 +123,6 @@ async def user_details(
     """
     user = get_user(db, user_id)
     return jsonable_encoder(user)
-    # return encoders.jsonable_encoder(
-    #     user, skip_defaults=True, exclude_none=True,
-    # )
 
 
 @r.post("/users", response_model=UserOpsOut, response_model_exclude_none=True)
@@ -128,38 +135,96 @@ async def user_create(
     """
     Create a new user
     """
-    return jsonable_encoder(create_user(db, user))
+    return create_user(db, user)
 
 
 @r.put(
-    "/users/{user_id}", response_model=UserOpsOut, response_model_exclude_none=True
+    "/users/{user_id}",
+    response_model=UserOpsOut,
+    response_model_exclude_none=True,
 )
 async def user_edit(
     request: Request,
     user_id: int,
-    user: UserEdit,
+    user_edit: UserEdit,
     db=Depends(get_db),
     current_user=Depends(get_current_active_superuser),
 ):
     """
     Update existing user
     """
-    return jsonable_encoder(edit_user(db, user_id, user))
+    user = get_user(db, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user_edit.clear_rules:
+        for port in user.ports:
+            edit_port_usage(
+                db,
+                port.id,
+                PortUsageEdit(
+                    port_id=port.id,
+                    download=0,
+                    upload=0,
+                    download_accumulate=0,
+                    upload_accumulate=0,
+                    download_checkpoint=0,
+                    upload_checkpoint=0,
+                ),
+            )
+            if port.forward_rule:
+                trigger_port_clean(port.server, port, False)
+                delete_forward_rule_by_id(db, port.forward_rule.id)
+        for port_user in user.allowed_ports:
+            delete_port_user(
+                db, port_user.port.server.id, port_user.port_id, user.id
+            )
+        for server_user in user.allowed_servers:
+            delete_server_user(db, server_user.server_id, user.id)
+    return edit_user(db, user_id, user_edit)
 
 
 @r.delete(
-    "/users/{user_id}", response_model=User, response_model_exclude_none=True
+    "/users/{user_id}",
+    response_model=UserOut,
+    response_model_exclude_none=True,
 )
 async def user_delete(
     request: Request,
     user_id: int,
+    user_delete: UserDelete,
     db=Depends(get_db),
     current_user=Depends(get_current_active_superuser),
 ):
     """
     Delete existing user
     """
-    return delete_user(db, user_id)
+    user = get_user(db, user_id)
+    if not user:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user_delete.remove_rule:
+        for port in user.ports:
+            edit_port_usage(
+                db,
+                port,
+                PortUsageEdit(
+                    download=0,
+                    upload=0,
+                    download_accumulate=0,
+                    upload_accumulate=0,
+                    download_checkpoint=0,
+                    upload_checkpoint=0,
+                ),
+            )
+            if port.rule:
+                trigger_port_clean(port.server, port, False)
+                delete_forward_rule_by_id(db, port.rule.id)
+        for port_user in user.allowed_ports:
+            delete_port_user(
+                db, port_user.port.server.id, port_user.port_id, user.id
+            )
+        for server_user in user.allowed_servers:
+            delete_server_user(db, server_user.server_id, user.id)
+    return delete_user(db, user)
 
 
 @r.get(
@@ -178,12 +243,11 @@ async def user_servers_get(
     """
     user_servers = jsonable_encoder(get_user_servers(db, user_id))
     user_ports = get_user_ports(db, user_id)
+    port_by_server = defaultdict(list)
+    for port_user in user_ports:
+        port_by_server[port_user.port.server.id].append(port_user)
     formatted_user_servers = []
-    for server in jsonable_encoder(user_servers):
-        server_ports = []
-        for port_user in user_ports:
-            if server["server_id"] == port_user.port.server.id:
-                server_ports.append(port_user)
-        server["ports"] = jsonable_encoder(server_ports)
+    for server in user_servers:
+        server["ports"] = port_by_server[server['server_id']]
         formatted_user_servers.append(server)
     return formatted_user_servers

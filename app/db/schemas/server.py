@@ -4,6 +4,7 @@ from pydantic import BaseModel, validator
 from app.utils.size import get_readable_size
 from app.db.constants import LimitActionEnum
 
+
 class UserOut(BaseModel):
     id: int
     email: str
@@ -11,6 +12,7 @@ class UserOut(BaseModel):
 
     class Config:
         orm_mode = True
+
 
 class ServerUserConfig(BaseModel):
     valid_until: t.Optional[int]
@@ -49,6 +51,7 @@ class ServerUserOpsOut(ServerUserBase):
     @validator('readable_upload', pre=True, always=True)
     def default_readable_upload(cls, v, *, values, **kwargs):
         return v or get_readable_size(values['upload'])
+
 
 class ServerUserCreate(BaseModel):
     user_id: int
@@ -97,6 +100,10 @@ class ServerConfig(BaseModel):
     wstunnel_disabled: t.Optional[bool]
 
 
+class ServerConfigOut(BaseModel):
+    system: t.Optional[ServerFacts]
+
+
 class ServerBase(BaseModel):
     name: str
     address: str
@@ -104,7 +111,7 @@ class ServerBase(BaseModel):
 
 class ServerOut(ServerBase):
     id: int
-    config: ServerConfig
+    config: ServerConfigOut
 
     class Config:
         orm_mode = True
@@ -116,9 +123,9 @@ class ServerOpsOut(ServerOut):
     ansible_host: t.Optional[str]
     ansible_port: t.Optional[int]
     ansible_user: t.Optional[str]
-    config: ServerConfig
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
+    config: ServerConfig
     allowed_users: t.List[ServerUserOpsOut]
     is_active: bool
 
@@ -160,6 +167,7 @@ class ServerEdit(BaseModel):
 
     class Config:
         orm_mode = True
+
 
 class ServerConfigEdit(BaseModel):
     brook_disabled: t.Optional[bool]

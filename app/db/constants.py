@@ -1,5 +1,6 @@
 import enum
 
+
 class LimitActionEnum(int, enum.Enum):
     NO_ACTION = 0
     SPEED_LIMIT_10K = 1

@@ -72,13 +72,12 @@ async def ports_list(
     Get all ports related to server
     """
     ports = get_ports(db, server_id, user, offset, limit)
-    ports = jsonable_encoder(ports)
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(ports)}"
 
     if user.is_admin():
-        return [PortOpsOut(**port) for port in ports]
-    return [PortOut(**port) for port in ports]
+        return [PortOpsOut(**port.__dict__) for port in ports]
+    return [PortOut(**port.__dict__) for port in ports]
 
 
 @r.get(
@@ -102,10 +101,10 @@ async def port_get(
         raise HTTPException(status_code=404, detail="Port not found")
 
     if user.is_admin():
-        return PortOpsOut(**jsonable_encoder(port))
+        return PortOpsOut(**port.__dict__)
     if not any(user.id == u.user_id for u in port.allowed_users):
         raise HTTPException(status_code=404, detail="Port not found")
-    return PortOut(**jsonable_encoder(port))
+    return PortOut(**port.__dict__)
 
 
 @r.post(

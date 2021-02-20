@@ -18,6 +18,7 @@ class UserOut(BaseModel):
 class PortUserConfig(BaseModel):
     pass
 
+
 class PortUserBase(BaseModel):
     user_id: int
 
@@ -44,14 +45,15 @@ class PortUserOpsOut(PortUserBase):
 class PortUserCreate(PortUserBase):
     user_id: int
     config: t.Optional[PortUserConfig]
-    
+
     class Config:
         orm_mode = True
+
 
 class PortUserEdit(PortUserBase):
     user_id: t.Optional[int]
     config: t.Optional[PortUserConfig]
-    
+
     class Config:
         orm_mode = True
 
@@ -70,7 +72,7 @@ class PortBase(BaseModel):
     notes: t.Optional[str]
     num: int
     server_id: int
-    config: PortConfig
+    config: t.Optional[PortConfig]
 
 
 class PortOut(PortBase):
@@ -98,7 +100,7 @@ class PortCreate(BaseModel):
     num: int
     external_num: t.Optional[int] = None
     notes: t.Optional[str]
-    config: t.Optional[PortConfig]
+    config: PortConfig
     is_active: t.Optional[bool] = True
 
     class Config:
@@ -110,6 +112,7 @@ class PortEditBase(BaseModel):
 
     class Config:
         orm_mode = True
+
 
 class PortEdit(PortEditBase):
     external_num: t.Optional[int]

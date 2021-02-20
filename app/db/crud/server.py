@@ -1,38 +1,26 @@
 import typing as t
 from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 
-from app.core.security import get_password_hash
 from app.db.models.user import User
 from app.db.schemas.server import (
-    ServerBase,
     ServerCreate,
     ServerEdit,
     ServerConfigEdit,
-    ServerOut,
-    ServerOpsOut,
     ServerUserEdit,
-    ServerUserOut,
     ServerUserCreate,
 )
 from app.db.models.server import Server, ServerUser
-from app.db.models.port import Port, PortUser
+from app.db.models.port import Port
 
 
-def get_servers(
-    db: Session, user: User = None, offset: int = 0, limit: int = 100
-) -> t.List[Server]:
-    if not user or user.is_superuser or user.is_ops:
+def get_servers(db: Session, user: User = None) -> t.List[Server]:
+    if not user or user.is_admin():
         return (
             db.query(Server)
             .filter(Server.is_active == True)
-            .options(
-                joinedload(Server.allowed_users).joinedload(ServerUser.user)
-            )
-            .options(joinedload(Server.ports).joinedload(Port.usage))
-            .offset(offset)
-            .limit(limit)
+            .order_by(Server.name)
             .all()
         )
     return (
@@ -43,9 +31,7 @@ def get_servers(
                 Server.allowed_users.any(user_id=user.id),
             )
         )
-        .order_by(Server.address)
-        .offset(offset)
-        .limit(limit)
+        .order_by(Server.name)
         .all()
     )
 
@@ -54,10 +40,15 @@ def get_server(db: Session, server_id: int) -> Server:
     return (
         db.query(Server)
         .filter(and_(Server.id == server_id, Server.is_active == True))
-        .options(joinedload(Server.allowed_users).joinedload(ServerUser.user))
-        .options(joinedload(Server.users).joinedload(User.ports))
+        .first()
+    )
+
+
+def get_server_with_ports_usage(db: Session, server_id: int) -> Server:
+    return (
+        db.query(Server)
+        .filter(and_(Server.id == server_id, Server.is_active == True))
         .options(joinedload(Server.ports).joinedload(Port.usage))
-        .options(joinedload(Server.ports).joinedload(Port.allowed_users))
         .first()
     )
 
@@ -67,10 +58,12 @@ def create_server(db: Session, server: ServerCreate) -> Server:
     db.add(db_server)
     db.commit()
     db.refresh(db_server)
-    return get_server(db, db_server.id)
+    return db_server
 
 
-def edit_server(db: Session, server_id: int, server: ServerEdit, reset_system: bool = False) -> Server:
+def edit_server(
+    db: Session, server_id: int, server: ServerEdit, reset_system: bool = False
+) -> Server:
     db_server = get_server(db, server_id)
     if not db_server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -94,7 +87,9 @@ def edit_server(db: Session, server_id: int, server: ServerEdit, reset_system: b
     return get_server(db, db_server.id)
 
 
-def edit_server_config(db: Session, server_id: int, config: ServerConfigEdit) -> Server:
+def edit_server_config(
+    db: Session, server_id: int, config: ServerConfigEdit
+) -> Server:
     db_server = get_server(db, server_id)
     if not db_server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -106,7 +101,6 @@ def edit_server_config(db: Session, server_id: int, config: ServerConfigEdit) ->
     db.commit()
     db.refresh(db_server)
     return get_server(db, db_server.id)
-
 
 
 def delete_server(db: Session, server_id: int) -> Server:
@@ -127,13 +121,19 @@ def get_server_users(db: Session, server_id: int) -> t.List[ServerUser]:
     )
     return server_users
 
+
 def get_server_user(db: Session, server_id: int, user_id: int) -> ServerUser:
     return (
         db.query(ServerUser)
-        .filter(and_(ServerUser.server_id == server_id, ServerUser.user_id == user_id))
+        .filter(
+            and_(
+                ServerUser.server_id == server_id, ServerUser.user_id == user_id
+            )
+        )
         .options(joinedload(ServerUser.user))
         .first()
     )
+
 
 def add_server_user(
     db: Session, server_id: int, server_user: ServerUserCreate
@@ -165,18 +165,25 @@ def edit_server_user(
     return db_server_user
 
 
-def delete_server_user(db: Session, server_id: int, user_id: int) -> ServerUser:
+def delete_server_user(
+    db: Session, server_id: int, user_id: int
+) -> ServerUser:
     db_server_user = (
         db.query(ServerUser)
         .filter(
             and_(
-                ServerUser.server_id == server_id, ServerUser.user_id == user_id
+                ServerUser.server_id == server_id, 
+                ServerUser.user_id == user_id
             )
         )
         .first()
     )
     if not db_server_user:
         raise HTTPException(status_code=404, detail="Server user not found")
+    for port in db_server_user.server.ports:
+        for port_user in port.allowed_users:
+            if port_user.user_id == user_id:
+                db.delete(port_user)
     db.delete(db_server_user)
     db.commit()
     return db_server_user

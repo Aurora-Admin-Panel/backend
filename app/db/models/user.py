@@ -1,12 +1,7 @@
-import typing as t
-from fastapi import HTTPException, status
-from sqlalchemy.orm import Session, relationship
+from sqlalchemy.orm import relationship
 from sqlalchemy import Boolean, Column, Integer, String, Text
 
 from .base import Base
-from app.core.security import get_password_hash
-from .server import ServerUser
-from .port import PortUser
 
 
 class User(Base):
@@ -22,11 +17,16 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     notes = Column(Text, nullable=True)
 
-    allowed_servers = relationship("ServerUser", cascade="all,delete", back_populates="user")
-    allowed_ports = relationship("PortUser", cascade="all,delete", back_populates="user")
-    servers = relationship("Server", secondary="server_user", back_populates="users")
+    allowed_servers = relationship(
+        "ServerUser", cascade="all,delete", back_populates="user"
+    )
+    allowed_ports = relationship(
+        "PortUser", cascade="all,delete", back_populates="user"
+    )
+    servers = relationship(
+        "Server", secondary="server_user", back_populates="users"
+    )
     ports = relationship("Port", secondary="port_user", back_populates="users")
-
 
     def is_admin(self) -> bool:
         return self.is_ops or self.is_superuser

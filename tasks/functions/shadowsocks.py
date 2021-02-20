@@ -30,6 +30,7 @@ class ShadowsocksConfig(AppConfig):
             "AEAD_AES_256_GCM",
             "AEAD_CHACHA20_POLY1305",
         ):
+            # TODO: Handle special char in password
             return (
                 f"/usr/local/bin/shadowsocks_go2"
                 f" -s 0.0.0.0:{port.num}"

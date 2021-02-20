@@ -2,10 +2,7 @@ import os
 import typing as t
 from shutil import copytree
 
-from app.db.models.port import Port
-from app.db.models.user import User
 from app.db.models.server import Server
-from app.db.models.port_forward import PortForwardRule
 
 
 def prepare_priv_dir_dict(server: t.Dict) -> str:
@@ -40,9 +37,6 @@ def prepare_priv_dir(server: Server) -> str:
     return prepare_priv_dir_dict(server.__dict__)
 
 
-
 def iptables_restore_service_enabled(config: t.Dict) -> bool:
-    status = config.get('services',{}).get('iptables-restore', {})
-    if status.get('status') == 'enabled':
-        return True
-    return False
+    status = config.get('services', {}).get('iptables-restore', {})
+    return status.get('status') == 'enabled'
