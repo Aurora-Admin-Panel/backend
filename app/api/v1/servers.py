@@ -188,7 +188,7 @@ async def server_delete(
 
 @r.post(
     "/servers/{server_id}/connect",
-    response_model=t.Union[ServerOpsOut, ServerOut],
+    response_model=ServerOut,
     response_model_exclude_none=True,
 )
 async def server_connect(
@@ -205,7 +205,7 @@ async def server_connect(
         raise HTTPException(status_code=403, detail="Not authorized")
     server = edit_server(db, server_id, ServerEdit(), reset_system=True)
     trigger_server_connect(server.id)
-    return jsonable_encoder(server)
+    return server
 
 
 @r.get(
