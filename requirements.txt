@@ -18,6 +18,7 @@ sqlalchemy-utils==0.36.8
 starlette==0.13.6
 uvicorn==0.12.1
 passlib==1.7.2
+pydantic==1.7.3
 bcrypt==3.2.0
 python-multipart==0.0.5
 pyjwt==1.7.1
