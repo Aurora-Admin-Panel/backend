@@ -61,6 +61,8 @@ def create_user(db: Session, user: UserCreate):
         is_superuser=user.is_superuser,
         hashed_password=hashed_password,
     )
+    if user.notes:
+        setattr(db_user, 'notes', user.notes)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

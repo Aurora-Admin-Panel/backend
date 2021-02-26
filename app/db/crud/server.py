@@ -20,6 +20,7 @@ def get_servers(db: Session, user: User = None) -> t.List[Server]:
         return (
             db.query(Server)
             .filter(Server.is_active == True)
+            .options(joinedload(Server.ports).joinedload(Port.allowed_users))
             .order_by(Server.name)
             .all()
         )
@@ -31,6 +32,7 @@ def get_servers(db: Session, user: User = None) -> t.List[Server]:
                 Server.allowed_users.any(user_id=user.id),
             )
         )
+        .options(joinedload(Server.ports).joinedload(Port.allowed_users))
         .order_by(Server.name)
         .all()
     )
@@ -40,6 +42,7 @@ def get_server(db: Session, server_id: int) -> Server:
     return (
         db.query(Server)
         .filter(and_(Server.id == server_id, Server.is_active == True))
+        .options(joinedload(Server.ports).joinedload(Port.allowed_users))
         .first()
     )
 

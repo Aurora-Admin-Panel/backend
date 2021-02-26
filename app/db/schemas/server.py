@@ -100,18 +100,32 @@ class ServerConfig(BaseModel):
     wstunnel_disabled: t.Optional[bool]
 
 
-class ServerConfigOut(BaseModel):
-    system: t.Optional[ServerFacts]
-
-
 class ServerBase(BaseModel):
     name: str
     address: str
 
 
+class ServerPortUserOut(BaseModel):
+    user_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class ServerPortOut(BaseModel):
+    id: int
+    num: int
+    external_num: t.Optional[int]
+    allowed_users: t.List[ServerPortUserOut]
+
+    class Config:
+        orm_mode = True
+
+
 class ServerOut(ServerBase):
     id: int
-    config: ServerConfigOut
+    config: ServerConfig
+    ports: t.List[ServerPortOut]
 
     class Config:
         orm_mode = True
