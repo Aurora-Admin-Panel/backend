@@ -33,8 +33,10 @@ def get_user_by_email(db: Session, email: str) -> User:
     return db.query(User).filter(User.email == email).first()
 
 
-def get_users(db: Session, query: str = None):
+def get_users(db: Session, query: str = None, user: User = None):
     q = db.query(User).filter(User.is_superuser == False)
+    if user and user.is_ops:
+        q = db.query(User).filter(User.is_ops == False)
     if query is not None:
         q = q.filter(
             or_(

@@ -16,7 +16,8 @@ from app.db.models.port import Port
 
 
 def get_servers(db: Session, user: User = None) -> t.List[Server]:
-    if not user or user.is_admin():
+    # Only superuser can see all the servers.
+    if not user or user.is_superuser:
         return (
             db.query(Server)
             .filter(Server.is_active == True)
@@ -119,6 +120,18 @@ def get_server_users(db: Session, server_id: int) -> t.List[ServerUser]:
     server_users = (
         db.query(ServerUser)
         .filter(ServerUser.server_id == server_id)
+        .options(joinedload(ServerUser.user))
+        .all()
+    )
+    return server_users
+
+
+def get_server_users_for_ops(db: Session, server_id: int) -> t.List[ServerUser]:
+    server_users = (
+        db.query(ServerUser)
+        .join(User)
+        .filter(ServerUser.server_id == server_id)
+        .filter(User.is_ops == False)
         .options(joinedload(ServerUser.user))
         .all()
     )

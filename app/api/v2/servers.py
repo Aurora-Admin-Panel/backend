@@ -31,6 +31,7 @@ from app.db.crud.server import (
     edit_server_config,
     delete_server,
     get_server_users,
+    get_server_users_for_ops,
     add_server_user,
     edit_server_user,
     delete_server_user,
@@ -132,4 +133,6 @@ async def server_users_get(
     """
     Get server users by id
     """
+    if current_user.is_ops:
+        return paginate(get_server_users_for_ops(db, server_id))
     return paginate(get_server_users(db, server_id))

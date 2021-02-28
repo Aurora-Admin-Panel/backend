@@ -30,6 +30,7 @@ from app.db.crud.server import (
     edit_server_config,
     delete_server,
     get_server_users,
+    get_server_users_for_ops,
     add_server_user,
     edit_server_user,
     delete_server_user,
@@ -99,7 +100,7 @@ async def server_create(
     request: Request,
     server: ServerCreate,
     db=Depends(get_db),
-    user=Depends(get_current_active_admin),
+    user=Depends(get_current_active_superuser),
 ):
     """
     Create a new server
@@ -136,6 +137,7 @@ async def server_edit(
     """
     Update an existing server
     """
+    # TODO: Disallow unauthorized ops to edit server
     if server.ssh_password:
         server.ssh_password = server.ssh_password.replace("\\", "\\\\")
         server.ssh_password = server.ssh_password.replace('"', '\\"')
@@ -176,7 +178,7 @@ async def server_delete(
     request: Request,
     server_id: int,
     db=Depends(get_db),
-    current_user=Depends(get_current_active_admin),
+    current_user=Depends(get_current_active_superuser),
 ):
     """
     Delete an existing server
@@ -222,8 +224,9 @@ async def server_users_get(
     """
     Get server users by id
     """
-    server_users = get_server_users(db, server_id)
-    return server_users
+    if current_user.is_ops:
+        return get_server_users_for_ops(db, server_id)
+    return get_server_users(db, server_id)
 
 
 @r.post(

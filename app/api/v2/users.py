@@ -53,4 +53,4 @@ async def users_list(
     """
     Search all users
     """
-    return paginate(get_users(db, query=query))
+    return paginate(get_users(db, query=query, user=current_user))

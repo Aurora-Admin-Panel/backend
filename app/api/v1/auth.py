@@ -26,6 +26,8 @@ async def login(
     )
     if user.is_superuser:
         permissions = "admin"
+    elif user.is_ops:
+        permissions = "ops"
     else:
         permissions = "user"
     access_token = security.create_access_token(
@@ -53,6 +55,8 @@ async def signup(
     )
     if user.is_superuser:
         permissions = "admin"
+    elif user.is_ops:
+        permissions = "ops"
     else:
         permissions = "user"
     access_token = security.create_access_token(

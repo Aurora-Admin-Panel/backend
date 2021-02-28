@@ -9,6 +9,7 @@ class UserOut(BaseModel):
     id: int
     email: str
     is_active: bool = True
+    is_ops: bool = False
 
     class Config:
         orm_mode = True
