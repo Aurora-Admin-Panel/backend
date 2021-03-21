@@ -37,6 +37,8 @@ class TinyPortMapperConfig(AppConfig):
 
         return (
             f"/usr/local/bin/tiny_port_mapper "
+            f"--log-level 3 "
+            f"--disable-color "
             f"-l0.0.0.0:{port.num} "
             f"-r{remote_ip}:{port.forward_rule.config.get('remote_port')} "
             f"{'-t ' if port.forward_rule.config.get('type') == 'ALL' or port.forward_rule.config.get('type') == 'TCP' else ''}"
