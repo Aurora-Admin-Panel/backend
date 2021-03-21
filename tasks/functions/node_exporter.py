@@ -19,7 +19,7 @@ class NodeExporterConfig(AppConfig):
 
     def apply(self, db: Session, port: Port):
         self.local_port = port.num
-        self.app_command = f'/usr/local/bin/node_exporter --web.listen-address=\\\":{port.num}\\\" --collector.iptables'
+        self.app_command = f'/usr/local/bin/node_exporter --web.listen-address=:{port.num} --collector.iptables'
         self.update_app = not port.server.config.get("node_exporter")
         self.applied = True
         return self
