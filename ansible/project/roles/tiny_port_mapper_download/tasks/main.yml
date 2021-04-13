@@ -1,6 +1,6 @@
 ---
 - name: Get latest tiny_port_mapper download url
-  shell: curl -Lso- https://api.github.com/repos/wangyu-/tinyPortMapper/releases/latest | grep -E "browser_download_url" | awk '{print $2}' | xargs echo
+  shell: curl -Lso- https://api.github.com/repos/wangyu-/tinyPortMapper/releases/latest  | python -m json.tool | grep -E "browser_download_url" | awk '{print $2}' | xargs echo
   register: tiny_port_mapper_latest_download_url
 
 - name: Remote old tiny_port_mapper binary

@@ -1,9 +1,9 @@
 ---
 - name: Get latest shadowsocks_go download url
-  shell: curl -Lso- https://api.github.com/repos/shadowsocks/shadowsocks-go/releases/latest | grep -E "browser_download_url.*shadowsocks-server\.tar\.gz" | awk '{print $2}' | xargs echo
+  shell: curl -Lso- https://api.github.com/repos/shadowsocks/shadowsocks-go/releases/latest | python -m json.tool | grep -E "browser_download_url.*shadowsocks-server\.tar\.gz" | awk '{print $2}' | xargs echo
   register: shadowsocks_go_latest_download_url
 - name: Get latest shadowsocks_go2 download url
-  shell: curl -Lso- https://api.github.com/repos/shadowsocks/go-shadowsocks2/releases | grep -E "browser_download_url.*shadowsocks2-linux\.gz" | head -n 1 | awk '{print $2}' | xargs echo
+  shell: curl -Lso- https://api.github.com/repos/shadowsocks/go-shadowsocks2/releases | python -m json.tool | grep -E "browser_download_url.*shadowsocks2-linux\.gz" | head -n 1 | awk '{print $2}' | xargs echo
   register: shadowsocks_go2_latest_download_url
 
 - name: Download latest shadowsocks_go from Github

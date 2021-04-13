@@ -1,6 +1,6 @@
 ---
 - name: Get latest gost download url
-  shell: curl -Lso- https://api.github.com/repos/ginuerzh/gost/releases/latest | grep -E "browser_download_url.*gost-linux-amd64" | awk '{print $2}' | xargs echo
+  shell: curl -Lso- https://api.github.com/repos/ginuerzh/gost/releases/latest | python -m json.tool | grep -E "browser_download_url.*gost-linux-amd64" | awk '{print $2}' | xargs echo
   register: gost_latest_download_url
 
 - name: Download latest gost from Github and unarchive gost
