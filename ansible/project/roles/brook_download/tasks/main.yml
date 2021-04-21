@@ -1,6 +1,6 @@
 ---
 - name: Get latest brook download url
-  shell: curl -Lso- https://api.github.com/repos/txthinking/brook/releases/latest | grep -E "browser_download_url.*brook_linux_amd64" | awk '{print $2}' | xargs echo
+  shell: curl -Lso- https://api.github.com/repos/txthinking/brook/releases/latest | python -m json.tool | grep -E "browser_download_url.*brook_linux_amd64" | grep -v .ipk | awk '{print $2}' | xargs echo
   register: brook_latest_download_url
 
 - name: Remote old brook binary
