@@ -7,14 +7,14 @@
 
 - name: Sync v2ray@.service
   copy:
-    src: roles/v2ray/files/systemd/system/v2ray@.service
+    src: roles/v2ray/files/v2ray@.service
     dest: /usr/lib/systemd/system/v2ray@.service
     owner: root
     group: root
 
 - name: Sync v2ray binary
   copy:
-    src: roles/v2ray/files/v2ray
+    src: roles/v2ray/files/v2ray_v4.42.2
     dest: /usr/local/bin/v2ray
     mode: +x
     owner: root

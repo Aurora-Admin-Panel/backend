@@ -1,7 +1,7 @@
 ---
 - name: "Sync {{ app_name }} binary"
   copy:
-    src: "roles/app/files/{{ app_name }}"
+    src: "files/{{ app_name }}"
     dest: "/usr/local/bin/{{ app_name }}"
     mode: +x
     owner: root

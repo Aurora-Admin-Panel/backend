@@ -1,14 +1,14 @@
 ---
 - name: Sync shadowsocks_go binary
   copy:
-    src: roles/app/files/shadowsocks-server
+    src: files/shadowsocks-server-1.2.1
     dest: /usr/local/bin/shadowsocks_go
     mode: +x
     owner: root
     group: root
 - name: Sync shadowsocks_go2 binary
   copy:
-    src: roles/app/files/shadowsocks_go2
+    src: files/shadowsocks2-linux-v0.1.5
     dest: /usr/local/bin/shadowsocks_go2
     mode: +x
     owner: root

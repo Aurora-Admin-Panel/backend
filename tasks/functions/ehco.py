@@ -12,6 +12,7 @@ class EhcoConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "ehco"
+        self.app_sync_role_name = "ehco_sync"
 
 
     def apply(self, db: Session, port: Port):
@@ -24,7 +25,6 @@ class EhcoConfig(AppConfig):
     def get_app_command(self, port: Port):
         transport_type = port.forward_rule.config.get("transport_type", "raw")
         args = (
-            f"--web_port '' "
             f"-l 0.0.0.0:{port.num} "
             f"--lt {port.forward_rule.config.get('listen_type', 'raw')} "
             f"-r {'wss://' if transport_type.endswith('wss') else ('ws://' if transport_type != 'raw' else '')}"

@@ -1,4 +1,8 @@
 ---
-- name: Create gost config directory if it does not exist
-  include_role:
-    name: app_sync
+- name: Sync gost binary
+  copy:
+    src: files/gost-linux-amd64-2.11.1
+    dest: /usr/local/bin/gost
+    mode: +x
+    owner: root
+    group: root

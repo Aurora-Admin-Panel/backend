@@ -8,7 +8,7 @@
 
 - name: Sync tiny_port_mapper binary
   copy:
-    src: roles/app/files/tinymapper_amd64
+    src: files/tinymapper_amd64_20200818.0
     dest: /usr/local/bin/tiny_port_mapper
     mode: +x
     owner: root

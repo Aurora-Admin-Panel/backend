@@ -20,6 +20,8 @@ class GostConfig(AppConfig):
         self.app_name = "gost"
         self.app_version_arg = "-V"
 
+        self.app_sync_role_name = "gost_sync"
+
         self.traffic_meter = True
         self.update_status = True
 

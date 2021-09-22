@@ -8,7 +8,7 @@
 
 - name: Sync node_exporter binary
   copy:
-    src: roles/app/files/node_exporter
+    src: files/node_exporter_linux-amd64
     dest: /usr/local/bin/node_exporter
     mode: +x
     owner: root

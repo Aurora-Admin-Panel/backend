@@ -1,16 +1,4 @@
 ---
-- name: Download latest v2ray
-  hosts: 127.0.0.1
-  connection: local
-  gather_facts: no
-  tasks:
-    - name: v2ray setup
-      when: update_v2ray is defined and update_v2ray
-      block:
-        - name: download v2ray
-          include_role:
-            name: v2ray_download
-
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: no

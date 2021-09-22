@@ -1,4 +1,8 @@
 ---
 - name: Sync brook binary
-  include_role:
-    name: app_sync
+  copy:
+    src: files/brook_linux_amd64_v20210701
+    dest: /usr/local/bin/brook
+    mode: +x
+    owner: root
+    group: root

@@ -16,6 +16,7 @@ class V2rayConfig(AppConfig):
 
         self.app_name = "v2ray"
         self.app_version_arg = "-version"
+        self.app_sync_role_name = "v2ray_sync"
         self.app_download_role_name = "v2ray_download"
 
         self.traffic_meter = True

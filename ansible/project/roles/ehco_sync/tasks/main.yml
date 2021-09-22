@@ -8,7 +8,7 @@
 
 - name: Sync ehco binary
   copy:
-    src: roles/app/files/ehco
+    src: files/ehco_1.1.0_linux_amd64
     dest: /usr/local/bin/ehco
     mode: +x
     owner: root
