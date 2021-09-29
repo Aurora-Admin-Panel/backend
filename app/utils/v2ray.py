@@ -13,5 +13,5 @@ def generate_v2ray_config(rule: PortForwardRule) -> t.Dict:
         "outbounds": [rule.config.get("outbound", {})],
         "routing": rule.config.get("routing", {}),
         "dns": rule.config.get("dns", {}),
-        "log": {"loglevel": "warning"},
+        "log": {"loglevel": "warning","access":"none"},
     }

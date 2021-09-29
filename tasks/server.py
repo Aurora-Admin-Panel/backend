@@ -13,7 +13,7 @@ from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
 from app.db.crud.port import get_port_with_num
-from app.db.crud.server import get_server, get_servers
+from app.db.crud.server import get_server, get_servers, get_servers2
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
@@ -48,7 +48,7 @@ def server_runner(server_id: int, **kwargs):
 @celery_app.task()
 def servers_runner(**kwargs):
     with db_session() as db:
-        servers = get_servers(db)
+        servers = get_servers2(db)
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     for server in servers:
         if "init" not in server.config or server.config["init"] != init_md5:

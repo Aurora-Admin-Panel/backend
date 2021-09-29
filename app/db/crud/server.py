@@ -38,6 +38,14 @@ def get_servers(db: Session, user: User = None) -> t.List[Server]:
         .all()
     )
 
+def get_servers2(db: Session) -> t.List[Server]:
+    # Only superuser can see all the servers.
+    return (
+        db.query(Server)
+        .filter(Server.is_active == True)
+        .all()
+    )
+
 
 def get_server(db: Session, server_id: int) -> Server:
     return (

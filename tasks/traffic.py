@@ -1,6 +1,6 @@
 from app.db.session import db_session
 from app.db.models.server import Server
-from app.db.crud.server import get_server_with_ports_usage, get_servers
+from app.db.crud.server import get_server_with_ports_usage, get_servers, get_servers2
 
 from tasks import celery_app
 from tasks.utils.runner import run
@@ -21,6 +21,6 @@ def traffic_server_runner(server_id: Server):
 @celery_app.task()
 def traffic_runner():
     with db_session() as db:
-        servers = get_servers(db)
+        servers = get_servers2(db)
     for server in servers:
         traffic_server_runner.delay(server.id)
