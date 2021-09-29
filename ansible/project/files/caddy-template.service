@@ -11,6 +11,8 @@ ExecReload=
 TimeoutStopSec=5s
 LimitNOFILE=1048576
 LimitNPROC=512
+RestartSec=2s
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
