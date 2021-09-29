@@ -1,5 +1,5 @@
 alembic==1.4.3
-ansible==2.10.1
+ansible==2.10.7
 ansible-runner==1.4.6
 Authlib==0.14.3
 celery==5.0.0
