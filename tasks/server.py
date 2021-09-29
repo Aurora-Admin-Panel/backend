@@ -13,7 +13,7 @@ from app.db.models.user import User
 from app.db.models.server import Server
 from app.db.models.port_forward import PortForwardRule
 from app.db.crud.port import get_port_with_num
-from app.db.crud.server import get_server, get_servers, get_servers2
+from app.db.crud.server import get_server, get_servers, get_servers2,clear_cache
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
@@ -28,6 +28,7 @@ def finished_handler(server: Server, md5: str):
     def wrapper(runner):
         facts = runner.get_fact_cache(server.ansible_name)
         update_facts(server.id, facts, md5=md5)
+    clear_cache()
     return wrapper
 
 

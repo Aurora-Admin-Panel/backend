@@ -14,18 +14,28 @@ from app.db.schemas.server import (
 from app.db.models.server import Server, ServerUser
 from app.db.models.port import Port
 
+cache = {}
+def clear_cache():
+    global cache
+    cache.clear()
 
 def get_servers(db: Session, user: User = None) -> t.List[Server]:
     # Only superuser can see all the servers.
+    global cache
     if not user or user.is_superuser:
-        return (
-            db.query(Server)
+        if 'supper' in cache:
+            return cache['supper']
+        cache['supper'] = (db.query(Server)
             .filter(Server.is_active == True)
             .options(joinedload(Server.ports).joinedload(Port.allowed_users))
             .order_by(Server.name)
             .all()
         )
-    return (
+        return cache['supper']
+    key = ''+user.id
+    if key in cache:
+        return cache[key]
+    cache[key] = (
         db.query(Server)
         .filter(
             and_(
@@ -37,14 +47,20 @@ def get_servers(db: Session, user: User = None) -> t.List[Server]:
         .order_by(Server.name)
         .all()
     )
+    return cache[key]
 
 def get_servers2(db: Session) -> t.List[Server]:
     # Only superuser can see all the servers.
-    return (
+    global cache
+    key = '_servers2'
+    if key in cache:
+        return cache[key]
+    cache[key] = (
         db.query(Server)
         .filter(Server.is_active == True)
         .all()
     )
+    return cache[key]
 
 
 def get_server(db: Session, server_id: int) -> Server:
@@ -66,16 +82,17 @@ def get_server_with_ports_usage(db: Session, server_id: int) -> Server:
 
 
 def create_server(db: Session, server: ServerCreate) -> Server:
+    clear_cache()
     db_server = Server(**server.dict())
     db.add(db_server)
     db.commit()
     db.refresh(db_server)
     return db_server
 
-
 def edit_server(
     db: Session, server_id: int, server: ServerEdit, reset_system: bool = False
 ) -> Server:
+    clear_cache()
     db_server = get_server(db, server_id)
     if not db_server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -102,6 +119,7 @@ def edit_server(
 def edit_server_config(
     db: Session, server_id: int, config: ServerConfigEdit
 ) -> Server:
+    clear_cache()
     db_server = get_server(db, server_id)
     if not db_server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -116,6 +134,7 @@ def edit_server_config(
 
 
 def delete_server(db: Session, server_id: int) -> Server:
+    clear_cache()
     db_server = get_server(db, server_id)
     if not db_server:
         raise HTTPException(status_code=404, detail="Server not found")
@@ -162,6 +181,7 @@ def get_server_user(db: Session, server_id: int, user_id: int) -> ServerUser:
 def add_server_user(
     db: Session, server_id: int, server_user: ServerUserCreate
 ) -> ServerUser:
+    clear_cache()
     db_server_user = ServerUser(
         **server_user.dict(exclude_unset=True), server_id=server_id
     )
@@ -174,6 +194,7 @@ def add_server_user(
 def edit_server_user(
     db: Session, server_id: int, user_id: int, server_user: ServerUserEdit
 ) -> ServerUser:
+    clear_cache()
     db_server_user = get_server_user(db, server_id, user_id)
     if not db_server_user:
         return None
@@ -192,6 +213,7 @@ def edit_server_user(
 def delete_server_user(
     db: Session, server_id: int, user_id: int
 ) -> ServerUser:
+    clear_cache()
     db_server_user = (
         db.query(ServerUser)
         .filter(

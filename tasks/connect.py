@@ -6,7 +6,7 @@ from app.db.session import db_session
 from app.db.models.port import Port
 from app.db.models.user import User
 from app.db.models.server import Server
-from app.db.crud.server import get_server
+from app.db.crud.server import get_server,clear_cache
 from app.db.models.port_forward import PortForwardRule
 
 from tasks import celery_app
@@ -17,6 +17,7 @@ from tasks.utils.handlers import update_facts
 def finished_handler(server: Server):
     def wrapper(runner):
         update_facts(server.id, runner.get_fact_cache(server.ansible_name))
+    clear_cache()
     return wrapper
         
 
@@ -24,6 +25,7 @@ def finished_handler(server: Server):
 def connect_runner(
     server_id: int,
 ):
+    clear_cache()
     with db_session() as db:
         server = get_server(db, server_id)
     return run(
