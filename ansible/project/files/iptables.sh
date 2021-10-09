@@ -3,6 +3,7 @@
 SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 IFACE=$(ip route show | grep default | awk '{print $5}')
 INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
+INET=$(echo $INET|awk '{print $1}')
 TYPE="ALL"
 LOCAL_PORT=0
 REMOTE_IP=0
