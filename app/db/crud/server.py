@@ -32,7 +32,7 @@ def get_servers(db: Session, user: User = None) -> t.List[Server]:
             .all()
         )
         return cache['supper']
-    key = ''+user.id
+    key = str(user.id)
     if key in cache:
         return cache[key]
     cache[key] = (
