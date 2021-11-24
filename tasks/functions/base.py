@@ -70,4 +70,3 @@ class AppConfig(metaclass=ConfigMount):
 
 if __name__ == '__main__':
     config = AppConfig('test.yml')
-    print(config.extravars)

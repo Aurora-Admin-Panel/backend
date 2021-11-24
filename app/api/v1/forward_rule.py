@@ -201,7 +201,7 @@ async def forward_rule_runner_get(
 def verify_gost_config(
     port: Port, rule: t.Union[PortForwardRuleCreate, PortForwardRuleEdit]
 ) -> t.Union[PortForwardRuleCreate, PortForwardRuleEdit]:
-    if not rule.method == MethodEnum.GOST:
+    if rule.method != MethodEnum.GOST:
         return rule
 
     num = port.external_num if port.external_num else port.num

@@ -7,14 +7,14 @@
 
 - name: Sync v2ray@.service
   copy:
-    src: roles/v2ray/files/v2ray@.service
+    src: files/v2ray@.service
     dest: /usr/lib/systemd/system/v2ray@.service
     owner: root
     group: root
 
 - name: Sync v2ray binary
   copy:
-    src: roles/v2ray/files/v2ray_v4.42.2
+    src: files/v2ray_v4.42.2
     dest: /usr/local/bin/v2ray
     mode: +x
     owner: root
@@ -22,14 +22,14 @@
 
 - name: Sync geoip.dat binary
   copy:
-    src: roles/v2ray/files/geoip.dat
+    src: files/geoip.dat
     dest: /usr/local/bin/geoip.dat
     owner: root
     group: root
 
 - name: Sync geosite.dat binary
   copy:
-    src: roles/v2ray/files/geosite.dat
+    src: files/geosite.dat
     dest: /usr/local/bin/geosite.dat
     owner: root
     group: root

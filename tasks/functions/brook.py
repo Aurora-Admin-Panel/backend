@@ -41,10 +41,16 @@ class BrookConfig(AppConfig):
             )
         elif command in ("server", "wsserver"):
             args = f"-l :{port.num} -p {port.forward_rule.config.get('password')}"
-        elif command in ("client", "wsclient"):
+        elif command in ("client"):
             args = (
                 f"--socks5 0.0.0.0:{port.num} "
                 f"-s {remote_ip}:{port.forward_rule.config.get('remote_port')} "
+                f"-p {port.forward_rule.config.get('password')}"
+            )
+        elif command in ("wsclient"):
+            args = (
+                f"--socks5 0.0.0.0:{port.num} "
+                f"--wsserver ws://{remote_ip}:{port.forward_rule.config.get('remote_port')} "
                 f"-p {port.forward_rule.config.get('password')}"
             )
         else:
