@@ -207,15 +207,16 @@ def verify_gost_config(
     num = port.external_num if port.external_num else port.num
     for node in rule.config.ServeNodes:
         if node.startswith(":"):
-            if not node.startswith(f":{num}"):
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Port not allowed, ServeNode: {node}",
-                )
+            raise HTTPException( 
+                status_code=403,
+                detail=f"Port not allowed, ServeNode: {node}",
+            )
         else:
             parsed = urlparse(node)
-            if not parsed.netloc.endswith(str(num)) \
-                and not parsed.path.endswith(str(num)):
+            if (len(parsed.scheme) == 0 \
+                    or parsed.scheme not in ("tcp", "udp", "relay+ws", "relay+wss", "relay+tls")) \
+                or (not parsed.netloc.endswith(str(num)) \
+                    and not parsed.path.endswith(str(num))):
                 raise HTTPException(
                     status_code=403,
                     detail=f"Port not allowed, ServeNode: {node}",
