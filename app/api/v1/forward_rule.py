@@ -214,8 +214,10 @@ def verify_gost_config(
                 )
         else:
             parsed = urlparse(node)
-            if not parsed.netloc.endswith(str(num)) \
-                and not parsed.path.endswith(str(num)):
+            if (not parsed.netloc.endswith(str(num)) \
+                    and not parsed.path.endswith(str(num))) \
+                or (parsed.scheme not in ("tcp", "udp") \
+                    or not parsed.scheme.startswith("relay")):
                 raise HTTPException(
                     status_code=403,
                     detail=f"Port not allowed, ServeNode: {node}",
