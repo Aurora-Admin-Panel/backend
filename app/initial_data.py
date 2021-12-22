@@ -12,6 +12,9 @@ def init() -> None:
         print(" 邮箱格式不正确　！")
         return
     password = getpass("请输入密码：")
+    if len(password) < 8:
+        print("密码长度必须不少于8位，否则无法登录！")
+        return
     repeated_password = getpass("请再次输入密码：")
     if password != repeated_password:
         print("两次密码不一致！")
