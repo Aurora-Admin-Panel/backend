@@ -14,9 +14,10 @@ def dns_query(url: str, doh_url: str = DEFAULT_DOH_URL) -> str:
         f"{doh_url}?{params}", headers={"accept": "application/dns-json"}
     )
     try:
-        ret = urlopen(req, timeout=2).read().decode("utf-8")
+        ret = urlopen(req, timeout=2)
     except URLError:
         return url
+    ret = ret.read().decode("utf-8")
     result = json.loads(ret)
     if not result.get("Answer"):
         return url
