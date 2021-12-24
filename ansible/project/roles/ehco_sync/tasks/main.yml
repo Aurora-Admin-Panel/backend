@@ -5,10 +5,21 @@
     dest: /usr/lib/systemd/system/ehco-template.service
     owner: root
     group: root
-
-- name: Sync ehco binary
+- name: Gather facts
+  gather_facts:
+    parallel: yes
+- name: Sync ehco binary for X64
+  when: ansible_facts.architecture == 'x86_64'
   copy:
     src: files/ehco_1.1.0_linux_amd64
+    dest: /usr/local/bin/ehco
+    mode: +x
+    owner: root
+    group: root
+- name: Sync ehco binary for ARM64
+  when: ansible_facts.architecture == 'aarch64'
+  copy:
+    src: files/ehco_1.1.0_linux_arm64
     dest: /usr/local/bin/ehco
     mode: +x
     owner: root
