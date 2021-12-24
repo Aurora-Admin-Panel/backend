@@ -1,7 +1,19 @@
 ---
-- name: Sync gost binary
+- name: Gather facts
+  gather_facts:
+    parallel: yes
+- name: Sync gost binary for X64
+  when: ansible_facts.architecture == 'x86_64'
   copy:
     src: files/gost-linux-amd64-2.11.1
+    dest: /usr/local/bin/gost
+    mode: +x
+    owner: root
+    group: root
+- name: Sync gost binary for ARM64
+  when: ansible_facts.architecture == 'aarch64'
+  copy:
+    src: files/gost-linux-armv8-2.11.1
     dest: /usr/local/bin/gost
     mode: +x
     owner: root
