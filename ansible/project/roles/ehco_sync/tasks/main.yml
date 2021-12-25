@@ -11,7 +11,7 @@
 - name: Sync ehco binary for X64
   when: ansible_facts.architecture == 'x86_64'
   copy:
-    src: files/ehco_1.0.7_linux_amd64
+    src: files/ehco_1.1.1_linux_amd64
     dest: /usr/local/bin/ehco
     mode: +x
     owner: root
@@ -19,7 +19,7 @@
 - name: Sync ehco binary for ARM64
   when: ansible_facts.architecture == 'aarch64'
   copy:
-    src: files/ehco_1.0.7_linux_arm64
+    src: files/ehco_1.1.1_linux_arm64
     dest: /usr/local/bin/ehco
     mode: +x
     owner: root

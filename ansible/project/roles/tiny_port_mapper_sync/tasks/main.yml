@@ -6,9 +6,23 @@
     owner: root
     group: root
 
-- name: Sync tiny_port_mapper binary
+- name: Gather facts
+  gather_facts:
+    parallel: yes
+
+- name: Sync tiny_port_mapper binary for X64
+  when: ansible_facts.architecture == 'x86_64'
   copy:
     src: files/tinymapper_amd64_20200818.0
+    dest: /usr/local/bin/tiny_port_mapper
+    mode: +x
+    owner: root
+    group: root
+
+- name: Sync tiny_port_mapper binary for ARM64
+  when: ansible_facts.architecture == 'aarch64'
+  copy:
+    src: files/tinymapper_arm_20200818.0
     dest: /usr/local/bin/tiny_port_mapper
     mode: +x
     owner: root
