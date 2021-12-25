@@ -1,4 +1,5 @@
 import json
+import socket
 import traceback
 from urllib.error import URLError
 from urllib.parse import urlencode
@@ -15,7 +16,7 @@ def dns_query(url: str, doh_url: str = DEFAULT_DOH_URL) -> str:
     )
     try:
         ret = urlopen(req, timeout=2)
-    except URLError:
+    except (socket.timeout, URLError):
         return url
     ret = ret.read().decode("utf-8")
     result = json.loads(ret)
