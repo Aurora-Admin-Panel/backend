@@ -1,14 +1,27 @@
 ---
-- name: Sync shadowsocks_go binary
+- name: Gather facts
+  gather_facts:
+    parallel: yes
+- name: Sync shadowsocks_go binary for X64
+  when: ansible_facts.architecture == 'x86_64'
   copy:
     src: files/shadowsocks-server-1.2.1
     dest: /usr/local/bin/shadowsocks_go
     mode: +x
     owner: root
     group: root
-- name: Sync shadowsocks_go2 binary
+- name: Sync shadowsocks_go2 binary for X64
+  when: ansible_facts.architecture == 'x86_64'
   copy:
-    src: files/shadowsocks2-linux-v0.1.5
+    src: files/shadowsocks2-linux-amd64-v0.1.5
+    dest: /usr/local/bin/shadowsocks_go2
+    mode: +x
+    owner: root
+    group: root
+- name: Sync shadowsocks_go2 binary for ARM64
+  when: ansible_facts.architecture == 'aarch64'
+  copy:
+    src: files/shadowsocks2-linux-arm64-v0.1.5
     dest: /usr/local/bin/shadowsocks_go2
     mode: +x
     owner: root
