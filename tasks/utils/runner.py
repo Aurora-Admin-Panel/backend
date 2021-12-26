@@ -1,4 +1,5 @@
 import os
+import traceback
 import typing as t
 import ansible_runner
 from uuid import uuid4
@@ -63,7 +64,7 @@ def run(
             extravars=extravars,
             **kwargs
         )
-    except OSError as e:
-        print(e)
+    except OSError:
+        print(traceback.format_exc())
         return
     return runner
