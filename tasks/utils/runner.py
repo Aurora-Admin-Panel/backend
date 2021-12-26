@@ -54,11 +54,16 @@ def run(
     else:
         priv_data_dir = prepare_priv_dir(server)
         extravars["host"] = server.ansible_name
-    return ansible_runner.run(
-        ident=uuid4() if ident is None else ident,
-        private_data_dir=priv_data_dir,
-        project_dir="ansible/project",
-        playbook=playbook,
-        extravars=extravars,
-        **kwargs
-    )
+    try:
+        runner = ansible_runner.run(
+            ident=uuid4() if ident is None else ident,
+            private_data_dir=priv_data_dir,
+            project_dir="ansible/project",
+            playbook=playbook,
+            extravars=extravars,
+            **kwargs
+        )
+    except OSError as e:
+        print(e)
+        return
+    return runner
