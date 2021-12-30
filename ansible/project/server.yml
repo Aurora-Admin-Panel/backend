@@ -5,7 +5,7 @@
   pre_tasks:
     - name: install python
       raw: |
-        (python3 -V || python -V) || \
+        (/bin/env python3 -V || /bin/env python -V) || \
         (yum makecache -y && (yum install -y python3 || yum install -y python)) || \
         (apt update -y && (apt install -y python3 || apt install -y python))
     - name: get service facts
