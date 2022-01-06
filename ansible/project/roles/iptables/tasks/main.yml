@@ -1,21 +1,14 @@
 ---
-- name: Exec iptables script
-  block:
-    - name: Exec iptables script locally
-      shell: /usr/local/bin/iptables.sh {{ iptables_args }}
-      register: traffic
-  rescue:
-    - name: Sync iptables.sh
-      copy:
-        src: files/iptables.sh
-        dest: /usr/local/bin/iptables.sh
-        owner: root
-        group: root
-        mode: '0755'
-    - name: Exec iptables script locally again
-      shell: /usr/local/bin/iptables.sh {{ iptables_args }}
-      register: traffic
-
+- name: Sync iptables.sh
+  copy:
+    src: files/iptables.sh
+    dest: /usr/local/bin/iptables.sh
+    owner: root
+    group: root
+    mode: '0755'
+- name: Exec iptables script locally again
+  shell: /usr/local/bin/iptables.sh {{ iptables_args }}
+  register: traffic
 - name: Set traffic result
   set_fact:
     traffic: "{{ traffic.stdout }}"

@@ -46,6 +46,4 @@
       when: prepare_services is defined and prepare_services
     - role: scripts_sync
       when: sync_scripts is defined and sync_scripts
-    - role: iptables_init
-      when: init_iptables is defined and init_iptables
     - iptables_get
