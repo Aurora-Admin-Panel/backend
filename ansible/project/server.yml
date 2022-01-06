@@ -3,14 +3,42 @@
   become: yes
   gather_facts: no
   pre_tasks:
-    - name: install python
+    - name: Check and install python
       raw: |
-        (test -e /usr/bin/python3 || test -e /usr/bin/python) || \
+        (/usr/bin/env python3 -V || /usr/bin/env python -V) || \
+        (yum install -y python3 || yum install -y python) || \
+        (apt install -y python3 || apt install -y python) || \
         (yum makecache -y && (yum install -y python3 || yum install -y python)) || \
         (apt update -y && (apt install -y python3 || apt install -y python))
-    - name: get facts
+    - name: Check and install iptables
+      raw: |
+        /usr/bin/env iptables -V || \
+        (yum install -y iptables || apt install -y iptables) || \
+        (yum makecache -y && yum install -y iptables) || \
+        (apt update -y && apt install -y iptables)
+    - name: Check and install systemd
+      raw: |
+        /bin/env systemctl --version || \
+        (yum install -y systemd || apt install -y systemd) || \
+        (yum makecache -y && yum install -y systemd) || \
+        (apt update -y && apt install -y systemd)
+    - name: Check and make systemd path
+      raw: |
+        ([ -d /usr/lib/systemd/system ] || mkdir -p /usr/lib/systemd/system) && \
+        ([ -d /etc/systemd/system ] || mkdir -p /etc/systemd/system)
+    - name: Stop firewalld
+      raw: |
+        [ -n "$(systemctl list-unit-files --all | grep "firewalld.service" | grep "enabled")" ] && \
+        systemctl stop firewalld.service && \
+        systemctl disable firewalld.service || exit 0
+    - name: Stop ufw
+      raw: |
+        [ -n "$(systemctl list-unit-files --all | grep "ufw.service" | grep "enabled")" ] && \
+        systemctl stop ufw.service && \
+        systemctl disable ufw.service || exit 0
+    - name: Get facts
       setup:
-    - name: get service facts
+    - name: Get service facts
       service_facts:
       register: services
   roles:
