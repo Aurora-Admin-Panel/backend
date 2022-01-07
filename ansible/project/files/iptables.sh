@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
+[ -z $SUDO ] || sudo -n true 2>/dev/null || (echo "Failed to use sudo" && exit 1)
 IFACE=$(ip route show | grep default | grep -Po '(?<=dev )(\w+)')
 INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
 TYPE="ALL"
