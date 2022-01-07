@@ -4,6 +4,9 @@ SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 [ -z $SUDO ] || sudo -n true 2>/dev/null || (echo "Failed to use sudo" && exit 1)
 IFACE=$(ip route show | grep default | grep -Po '(?<=dev )(\w+)')
 INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
+# Only support one ip now
+INET=$(echo $INET | grep -Po "^(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|[1-9])(\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)){3}$")
+[ -z $INET ] && echo "No ip address found" && exit 1
 TYPE="ALL"
 LOCAL_PORT=0
 REMOTE_IP=0
