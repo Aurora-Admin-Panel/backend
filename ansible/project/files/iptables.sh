@@ -5,8 +5,8 @@ SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 IFACE=$(ip route show | grep default | grep -Po '(?<=dev )(\w+)')
 INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
 # Only support one ip now
-INET=$(echo $INET | grep -Po "^(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|[1-9])(\.(1\d{2}|2[0-4]\d|25[0-5]|[1-9]\d|\d)){3}$")
-[ -z $INET ] && echo "No ip address found" && exit 1
+INET=$(echo $INET | awk '{print $1}' | grep -Po "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
+[ -z $INET ] && echo "No valid ipv4 address found" && exit 1
 TYPE="ALL"
 LOCAL_PORT=0
 REMOTE_IP=0
