@@ -42,6 +42,7 @@ from app.core.auth import (
 )
 from app.utils.tasks import (
     trigger_ansible_hosts,
+    trigger_server_init,
     trigger_server_connect,
     trigger_server_clean,
 )
@@ -118,7 +119,7 @@ async def server_create(
     if not server or not server.id:
         raise HTTPException(status_code=400, detail="Server creation failed")
     trigger_ansible_hosts()
-    trigger_server_connect(server.id, init=True)
+    trigger_server_init(server.id, init=True)
     return server
 
 
@@ -147,7 +148,7 @@ async def server_edit(
     server = edit_server(db, server_id, server)
     trigger_ansible_hosts()
     if server.config["system"] is None:
-        trigger_server_connect(server.id)
+        trigger_server_init(server.id)
     return server
 
 

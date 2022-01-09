@@ -24,7 +24,7 @@ from tasks.utils.files import get_md5_for_file
 from tasks.utils.handlers import update_facts, server_facts_event_handler
 
 
-def finished_handler(server: Server, md5: str):
+def finished_handler(server: Server, md5: str = None):
     def wrapper(runner):
         facts = runner.get_fact_cache(server.ansible_name)
         update_facts(server.id, facts, md5=md5)
@@ -44,6 +44,19 @@ def server_runner(server_id: int, **kwargs):
         finished_callback=finished_handler(server, init_md5),
     )
 
+
+@celery_app.task(priority=3)
+def connect_runner(
+    server_id: int,
+):
+    with db_session() as db:
+        server = get_server(db, server_id)
+    return run(
+        server=server,
+        playbook="connect.yml",
+        event_handler=server_facts_event_handler(server.id),
+        finished_callback=finished_handler(server),
+    )
 
 @celery_app.task()
 def servers_runner(**kwargs):

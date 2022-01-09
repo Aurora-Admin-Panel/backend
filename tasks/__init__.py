@@ -40,7 +40,6 @@ celery_app.autodiscover_tasks(
         "tasks.app",
         "tasks.ehco",
         "tasks.brook",
-        "tasks.connect",
         "tasks.clean",
         "tasks.traffic",
         "tasks.iptables",

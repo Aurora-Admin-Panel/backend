@@ -65,22 +65,28 @@ def remove_tc(server_id: int, port_num: int):
 
 
 def trigger_ansible_hosts():
-    print(f"Sending ansible_hosts_runner task")
+    print("Sending ansible_hosts_runner task")
     celery_app.send_task("tasks.ansible.ansible_hosts_runner")
 
 
 def trigger_iptables_reset(port: Port):
     kwargs = {"server_id": port.server.id, "port_num": port.num}
-    print(f"Sending iptables.iptables_reset_runner task")
+    print("Sending iptables.iptables_reset_runner task")
     celery_app.send_task("tasks.iptables.iptables_reset_runner", kwargs=kwargs)
 
 
-def trigger_server_connect(server_id: int, init: bool = False, **kwargs):
+def trigger_server_init(server_id: int, init: bool = False, **kwargs):
     kwargs["server_id"] = server_id
     kwargs["sync_scripts"] = init
     kwargs["init_iptables"] = init
-    print(f"Sending server.server_runner task")
+    print("Sending server.server_runner task")
     celery_app.send_task("tasks.server.server_runner", kwargs=kwargs)
+
+
+def trigger_server_connect(server_id: int, **kwargs):
+    kwargs["server_id"] = server_id
+    print("Sending server.connect_runner task")
+    celery_app.send_task("tasks.server.connect_runner", kwargs=kwargs)
 
 
 def trigger_server_clean(server: Server):

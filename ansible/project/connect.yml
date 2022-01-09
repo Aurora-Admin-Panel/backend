@@ -1,8 +1,8 @@
 ---
-- name: Add iptables port forward rule
-  gather_facts: true
+- name: Connect server
   hosts: "{{ host | default('web') }}"
   become: yes
+  gather_facts: true
   tasks:
   - name: get service facts
     service_facts:

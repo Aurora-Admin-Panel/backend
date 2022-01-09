@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 
 from app.db.session import get_db
 from app.utils.ip import is_ip
-from app.utils.dns import dns_query
 from app.utils.tasks import trigger_forward_rule, trigger_port_clean
 from app.db.models.port import Port
 from app.db.models.port_forward import MethodEnum, TypeEnum
