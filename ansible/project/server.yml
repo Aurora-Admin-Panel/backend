@@ -5,27 +5,31 @@
   pre_tasks:
     - name: Check and install python
       raw: |
-        (/usr/bin/env python3 -V || /usr/bin/env python -V) || \
+        (/usr/bin/env python3 -V || /usr/bin/env python -V || /usr/bin/env python2 -V) || \
         (yum install -y python3 || yum install -y python) || \
         (apt install -y python3 || apt install -y python) || \
+        (apk add python3 || apk add python2) || \
         (yum makecache -y && (yum install -y python3 || yum install -y python)) || \
-        (apt update -y && (apt install -y python3 || apt install -y python))
+        (apt update -y && (apt install -y python3 || apt install -y python)) || \
+        (apk update && (apk add python3 || apk add python2))
     - name: Check and install iptables
       raw: |
         /usr/bin/env iptables -V || \
-        (yum install -y iptables || apt install -y iptables) || \
+        (yum install -y iptables || apt install -y iptables || apk add iptables) || \
         (yum makecache -y && yum install -y iptables) || \
-        (apt update -y && apt install -y iptables)
+        (apt update -y && apt install -y iptables) || \
+        (apk update && apk add iptables)
     - name: Check and install systemd
       raw: |
         /bin/env systemctl --version || \
         (yum install -y systemd || apt install -y systemd) || \
         (yum makecache -y && yum install -y systemd) || \
-        (apt update -y && apt install -y systemd)
+        (apt update -y && apt install -y systemd) || exit 0
     - name: Check and make systemd path
       raw: |
-        ([ -d /usr/lib/systemd/system ] || mkdir -p /usr/lib/systemd/system) && \
-        ([ -d /etc/systemd/system ] || mkdir -p /etc/systemd/system)
+        /usr/bin/env openrc -V || \
+        (([ -d /usr/lib/systemd/system ] || mkdir -p /usr/lib/systemd/system) && \
+        ([ -d /etc/systemd/system ] || mkdir -p /etc/systemd/system)) || exit 0
     - name: Stop firewalld
       raw: |
         [ -n "$(systemctl list-unit-files --all | grep "firewalld.service" | grep "enabled")" ] && \
