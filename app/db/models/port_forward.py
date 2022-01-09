@@ -33,6 +33,7 @@ class MethodEnum(enum.Enum):
     TINY_PORT_MAPPER = "tiny_port_mapper"
     V2RAY = "v2ray"
     WSTUNNEL = "wstunnel"
+    REALM = "realm"
 
 
 class PortForwardRule(Base):

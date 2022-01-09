@@ -38,6 +38,7 @@ def trigger_forward_rule(rule: PortForwardRule):
         MethodEnum.TINY_PORT_MAPPER,
         MethodEnum.V2RAY,
         MethodEnum.WSTUNNEL,
+        MethodEnum.REALM,
     ):
         rule_runner.delay(rule_id=rule.id)
     elif rule.method == MethodEnum.IPTABLES:
