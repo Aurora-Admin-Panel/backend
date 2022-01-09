@@ -3,17 +3,5 @@
   gather_facts: no
   hosts: "{{ host | default('web') }}"
   become: yes
-  pre_tasks:
-    - name: iptables setup
-      when: init_iptables is defined and init_iptables
-      block:
-        - setup:
-        - name: init iptables
-          include_role:
-            name: iptables_init
-    - name: get service facts
-      when: init_iptables is defined and init_iptables
-      service_facts:
-      register: services
   roles:
   - iptables
