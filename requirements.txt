@@ -23,3 +23,4 @@ python-multipart==0.0.5
 pyjwt==1.7.1
 psutil==5.7.2
 sentry-sdk==0.19.3
+dnspython==2.1.0

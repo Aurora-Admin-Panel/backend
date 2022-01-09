@@ -108,7 +108,7 @@ def ddns_runner():
             and not is_ip(rule.config.get("remote_address"))
         ):
             updated_ip = dns_query(rule.config["remote_address"])
-            if updated_ip != rule.config["remote_ip"]:
+            if updated_ip and updated_ip != rule.config["remote_ip"]:
                 print(
                     f"DNS changed for address {rule.config['remote_address']}, "
                     + f"{rule.config['remote_ip']}->{updated_ip}"
