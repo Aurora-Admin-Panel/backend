@@ -8,7 +8,7 @@ from app.db.crud.server import get_server_with_ports_usage
 from app.db.crud.port import get_port_by_id
 from app.db.crud.port_forward import get_forward_rule_by_id
 
-from tasks import celery_app
+from .config import huey
 from tasks.clean import clean_port_runner
 from tasks.functions import AppConfig
 from tasks.utils.runner import run
@@ -16,7 +16,7 @@ from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import iptables_finished_handler, status_handler
 
 
-@celery_app.task
+@huey.task()
 def app_runner(
     port_id: int,
     server_id: int,
@@ -73,7 +73,7 @@ def app_runner(
     )
 
 
-@celery_app.task
+@huey.task()
 def rule_runner(rule_id: int):
     try:
         with db_session() as db:

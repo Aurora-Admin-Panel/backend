@@ -1,11 +1,11 @@
 from app.db.session import db_session
 from app.db.crud.server import get_server
 
-from tasks import celery_app
+from .config import huey
 from tasks.utils.runner import run
 
 
-@celery_app.task()
+@huey.task()
 def tc_runner(
     server_id: int,
     port_num: int,

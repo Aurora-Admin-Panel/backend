@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 
 # Local files
+huey.db*
 app.db
 ansible/artifacts/**/*
 ansible/env/ssh_key

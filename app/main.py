@@ -7,7 +7,6 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
 import sentry_sdk
-from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.api.v1.auth import auth_router
@@ -23,7 +22,6 @@ from app.core import config
 from app.db.session import db_session
 from app.core.auth import get_current_active_user
 from app.utils.ip import get_external_ip
-from tasks import celery_app
 
 
 app = FastAPI(
@@ -46,7 +44,7 @@ sentry_sdk.init(
     release=f"{config.BACKEND_VERSION}",
     environment=f"{config.ENVIRONMENT}",
     dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928",
-    integrations=[SqlalchemyIntegration(), RedisIntegration()],
+    integrations=[SqlalchemyIntegration()],
 )
 sentry_sdk.set_tag('panel.ip', get_external_ip())
 
@@ -84,12 +82,6 @@ async def root():
         server = get_server_with_ports_usage(db, 34)
     print([p for p in server.ports])
     return {"message": "Hello World"}
-
-
-@app.post("/api/v1/task/{task_name}")
-async def run_task(task_name: str, kwargs: t.Dict):
-    celery_app.send_task(f"tasks.{task_name}", kwargs=kwargs)
-    return {"message": "ok"}
 
 
 # Routers

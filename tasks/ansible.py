@@ -1,12 +1,12 @@
-from tasks import celery_app
+from tasks.config import huey
 from app.db.session import db_session
 from app.db.models.server import Server
 
 
-@celery_app.task()
+@huey.task()
 def ansible_hosts_runner():
     with db_session() as db:
-        servers = db.query(Server).filter(Server.is_active == True).all()
+        servers = db.query(Server).filter(Server.is_active==True).all()
 
     with open("ansible/inventory/hosts", 'w+') as f:
         f.write("### START AUTO GENERATION ###\n")

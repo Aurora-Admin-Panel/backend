@@ -17,7 +17,7 @@ from app.db.crud.server import get_server, get_servers
 from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
-from tasks import celery_app
+from .config import huey
 from tasks.utils.runner import run_async, run
 from tasks.utils.server import prepare_priv_dir
 from tasks.utils.files import get_md5_for_file
@@ -31,7 +31,7 @@ def finished_handler(server: Server, md5: str = None):
     return wrapper
 
 
-@celery_app.task(priority=9)
+@huey.task(priority=9)
 def server_runner(server_id: int, **kwargs):
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     with db_session() as db:
@@ -45,7 +45,7 @@ def server_runner(server_id: int, **kwargs):
     )
 
 
-@celery_app.task(priority=3)
+@huey.task(priority=3)
 def connect_runner(
     server_id: int,
 ):
@@ -58,7 +58,7 @@ def connect_runner(
         finished_callback=finished_handler(server),
     )
 
-@celery_app.task()
+@huey.task()
 def servers_runner(**kwargs):
     with db_session() as db:
         servers = get_servers(db)

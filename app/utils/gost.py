@@ -3,11 +3,8 @@ import typing as t
 from sqlalchemy import and_, or_
 from urllib.parse import urlencode, urlparse
 
-from tasks import celery_app
 from app.utils.dns import dns_query
 from app.utils.ip import is_ip
-from app.db.session import SessionLocal
-from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.models.port import Port
 from app.db.models.server import Server
 from app.db.models.port_forward import MethodEnum, PortForwardRule

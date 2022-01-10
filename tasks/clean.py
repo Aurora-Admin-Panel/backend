@@ -2,16 +2,17 @@ import typing as t
 
 from app.db.session import db_session
 from app.db.crud.server import get_server_with_ports_usage
-from tasks import celery_app
+from .config import huey
+from tasks.ansible import ansible_hosts_runner
 from tasks.utils.runner import run
 from tasks.utils.handlers import iptables_finished_handler
 
 
 def clean_finished_handler(runner):
-    celery_app.send_task("tasks.ansible.ansible_hosts_runner")
+    ansible_hosts_runner()
 
 
-@celery_app.task()
+@huey.task()
 def clean_runner(server: t.Dict):
     run(
         server=server,
@@ -20,7 +21,7 @@ def clean_runner(server: t.Dict):
     )
 
 
-@celery_app.task()
+@huey.task()
 def clean_port_runner(
     server_id: int, port_num: int, update_traffic: bool = True
 ):

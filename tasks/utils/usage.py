@@ -18,7 +18,7 @@ from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 from app.db.schemas.port_forward import PortForwardRuleOut
 from app.db.schemas.server import ServerEdit
 
-from tasks import celery_app
+from tasks.port import clean_port_no_update_runner
 from tasks.tc import tc_runner
 
 
@@ -93,10 +93,7 @@ def apply_port_limits(db: Session, port: Port, action: LimitActionEnum):
         if not port.forward_rule:
             return
         delete_forward_rule(db, port.server_id, port.id)
-        celery_app.send_task(
-            "tasks.clean.clean_port_runner",
-            kwargs={"server_id": port.server.id, "port_num": port.num},
-        )
+        clean_port_no_update_runner(server_id=port.server.id, port_num=port.num)
     elif action in action_to_speed:
         if (
             port.config["egress_limit"] != action_to_speed[action]

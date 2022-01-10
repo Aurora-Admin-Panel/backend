@@ -2,11 +2,9 @@ alembic==1.4.3
 ansible==2.10.1
 ansible-runner==1.4.6
 Authlib==0.14.3
-celery==5.0.0
 httpx==0.15.5
 fastapi==0.63.0
 fastapi-pagination[sqlalchemy]==0.5.3
-redis==3.5.3
 ipython==7.18.1
 itsdangerous==1.1.0
 Jinja2==2.11.2
@@ -24,3 +22,4 @@ pyjwt==1.7.1
 psutil==5.7.2
 sentry-sdk==0.19.3
 dnspython==2.1.0
+huey==2.4.2

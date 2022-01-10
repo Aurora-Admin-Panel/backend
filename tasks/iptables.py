@@ -1,4 +1,5 @@
 import traceback
+from huey import crontab
 
 from app.db.session import db_session
 from app.db.models.port_forward import MethodEnum
@@ -8,17 +9,18 @@ from app.db.crud.server import (
 )
 from app.db.crud.port import get_port
 from app.db.crud.port_forward import get_all_ddns_rules
+from app.core.config import DDNS_INTERVAL_SECONDS
 from app.utils.dns import dns_query
 from app.utils.ip import is_ip
 
-from tasks import celery_app
+from .config import huey
 from tasks.app import rule_runner
 from tasks.utils.runner import run
 from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
 
-@celery_app.task(priority=0)
+@huey.task(priority=0)
 def iptables_runner(
     port_id: int,
     server_id: int,
@@ -77,7 +79,7 @@ def iptables_runner(
             db.commit()
 
 
-@celery_app.task()
+@huey.task()
 def iptables_reset_runner(
     server_id: int,
     port_num: int,
@@ -97,7 +99,7 @@ def iptables_reset_runner(
     )
 
 
-@celery_app.task()
+@huey.periodic_task(crontab(minute=f"*/{int(DDNS_INTERVAL_SECONDS)//60}"))
 def ddns_runner():
     with db_session() as db:
         rules = get_all_ddns_rules(db)
