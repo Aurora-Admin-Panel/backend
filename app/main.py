@@ -7,6 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
 import sentry_sdk
+from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 from app.api.v1.auth import auth_router
@@ -44,7 +45,7 @@ sentry_sdk.init(
     release=f"{config.BACKEND_VERSION}",
     environment=f"{config.ENVIRONMENT}",
     dsn="https://c1a19cfeb74045f8912e5cb449c1071d@sentry.leishi.io/2",
-    integrations=[SqlalchemyIntegration()],
+    integrations=[SqlalchemyIntegration(), RedisIntegration()],
 )
 sentry_sdk.set_tag('panel.ip', get_external_ip())
 
