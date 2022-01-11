@@ -1,3 +1,3 @@
-from huey import SqliteHuey
+from huey import PriorityRedisHuey
 
-huey = SqliteHuey()
+huey = PriorityRedisHuey('aurora', host='redis')

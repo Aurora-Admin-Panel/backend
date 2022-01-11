@@ -32,16 +32,19 @@ def get_ipv4_by_custom_server(hostname: str, dns_server: str) -> Optional[str]:
 
 
 def get_ipv4_by_system(hostname: str) -> Optional[str]:
-    return next(
-        iter(
-            list(
-                i[4][0]
-                for i in socket.getaddrinfo(hostname, 0)
-                if i[0] is socket.AddressFamily.AF_INET
-                and i[1] is socket.SocketKind.SOCK_RAW
+    try:
+        return next(
+            iter(
+                list(
+                    i[4][0]
+                    for i in socket.getaddrinfo(hostname, 0)
+                    if i[0] is socket.AddressFamily.AF_INET
+                    and i[1] is socket.SocketKind.SOCK_RAW
+                )
             )
         )
-    )
+    except:
+        return None
 
 
 def get_ipv4_by_aliyun(hostname: str) -> Optional[str]:
