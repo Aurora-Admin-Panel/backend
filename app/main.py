@@ -43,7 +43,7 @@ app.add_middleware(
 sentry_sdk.init(
     release=f"{config.BACKEND_VERSION}",
     environment=f"{config.ENVIRONMENT}",
-    dsn="https://ad50b72443114ca783a4f2aa3d06fba6@o176406.ingest.sentry.io/5520928",
+    dsn="https://c1a19cfeb74045f8912e5cb449c1071d@sentry.leishi.io/2",
     integrations=[SqlalchemyIntegration()],
 )
 sentry_sdk.set_tag('panel.ip', get_external_ip())

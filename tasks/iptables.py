@@ -57,14 +57,16 @@ def iptables_runner(
             ),
         }
 
-        return run(
+        run(
             server=server,
             playbook="iptables.yml",
             extravars=extravars,
             status_handler=lambda s, **k: status_handler(
                 port_id, s, update_status
             ),
-            finished_callback=iptables_finished_handler(server, port_id, True)
+            finished_callback=iptables_finished_handler(
+                server.id, port_id, True
+            )
             if update_status
             else lambda r: None,
         )
@@ -92,7 +94,7 @@ def iptables_reset_runner(
         "iptables_args": f" reset {port_num}",
     }
 
-    return run(
+    run(
         server=server,
         playbook="iptables.yml",
         extravars=extravars,

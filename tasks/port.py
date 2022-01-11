@@ -7,9 +7,7 @@ from tasks.utils.runner import run
 
 
 @huey.task()
-def clean_port_no_update_runner(
-    server_id: int, port_num: int, update_traffic: bool = True
-):
+def clean_port_no_update_runner(server_id: int, port_num: int):
     with db_session() as db:
         server = get_server_with_ports_usage(db, server_id)
     run(

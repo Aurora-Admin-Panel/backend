@@ -21,7 +21,7 @@ def tc_runner(
         args += f' -i={ingress_limit}kbit'
     args += f' {port_num}'
 
-    return run(
+    run(
         server=server,
         playbook="tc.yml",
         extravars={"host": server.ansible_name, "tc_args": args},

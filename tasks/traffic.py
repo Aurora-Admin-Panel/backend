@@ -14,10 +14,10 @@ from tasks.utils.handlers import iptables_finished_handler
 def traffic_server_runner(server_id: Server):
     with db_session() as db:
         server = get_server_with_ports_usage(db, server_id)
-    return run(
+    run(
         server=server,
         playbook="traffic.yml",
-        finished_callback=iptables_finished_handler(server),
+        finished_callback=iptables_finished_handler(server.id),
     )
 
 

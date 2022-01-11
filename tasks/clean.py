@@ -32,6 +32,6 @@ def clean_port_runner(
         playbook="clean_port.yml",
         extravars={"local_port": port_num},
         finished_callback=iptables_finished_handler(
-            server, accumulate=True, update_traffic_bool=update_traffic
+            server.id, accumulate=True, update_traffic_bool=update_traffic
         ),
     )

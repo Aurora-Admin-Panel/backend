@@ -67,12 +67,14 @@ def update_rule_error(server_id: int, port_id: int, facts: t.Dict):
 
 
 def iptables_finished_handler(
-    server: Server,
+    server_id: int,
     port_id: int = None,
     accumulate: bool = False,
     update_traffic_bool: bool = True,
 ):
     def wrapper(runner):
+        with db_session() as db:
+            server = get_server(db, server_id)
         facts = runner.get_fact_cache(server.ansible_name)
         if facts:
             if facts.get("traffic", "") and update_traffic_bool:

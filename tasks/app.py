@@ -61,13 +61,13 @@ def app_runner(
             f.write(app_config)
         extravars["app_config"] = f"{app_name}-{port_id}"
 
-    return run(
+    run(
         server=server,
-        playbook=f"app.yml",
+        playbook="app.yml",
         extravars=extravars,
         ident=ident,
         status_handler=lambda s, **k: status_handler(port_id, s, update_status),
-        finished_callback=iptables_finished_handler(server, port_id, True)
+        finished_callback=iptables_finished_handler(server.id, port_id, True)
         if update_status
         else lambda r: None,
     )
@@ -78,16 +78,25 @@ def rule_runner(rule_id: int):
     try:
         with db_session() as db:
             rule = get_forward_rule_by_id(db, rule_id)
-            port_id, port_num, server_id = rule.port.id, rule.port.num, rule.port.server.id
+            port_id, port_num, server_id = (
+                rule.port.id,
+                rule.port.num,
+                rule.port.server.id,
+            )
             ident = uuid4()
             app_configs = []
             if rule.config.get("reverse_proxy"):
-                reverse_proxy_port = get_port_by_id(db, rule.config.get("reverse_proxy"))
+                reverse_proxy_port = get_port_by_id(
+                    db, rule.config.get("reverse_proxy")
+                )
                 app_configs.append(
                     AppConfig.configs[
-                        reverse_proxy_port.forward_rule.method].apply(
-                            db, reverse_proxy_port))
-            app_configs.append(AppConfig.configs[rule.method].apply(db, rule.port))
+                        reverse_proxy_port.forward_rule.method
+                    ].apply(db, reverse_proxy_port)
+                )
+            app_configs.append(
+                AppConfig.configs[rule.method].apply(db, rule.port)
+            )
             db.refresh(rule)
             server = get_server_with_ports_usage(db, server_id)
 
@@ -97,11 +106,9 @@ def rule_runner(rule_id: int):
                 config.playbook,
                 extravars=config.extravars,
                 ident=ident,
-                status_handler=lambda s, **k: status_handler(
-                    port_id, s, True
-                ),
+                status_handler=lambda s, **k: status_handler(port_id, s, True),
                 finished_callback=iptables_finished_handler(
-                    server, port_id, True
+                    server.id, port_id, True
                 ),
             )
             if runner.status != "successful":
@@ -109,7 +116,8 @@ def rule_runner(rule_id: int):
         if rule.config.get("expire_second"):
             clean_port_runner.apply_async(
                 (server_id, port_num),
-                eta=datetime.now() + timedelta(seconds=rule.config.get("expire_second")),
+                eta=datetime.now()
+                + timedelta(seconds=rule.config.get("expire_second")),
             )
     except Exception:
         with db_session() as db:
