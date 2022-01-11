@@ -32,14 +32,14 @@
         ([ -d /etc/systemd/system ] || mkdir -p /etc/systemd/system)) || exit 0
     - name: Stop firewalld
       raw: |
-        [ -n "$(systemctl list-unit-files --all | grep "firewalld.service" | grep "enabled")" ] && \
-        systemctl stop firewalld.service && \
-        systemctl disable firewalld.service || exit 0
+        systemctl is-active --quiet firewalld.service > /dev/null 2>&1 && systemctl stop firewalld.service;
+        systemctl is-enabled --quiet firewalld.service > /dev/null 2>&1 && systemctl disable firewalld.service;
+        exit 0
     - name: Stop ufw
       raw: |
-        [ -n "$(systemctl list-unit-files --all | grep "ufw.service" | grep "enabled")" ] && \
-        systemctl stop ufw.service && \
-        systemctl disable ufw.service || exit 0
+        systemctl is-active --quiet ufw.service > /dev/null 2>&1 && systemctl stop ufw.service;
+        systemctl is-enabled --quiet ufw.service > /dev/null 2>&1 && systemctl disable ufw.service;
+        exit 0
     - name: Get facts
       setup:
     - name: Get service facts
