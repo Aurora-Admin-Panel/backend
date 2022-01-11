@@ -1,5 +1,4 @@
 import sentry_sdk
-from sentry_sdk.integrations.celery import CeleryIntegration
 
 from app.utils.ip import get_external_ip
 from app.core import config
@@ -11,7 +10,6 @@ if config.ENABLE_SENTRY:
         environment=f"{config.ENVIRONMENT}",
         dsn="https://74ad2dcda2794afa9a207be8e9c17ea5@sentry.leishi.io/4",
         traces_sample_rate=1.0,
-        integrations=[CeleryIntegration()],
     )
     sentry_sdk.set_tag("panel.ip", get_external_ip())
 
