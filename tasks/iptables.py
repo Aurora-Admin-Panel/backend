@@ -116,7 +116,7 @@ def ddns_runner():
                     + f"{rule.config['remote_ip']}->{updated_ip}"
                 )
                 if rule.method == MethodEnum.IPTABLES:
-                    iptables_runner.delay(
+                    iptables_runner(
                         rule.port.id,
                         rule.port.server.id,
                         rule.port.num,
@@ -126,4 +126,4 @@ def ddns_runner():
                         update_status=True,
                     )
                 else:
-                    rule_runner.delay(rule_id=rule.id)
+                    rule_runner(rule_id=rule.id)
