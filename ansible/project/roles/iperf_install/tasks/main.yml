@@ -1,16 +1,8 @@
 ---
-- name: Gather facts
-  gather_facts:
-    parallel: yes
-
-- name: Install iperf3 for CentOS
-  when: ansible_facts.os_family == 'RedHat'
-  yum:
-    name: iperf3
-    state: present
-
-- name: Install iperf3 for Debian/Ubuntu
-  when: ansible_facts.os_family == 'Debian'
-  apt:
-    name: iperf3
-    state: present
+- name: Install iperf3
+  raw: |
+    /usr/bin/env iperf3 -v || \
+    (yum install -y iperf3 || apt install -y iperf3 || apk add iperf3) || \
+    (yum makecache -y && yum install -y iperf3) || \
+    (apt update -y && apt install -y iperf3) || \
+    (apk update && apk add iperf3)
