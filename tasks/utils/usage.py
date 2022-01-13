@@ -103,7 +103,7 @@ def apply_port_limits(db: Session, port: Port, action: LimitActionEnum):
             port.config["ingress_limit"] = action_to_speed[action]
             db.add(port)
             db.commit()
-            tc_runner.apply_async(
+            tc_runner(
                 kwargs={
                     "server_id": port.server.id,
                     "port_num": port.num,
