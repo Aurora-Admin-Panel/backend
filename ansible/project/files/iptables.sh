@@ -90,7 +90,7 @@ install_ipt_out_ip_check_service () {
 Description=iptables out ip changed check by Aurora Admin Panel
 
 [Service]
-ExecStart=/usr/local/bin/iptables.sh outipcheck 0
+ExecStart=/usr/local/bin/iptables.sh outipcheck
 
 EOF
 $SUDO cat > /etc/systemd/system/iptables-outipcheck.timer <<EOF
@@ -98,11 +98,12 @@ $SUDO cat > /etc/systemd/system/iptables-outipcheck.timer <<EOF
 Description=iptables out ip changed check timer by Aurora Admin Panel
 
 [Timer]
+OnBootSec=60s
 OnUnitActiveSec=60s
 Unit=iptables-outipcheck.service
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=timers.target
 EOF
 $SUDO systemctl daemon-reload
 $SUDO systemctl enable iptables-outipcheck.service
@@ -211,8 +212,22 @@ outipcheck () {
             target_ip=$(echo $snat_info|awk -F'->|:' '{print $2}')
             target_port=$(echo $snat_info|awk -F'->|:| ' '{print $3}')
             if [[ -n $in_port && -n $target_ip && -n $target_port ]]; then
-                echo "fix outip from $outip to $INET, $in_port -> $target_ip:$target_port"
-                /usr/local/bin/iptables.sh forward $in_port $target_ip $target_port
+                # echo "fix outip from $outip to $INET, $in_port -> $target_ip:$target_port"
+                count=$(iptables  -t  nat  -nL --line-number|grep SNAT|grep "BACKWARD $in_port->" -c)
+                TYPE=""
+                if [ $count -gt 1 ]; then
+                    TYPE="ALL"
+                elif [ $count -eq 1 ]; then
+                    TYPE=$(iptables  -t  nat  -nL --line-number|grep SNAT|grep "BACKWARD $in_port->" |awk '{print $3}')
+                    typeset -u TYPE
+                fi
+                if [ -n "$TYPE" ]; then
+                    LOCAL_PORT="$in_port"
+                    REMOTE_IP="$target_ip"
+                    REMOTE_PORT="$target_port"
+                    delete
+                    forward
+                fi
             fi
         fi
         fi
@@ -238,7 +253,7 @@ fi
 [ -n $1 ] && OPERATION=$1
 [ -z $OPERATION ] && echo "No operation specified!" && exit 1
 [ -n $2 ] && LOCAL_PORT=$2
-[ -z $LOCAL_PORT ] && echo "Illegal port $PORT" && exit 1
+[ "$OPERATION" != "outipcheck" ] && [ -z $LOCAL_PORT ] && echo "Illegal port $PORT" && exit 1
 [ -n $3 ] && REMOTE_IP=$3
 REMOTE_IP=$(echo $REMOTE_IP | grep -Po "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 if [ $OPERATION == "forward" ] && [ -z $REMOTE_IP ]
