@@ -106,15 +106,13 @@ Unit=iptables-outipcheck.service
 WantedBy=timers.target
 EOF
 $SUDO systemctl daemon-reload
-$SUDO systemctl enable iptables-outipcheck.service
-$SUDO systemctl start iptables-outipcheck.service
 $SUDO systemctl enable iptables-outipcheck.timer
 $SUDO systemctl start iptables-outipcheck.timer
 }
 
 check_ipt_service () {
     # add out ip changed check timer for iptable port forward rules
-    ! systemctl is-enabled --quiet iptables-outipcheck.service > /dev/null 2>&1 && install_ipt_out_ip_check_service
+    ! systemctl is-enabled --quiet iptables-outipcheck.timer > /dev/null 2>&1 && install_ipt_out_ip_check_service
     # service to support auto save iptable forward rules
     ! systemctl is-enabled --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service \
     $SUDO systemctl daemon-reload && \
