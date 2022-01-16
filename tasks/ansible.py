@@ -3,7 +3,7 @@ from app.db.session import db_session
 from app.db.models.server import Server
 
 
-@huey.task()
+@huey.task(priority=10)
 def ansible_hosts_runner():
     with db_session() as db:
         servers = db.query(Server).filter(Server.is_active==True).all()

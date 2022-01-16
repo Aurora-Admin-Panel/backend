@@ -33,7 +33,7 @@ def finished_handler(server_id: int, md5: str = None):
     return wrapper
 
 
-@huey.task(priority=9)
+@huey.task(priority=3)
 def server_runner(server_id: int, **kwargs):
     init_md5 = get_md5_for_file("ansible/project/server.yml")
     with db_session() as db:
@@ -61,7 +61,7 @@ def connect_runner(
     )
 
 
-@huey.task()
+@huey.task(priority=2)
 def servers_runner(**kwargs):
     with db_session() as db:
         servers = get_servers(db)
