@@ -8,6 +8,10 @@ Type=simple
 User=root
 DynamicUser=true
 ExecStart=/usr/local/bin/brook
+LimitNOFILE=1048576
+LimitNPROC=512
+RestartSec=2s
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

@@ -19,8 +19,6 @@ clean_aurora () {
 }
 
 clean_scripts () {
-    $SUDO systemctl disable iptables-outipcheck.service
-    $SUDO systemctl stop iptables-outipcheck.service
     $SUDO systemctl disable iptables-outipcheck.timer
     $SUDO systemctl stop iptables-outipcheck.timer
     $SUDO rm /etc/systemd/system/iptables-outipcheck.service
