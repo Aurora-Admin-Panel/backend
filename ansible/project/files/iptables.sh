@@ -84,7 +84,37 @@ EOF
     check_ipt_restore_file
 }
 
+install_ipt_out_ip_check_service () {
+    $SUDO cat > /etc/systemd/system/iptables-outipcheck.service <<EOF
+[Unit]
+Description=iptables out ip changed check by Aurora Admin Panel
+
+[Service]
+ExecStart=/usr/local/bin/iptables.sh outipcheck 0
+
+EOF
+$SUDO cat > /etc/systemd/system/iptables-outipcheck.timer <<EOF
+[Unit]
+Description=iptables out ip changed check timer by Aurora Admin Panel
+
+[Timer]
+OnUnitActiveSec=60s
+Unit=iptables-outipcheck.service
+
+[Install]
+WantedBy=multi-user.target
+EOF
+$SUDO systemctl daemon-reload
+$SUDO systemctl enable iptables-outipcheck.service
+$SUDO systemctl start iptables-outipcheck.service
+$SUDO systemctl enable iptables-outipcheck.timer
+$SUDO systemctl start iptables-outipcheck.timer
+}
+
 check_ipt_service () {
+    # add out ip changed check timer for iptable port forward rules
+    ! systemctl is-enabled --quiet iptables-outipcheck.service > /dev/null 2>&1 && install_ipt_out_ip_check_service
+    # service to support auto save iptable forward rules
     ! systemctl is-enabled --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service \
     $SUDO systemctl daemon-reload && \
     $SUDO systemctl enable iptables-restore.service
@@ -171,6 +201,25 @@ delete () {
     done
 }
 
+outipcheck () {
+    # echo "start out interface ip check, now is: $INET"
+    for snat_info in $(iptables  -t  nat  -nL --line-number|grep SNAT|grep BACKWARD|awk '{printf("%s:%s\n",$11,$13)}');do
+        outip=$(echo $snat_info|awk -F: '{print $4}')
+        if [ -n "$outip" ]; then
+        if [ "$INET" != $outip ]; then
+            in_port=$(echo $snat_info|awk -F'->' '{print $1}')
+            target_ip=$(echo $snat_info|awk -F'->|:' '{print $2}')
+            target_port=$(echo $snat_info|awk -F'->|:| ' '{print $3}')
+            if [[ -n $in_port && -n $target_ip && -n $target_port ]]; then
+                echo "fix outip from $outip to $INET, $in_port -> $target_ip:$target_port"
+                /usr/local/bin/iptables.sh forward $in_port $target_ip $target_port
+            fi
+        fi
+        fi
+    done
+    # echo "end out interface ip check, now is: $INET"
+}
+
 for i in "$@"
 do
 case $i in
@@ -222,6 +271,8 @@ elif [ $OPERATION == "delete" ]; then
     delete
 elif [ $OPERATION == "reset" ]; then
     reset
+elif [ $OPERATION == "outipcheck" ]; then
+    outipcheck
 else
     echo "Unrecognized command: $OPERATION"
     exit 1
