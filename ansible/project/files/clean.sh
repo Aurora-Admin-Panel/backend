@@ -4,8 +4,8 @@ SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 
 clean_services () {
     [[ -z $1 ]] && return 0
-    ls /etc/systemd/system/multi-user.target.wants | grep -E $1 | xargs $SUDO systemctl disable --now
-    ls /etc/systemd/system | grep -E $1 | xargs -I '{}' $SUDO rm '/etc/systemd/system/{}'
+    find /etc/systemd/system/multi-user.target.wants -maxdepth 1 -type l -name $1 -exec $SUDO systemctl disable --now {} +
+    find /etc/systemd/system -maxdepth 1 -type f -name $1 -exec $SUDO rm {} +
 }
 
 clean_iptables () {
@@ -22,7 +22,7 @@ clean_iptables () {
 
 clean_aurora () {
     $SUDO systemctl stop system-aurora.slice
-    clean_services "aurora@[0-9]+\.service"
+    clean_services "aurora@*.service"
     $SUDO rm -rf /usr/local/etc/aurora
 }
 
