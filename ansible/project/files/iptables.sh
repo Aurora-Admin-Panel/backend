@@ -36,13 +36,17 @@ install_ipt () {
     fi
 }
 
+delete_service () {
+    [[ -z $1 ]] && SERVICE="aurora@${LOCAL_PORT}.service" || SERVICE=$1
+    systemctl is-active --quiet $SERVICE > /dev/null 2>&1 && $SUDO systemctl stop $SERVICE
+    systemctl is-enabled --quiet $SERVICE > /dev/null 2>&1 && $SUDO systemctl disable $SERVICE
+}
+
 disable_firewall () {
     # centos firewall
-    systemctl is-active --quiet firewalld.service > /dev/null 2>&1 && $SUDO systemctl stop firewalld.service
-    systemctl is-enabled --quiet firewalld.service > /dev/null 2>&1 && $SUDO systemctl disable firewalld.service
+    delete_service firewalld.service
     # debian / ubuntu firewall
-    systemctl is-active --quiet ufw.service > /dev/null 2>&1 && $SUDO systemctl stop ufw.service
-    systemctl is-enabled --quiet ufw.service > /dev/null 2>&1 && $SUDO systemctl disable ufw.service
+    delete_service ufw.service
 }
 
 check_ipt_restore_file () {
@@ -192,11 +196,11 @@ delete () {
     COMMENT="$LOCAL_PORT->"
     while [[ ! -z "$($SUDO iptables -S | grep $COMMENT)" ]]
     do
-    	$SUDO iptables -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -D "$0; system($COMMEND)}'
+        $SUDO iptables -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -D "$0; system($COMMEND)}'
     done
     while [[ ! -z "$($SUDO iptables -t nat -S | grep $COMMENT)" ]]
     do
-	$SUDO iptables -t nat -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -t nat -D "$0; system($COMMEND)}'
+        $SUDO iptables -t nat -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -t nat -D "$0; system($COMMEND)}'
     done
 }
 
@@ -270,6 +274,7 @@ disable_firewall
 check_ipt_service
 if [ $OPERATION == "forward" ]; then
     list
+    delete_service
     delete
     forward
 elif [ $OPERATION == "monitor" ]; then
