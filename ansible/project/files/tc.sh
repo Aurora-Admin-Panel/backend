@@ -3,7 +3,7 @@
 # Get default interface
 DEBUG=1
 SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
-IFACE=$(ip route show | grep default | awk '{print $5}')
+IFACE=$(ip route show | grep default | grep -Po '(?<=dev )(\w+)')
 IFB=ifb0
 PORT=0
 PORT_ID=0
