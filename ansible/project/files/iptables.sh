@@ -104,10 +104,12 @@ save_iptables () {
 set_forward () {
     if [[ -z $($SUDO cat /etc/sysctl.conf | grep "net.ipv4.ip_forward") ]]; then
         echo "net.ipv4.ip_forward = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
-    elif [[ -n $($SUDO cat /etc/sysctl.conf | grep "net.ipv4.ip_forward" | grep "0") ]]; then
+    else
         sed -i "s/.*net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/g" /etc/sysctl.conf > /dev/null
     fi
     $SUDO sysctl -p > /dev/null
+    # check and make sure ip_forward enabled
+    [[ $(cat /proc/sys/net/ipv4/ip_forward) -eq 0 ]] && $SUDO echo 1 > /proc/sys/net/ipv4/ip_forward
 }
 
 forward () {
