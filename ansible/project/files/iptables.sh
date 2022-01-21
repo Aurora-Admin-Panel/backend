@@ -102,6 +102,7 @@ save_iptables () {
 }
 
 set_forward () {
+    [[ $(cat /proc/sys/net/ipv4/ip_forward) -eq 1 ]] && return 0
     if [[ -z $($SUDO cat /etc/sysctl.conf | grep "net.ipv4.ip_forward") ]]; then
         echo "net.ipv4.ip_forward = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
     else
@@ -109,11 +110,11 @@ set_forward () {
     fi
     $SUDO sysctl -p > /dev/null
     # check and make sure ip_forward enabled
-    [[ $(cat /proc/sys/net/ipv4/ip_forward) -eq 0 ]] && $SUDO echo 1 > /proc/sys/net/ipv4/ip_forward
+    [[ $(cat /proc/sys/net/ipv4/ip_forward) -ne 1 ]] && echo "Cannot enable ipv4 forward for iptables" && exit 1
 }
 
 forward () {
-    set_forward
+    set_forward || exit 1
     if [ $TYPE == "ALL" ] || [ $TYPE == "TCP" ]
     then
         $SUDO iptables -t nat -A PREROUTING -p tcp --dport $LOCAL_PORT -j DNAT --to-destination $REMOTE_IP:$REMOTE_PORT  -m comment --comment "FORWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT" && \
