@@ -1,19 +1,30 @@
 ---
-- name: Sync iptables.sh
-  copy:
-    src: files/iptables.sh
-    dest: /usr/local/bin/iptables.sh
-    owner: root
-    group: root
-    mode: '0755'
-- name: Exec iptables script locally to list usage
-  shell: /usr/local/bin/iptables.sh list {{ local_port }}
-  register: traffic
-- name: Exec iptables script locally to delete {{ local_port }}
-  shell: |
-    /usr/local/bin/iptables.sh delete {{ local_port }} && \
-    /usr/local/bin/iptables.sh delete_service {{ local_port }}
-- name: Set traffic result
-  set_fact:
-    traffic: "{{ traffic.stdout }}"
-    cacheable: yes
+- name: Exec iptables script
+  block:
+    - name: Exec iptables script locally to list port {{ local_port }} usage
+      shell: /usr/local/bin/iptables.sh list {{ local_port }}
+      register: traffic
+    - name: Exec iptables script locally to delete port {{ local_port }}
+      shell: |
+        /usr/local/bin/iptables.sh delete {{ local_port }} && \
+        /usr/local/bin/iptables.sh delete_service {{ local_port }}
+  rescue:
+    - name: Sync iptables.sh
+      copy:
+        src: files/iptables.sh
+        dest: /usr/local/bin/iptables.sh
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Exec iptables script locally to list port {{ local_port }} usage again
+      shell: /usr/local/bin/iptables.sh list {{ local_port }}
+      register: traffic
+    - name: Exec iptables script locally to delete port {{ local_port }} again
+      shell: |
+        /usr/local/bin/iptables.sh delete {{ local_port }} && \
+        /usr/local/bin/iptables.sh delete_service {{ local_port }}
+  always:
+    - name: Set traffic result
+      set_fact:
+        traffic: "{{ traffic.stdout }}"
+        cacheable: yes
