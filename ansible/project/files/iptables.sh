@@ -223,6 +223,8 @@ elif [ $OPERATION == "list" ]; then
     list
 elif [ $OPERATION == "list_all" ]; then
     list_all
+elif [ $OPERATION == "delete_service" ]; then
+    delete_service
 elif [ $OPERATION == "delete" ]; then
     delete
 elif [ $OPERATION == "reset" ]; then

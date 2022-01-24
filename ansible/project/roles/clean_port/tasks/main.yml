@@ -1,11 +1,13 @@
 ---
 - name: Exec iptables script
   block:
-    - name: Exec iptables script locally to list usage
+    - name: Exec iptables script locally to list port {{ local_port }} usage
       shell: /usr/local/bin/iptables.sh list {{ local_port }}
       register: traffic
-    - name: Exec iptables script locally
-      shell: /usr/local/bin/iptables.sh delete {{ local_port }}
+    - name: Exec iptables script locally to delete port {{ local_port }}
+      shell: |
+        /usr/local/bin/iptables.sh delete {{ local_port }} && \
+        /usr/local/bin/iptables.sh delete_service {{ local_port }}
   rescue:
     - name: Sync iptables.sh
       copy:
@@ -14,76 +16,15 @@
         owner: root
         group: root
         mode: '0755'
-    - name: Exec iptables script locally
+    - name: Exec iptables script locally to list port {{ local_port }} usage again
       shell: /usr/local/bin/iptables.sh list {{ local_port }}
       register: traffic
-    - name: Exec iptables script locally again
-      shell: /usr/local/bin/iptables.sh delete {{ local_port }}
-
-- name: Set traffic result
-  set_fact:
-    traffic: "{{ traffic.stdout }}"
-    cacheable: yes
-
-- name: disable aurora
-  systemd:
-    name: aurora@{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable brook
-  systemd:
-    name: brook-{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable ehco
-  systemd:
-    name: ehco-{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable gost
-  systemd:
-    name: gost@{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable node_exporter
-  systemd:
-    name: node_exporter@{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable shadowsocks
-  systemd:
-    name: shadowsocks-{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable socat
-  systemd:
-    name: socat-{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable tiny_port_mapper
-  systemd:
-    name: tiny_port_mapper-{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
-
-- name: disable wstunnel
-  systemd:
-    name: wstunnel-{{ local_port }}
-    state: stopped
-    enabled: no
-  ignore_errors: yes
+    - name: Exec iptables script locally to delete port {{ local_port }} again
+      shell: |
+        /usr/local/bin/iptables.sh delete {{ local_port }} && \
+        /usr/local/bin/iptables.sh delete_service {{ local_port }}
+  always:
+    - name: Set traffic result
+      set_fact:
+        traffic: "{{ traffic.stdout }}"
+        cacheable: yes
