@@ -1,0 +1,6 @@
+---
+- name: Get facts
+  setup:
+- name: Get service facts
+  service_facts:
+  register: services
