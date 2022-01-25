@@ -2,10 +2,6 @@
 
 SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 [ -z $SUDO ] || sudo -n true 2>/dev/null || (echo "Failed to use sudo" && exit 1)
-IFACE=$(ip route show | grep default | grep -Po '(?<=dev )(\w+)')
-INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
-INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
-[ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
 TYPE="ALL"
 LOCAL_PORT=0
 REMOTE_IP=0
@@ -13,32 +9,44 @@ REMOTE_PORT=0
 
 check_system () {
     source '/etc/os-release'
-    if [[ $ID = "centos" ]]; then
+    if [[ $ID == "centos" ]]; then
         OS_FAMILY="centos"
         UPDATE="$SUDO yum makecache -y"
-        INSTALL="$SUDO yum install -y iptables"
-    elif [[ $ID = "debian" || $ID = "ubuntu" ]]; then
+        INSTALL="$SUDO yum install -y"
+    elif [[ $ID == "debian" || $ID == "ubuntu" ]]; then
         OS_FAMILY="debian"
         UPDATE="$SUDO apt update -y"
-        INSTALL="$SUDO apt install -y iptables"
-    else
-        echo -e "System $ID ${VERSION_ID} is not supported now"
-        exit 1
+        INSTALL="$SUDO apt install -y --no-install-recommends"
     fi
+    # Not force to exit if the system is not supported
+    systemctl --version > /dev/null 2>&1 && IS_SYSTEMD=1
 }
 
-install_ipt () {
-    iptables -V > /dev/null || $INSTALL || ($UPDATE && $INSTALL)
-    if [ $? -ne 0 ]; then
-        echo -e "Failed to install iptables"
-        exit 1
+get_ips () {
+    IFACE=$(ip route show | grep default | awk -F 'dev ' '{ print $2; }' | awk '{ print $1; }')
+    INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
+    INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
+    [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
+}
+
+install_deps () {
+    iptables -V > /dev/null || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
+    ip a > /dev/null && return 0
+    if [[ $OS_FAMILY == "centos" ]]; then
+        $INSTALL iproute || ($UPDATE && $INSTALL iproute) || (echo "Failed to install iproute" && exit 1)
+    elif [[ $OS_FAMILY == "debian" ]]; then
+        $INSTALL iproute2 || ($UPDATE && $INSTALL iproute2) || (echo "Failed to install iproute2" && exit 1)
+    else
+        echo "ip command not found" && exit 1
     fi
 }
 
 delete_service () {
     [[ -z $1 ]] && SERVICE="aurora@${LOCAL_PORT}.service" || SERVICE=$1
-    systemctl is-active --quiet $SERVICE > /dev/null 2>&1 && $SUDO systemctl stop $SERVICE
-    systemctl is-enabled --quiet $SERVICE > /dev/null 2>&1 && $SUDO systemctl disable $SERVICE
+    if [[ $IS_SYSTEMD -eq 1 ]]; then
+        systemctl is-active --quiet $SERVICE > /dev/null 2>&1 && $SUDO systemctl stop $SERVICE
+        systemctl is-enabled --quiet $SERVICE > /dev/null 2>&1 && $SUDO systemctl disable $SERVICE
+    fi
 }
 
 disable_firewall () {
@@ -49,31 +57,31 @@ disable_firewall () {
 }
 
 check_ipt_restore_file () {
-    if [ $OS_FAMILY = "centos" ]; then
+    if [[ $OS_FAMILY == "centos" ]]; then
         IPT_PATH="/etc/sysconfig"
-    else
+    elif [[ $OS_FAMILY == "debian" ]]; then
         IPT_PATH="/etc/iptables"
     fi
-    if [ ! -d $IPT_PATH ]; then
+    if [[ -n $IPT_PATH && ! -d $IPT_PATH ]]; then
         $SUDO mkdir -p $IPT_PATH
     fi
-    if [ $OS_FAMILY = "centos" ]; then
+    if [[ $OS_FAMILY == "centos" ]]; then
         IPT_RESTORE_FILE=$IPT_PATH/iptables
-    else
+    elif [[ $OS_FAMILY == "debian" ]]; then
         IPT_RESTORE_FILE=$IPT_PATH/rules.v4
     fi
-    if [ ! -f $IPT_RESTORE_FILE ]; then
+    if [[ -n $IPT_RESTORE_FILE && ! -f $IPT_RESTORE_FILE ]]; then
         $SUDO touch $IPT_RESTORE_FILE
     fi
 }
 
 install_ipt_service () {
-    if [ $OS_FAMILY = "centos" ]; then
+    if [[ $OS_FAMILY == "centos" ]]; then
         RULE_PATH="/etc/sysconfig/iptables"
-    elif [ $OS_FAMILY = "debian" ]; then
+    elif [[ $OS_FAMILY == "debian" ]]; then
         RULE_PATH="/etc/iptables/rules.v4"
     fi
-    $SUDO cat > /etc/systemd/system/iptables-restore.service <<EOF
+    [[ ! -z $RULE_PATH ]] && $SUDO cat > /etc/systemd/system/iptables-restore.service <<EOF
 [Unit]
 Description=Restore iptables rule by Aurora Admin Panel
 
@@ -88,16 +96,19 @@ EOF
 }
 
 check_ipt_service () {
-    ! systemctl is-enabled --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service \
-    $SUDO systemctl daemon-reload && \
-    $SUDO systemctl enable iptables-restore.service
-    ! systemctl is-enabled --quiet iptables-restore.service && \
-    echo -e "Failed to install iptables restore service" && exit 1
+    if [[ $IS_SYSTEMD -eq 1 ]]; then
+        ! systemctl is-enabled --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service \
+        $SUDO systemctl daemon-reload && \
+        $SUDO systemctl enable iptables-restore.service
+        ! systemctl is-enabled --quiet iptables-restore.service && \
+        echo "Failed to install iptables restore service"
+    fi
+    # Not force to exit if the system does not use the systemd
 }
 
 save_iptables () {
     check_ipt_restore_file
-    $SUDO iptables-save -c | $SUDO tee $IPT_RESTORE_FILE > /dev/null
+    [[ -f $IPT_RESTORE_FILE ]] && $SUDO iptables-save -c | $SUDO tee $IPT_RESTORE_FILE > /dev/null
 }
 
 set_forward () {
@@ -201,7 +212,7 @@ fi
 [ -n $2 ] && LOCAL_PORT=$2
 [ -z $LOCAL_PORT ] && echo "Illegal port $PORT" && exit 1
 [ -n $3 ] && REMOTE_IP=$3
-REMOTE_IP=$(echo $REMOTE_IP | grep -Po "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
+REMOTE_IP=$(echo $REMOTE_IP | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 if [ $OPERATION == "forward" ] && [ -z $REMOTE_IP ]
 then
     echo "Unknow remote ip for operation $OPERATION" && exit 1
@@ -213,9 +224,10 @@ then
 fi
 
 check_system
-install_ipt
+install_deps
 disable_firewall
 check_ipt_service
+get_ips
 if [ $OPERATION == "forward" ]; then
     list
     delete_service
