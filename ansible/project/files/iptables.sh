@@ -17,6 +17,10 @@ check_system () {
         OS_FAMILY="debian"
         UPDATE="$SUDO apt update -y"
         INSTALL="$SUDO apt install -y --no-install-recommends"
+    elif [[ $ID == "alpine" ]]; then
+        OS_FAMILY="alpine"
+        UPDATE="$SUDO apk update"
+        INSTALL="$SUDO apk add --no-cache"
     fi
     # Not force to exit if the system is not supported
     systemctl --version > /dev/null 2>&1 && IS_SYSTEMD=1
