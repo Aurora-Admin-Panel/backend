@@ -3,15 +3,6 @@
   become: yes
   gather_facts: no
   pre_tasks:
-    - name: Check and install python
-      raw: |
-        (/usr/bin/env python3 -V || /usr/bin/env python -V || /usr/bin/env python2 -V) || \
-        (yum install -y python3 || yum install -y python) || \
-        (apt install -y --no-install-recommends python3 || apt install -y --no-install-recommends python) || \
-        (apk add --no-cache python3 || apk add --no-cache python2) || \
-        (yum makecache -y && (yum install -y python3 || yum install -y python)) || \
-        (apt update -y && (apt install -y --no-install-recommends python3 || apt install -y --no-install-recommends python)) || \
-        (apk update && (apk add --no-cache python3 || apk add --no-cache python2))
     - name: Check and install bash
       raw: |
         /usr/bin/env bash --version || \

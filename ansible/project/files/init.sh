@@ -20,6 +20,26 @@ check_system () {
     fi
 }
 
+install_python3 () {
+    echo "Checking python3 ..."
+    python3 -V > /dev/null 2>&1 && return 0
+    [[ -z $OS_FAMILY ]] && return 0
+    echo "Installing python3 ..."
+    $INSTALL python3 || ($UPDATE && $INSTALL python3) || (echo "Failed to install python3!" && return 1)
+}
+
+install_python2 () {
+    echo "Checking python2 ..."
+    (python -V > /dev/null 2>&1 || python2 -V > /dev/null 2>&1) && return 0
+    [[ -z $OS_FAMILY ]] && return 0
+    echo "Installing python2 ..."
+    if [[ $OS_FAMILY == "centos" || $OS_FAMILY == "debian" ]]; then
+        $INSTALL python || ($UPDATE && $INSTALL python) || echo "Failed to install python2!"
+    elif [[ $OS_FAMILY == "alpine" ]]; then
+        $INSTALL python2 || ($UPDATE && $INSTALL python2) || echo "Failed to install python2!"
+    fi
+}
+
 install_iptables () {
     echo "Checking iptables ..."
     iptables -V > /dev/null 2>&1 && return 0
@@ -69,6 +89,7 @@ disable_firewall () {
 }
 
 install_deps () {
+    install_python3 || install_python2
     install_iptables
     install_iproute
     install_systemd
