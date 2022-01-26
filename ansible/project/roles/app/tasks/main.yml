@@ -58,6 +58,7 @@
         state: directory
         mode: '0755'
     - name: "Sync {{ app_config }}"
+      when: app_config is defined
       copy:
         src: "roles/app/files/{{ app_config }}"
         dest: "/usr/local/etc/aurora/{{ app_config }}"
