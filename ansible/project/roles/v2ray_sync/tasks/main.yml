@@ -1,32 +1,45 @@
 ---
-- name: Create v2ray config directory if it does not exist
-  file:
-    path: /usr/local/etc/v2ray
-    state: directory
-    mode: '0755'
-
-- name: Sync v2ray@.service
+- name: Get architecture
+  shell: uname -m
+  register: arch
+- name: Sync v2ray binary for X64
+  when: arch.stdout == 'x86_64'
   copy:
-    src: files/v2ray@.service
-    dest: /usr/lib/systemd/system/v2ray@.service
-    owner: root
-    group: root
-
-- name: Sync v2ray binary
-  copy:
-    src: files/v2ray_v4.42.2
+    src: files/v2ray-linux-64_v4.44.0
     dest: /usr/local/bin/v2ray
     mode: +x
     owner: root
     group: root
-
+- name: Sync v2ctl binary for X64
+  when: arch.stdout == 'x86_64'
+  copy:
+    src: files/v2ctl-linux-64_v4.44.0
+    dest: /usr/local/bin/v2ctl
+    mode: +x
+    owner: root
+    group: root
+- name: Sync v2ray binary for ARM64
+  when: arch.stdout == 'aarch64'
+  copy:
+    src: files/v2ray-linux-arm64-v8a_v4.44.0
+    dest: /usr/local/bin/v2ray
+    mode: +x
+    owner: root
+    group: root
+- name: Sync v2ctl binary for ARM64
+  when: arch.stdout == 'aarch64'
+  copy:
+    src: files/v2ctl-linux-arm64-v8a_v4.44.0
+    dest: /usr/local/bin/v2ctl
+    mode: +x
+    owner: root
+    group: root
 - name: Sync geoip.dat binary
   copy:
     src: files/geoip.dat
     dest: /usr/local/bin/geoip.dat
     owner: root
     group: root
-
 - name: Sync geosite.dat binary
   copy:
     src: files/geosite.dat

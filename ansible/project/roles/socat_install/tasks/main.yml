@@ -1,0 +1,8 @@
+---
+- name: Install socat
+  raw: |
+    /usr/bin/env socat -V || \
+    (yum install -y socat || apt install -y --no-install-recommends socat || apk add --no-cache socat) || \
+    (yum makecache -y && yum install -y socat) || \
+    (apt update -y && apt install -y --no-install-recommends socat) || \
+    (apk update && apk add --no-cache socat)

@@ -1,6 +1,8 @@
 ---
 - name: Check v2ray exist
   block:
+    - name: Check v2ctl
+      shell: v2ctl uuid
     - name: Get v2ray version
       shell: v2ray -version
       register: v2ray
