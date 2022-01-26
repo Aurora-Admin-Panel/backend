@@ -18,8 +18,6 @@ check_system () {
         UPDATE="$SUDO apk update"
         INSTALL="$SUDO apk add --no-cache"
     fi
-    SUPPORT_BBR=0
-    uname -r | grep -q "^5." && SUPPORT_BBR=1
 }
 
 install_python3 () {
@@ -97,18 +95,8 @@ install_deps () {
     install_systemd
 }
 
-enable_bbr () {
-    echo "Checking bbr ..."
-    [[ $SUPPORT_BBR -ne 1 ]] && return 0
-    [[ -z $OS_FAMILY ]] && return 0
-    [[ -z $($SUDO sysctl -p | grep fq) ]] && echo "net.core.default_qdisc = fq" | $SUDO tee -a /etc/sysctl.conf > /dev/null
-    [[ -z $($SUDO sysctl -p | grep bbr) ]] && echo "net.ipv4.tcp_congestion_control = bbr" | $SUDO tee -a /etc/sysctl.conf > /dev/null
-    $SUDO sysctl -p
-}
-
 check_system
 install_deps
 check_paths
 disable_firewall
-enable_bbr
 exit 0
