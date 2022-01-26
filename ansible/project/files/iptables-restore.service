@@ -1,9 +1,0 @@
-[Unit]
-Description=Restore iptables rule by Aurora Admin Panel
-
-[Service]
-Type=oneshot
-ExecStart=/bin/sh -c '/usr/sbin/iptables-restore -c < /etc/iptables/rules.v4'
-
-[Install]
-WantedBy=multi-user.target
