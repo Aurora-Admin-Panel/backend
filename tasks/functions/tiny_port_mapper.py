@@ -18,7 +18,6 @@ class TinyPortMapperConfig(AppConfig):
         self.app_version_arg = "-h"
 
         self.app_sync_role_name = "tiny_port_mapper_sync"
-        self.app_download_role_name = "tiny_port_mapper_download"
 
     def apply(self, db: Session, port: Port):
         self.local_port = port.num
