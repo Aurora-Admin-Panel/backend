@@ -1,14 +1,19 @@
 ---
-- name: Sync node_exporter@.service
+- name: Get architecture
+  shell: uname -m
+  register: arch
+- name: Sync node_exporter binary for X64
+  when: arch.stdout == 'x86_64'
   copy:
-    src: files/node_exporter@.service
-    dest: /usr/lib/systemd/system/node_exporter@.service
+    src: files/node_exporter_linux-amd64_v1.1.1
+    dest: /usr/local/bin/node_exporter
+    mode: +x
     owner: root
     group: root
-
-- name: Sync node_exporter binary
+- name: Sync node_exporter binary for ARM64
+  when: arch.stdout == 'aarch64'
   copy:
-    src: files/node_exporter_linux-amd64
+    src: files/node_exporter_linux-arm64_v1.1.1
     dest: /usr/local/bin/node_exporter
     mode: +x
     owner: root

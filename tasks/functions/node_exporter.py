@@ -14,9 +14,7 @@ class NodeExporterConfig(AppConfig):
         self.app_name = "node_exporter"
         self.app_version_arg = "--version"
 
-        self.app_get_role_name = "node_exporter_get"
         self.app_sync_role_name = "node_exporter_sync"
-        self.app_download_role_name = "node_exporter_download"
 
     def apply(self, db: Session, port: Port):
         self.local_port = port.num
