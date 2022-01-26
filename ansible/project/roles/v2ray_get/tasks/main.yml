@@ -1,0 +1,17 @@
+---
+- name: Check v2ray exist
+  block:
+    - name: Check v2ctl
+      shell: v2ctl uuid
+    - name: Get v2ray version
+      shell: v2ray -version
+      register: v2ray
+    - name: Set fact for v2ray version
+      set_fact:
+        v2ray: "{{ v2ray.stdout }}"
+        cacheable: yes
+  rescue:
+    - name: Set v2ray not exist
+      set_fact:
+        v2ray: ""
+        cacheable: yes
