@@ -9,13 +9,6 @@
         (yum install -y bash || (yum makecache -y && yum install -y bash)) || \
         (apt install -y --no-install-recommends bash || (apt update -y && apt install -y --no-install-recommends bash)) || \
         (apk add --no-cache bash || (apk update && apk add --no-cache bash))
-    - name: Check and install sudo
-      raw: |
-        /usr/bin/env sudo -V || \
-        (yum install -y sudo || (yum makecache -y && yum install -y sudo)) || \
-        (apt install -y --no-install-recommends sudo || (apt update -y && apt install -y --no-install-recommends sudo)) || \
-        (apk add --no-cache sudo || (apk update && apk add --no-cache sudo));
-        exit 0
   roles:
     - role: server_init
     - role: services_prepare
