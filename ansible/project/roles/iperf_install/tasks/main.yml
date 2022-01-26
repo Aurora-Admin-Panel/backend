@@ -2,7 +2,7 @@
 - name: Install iperf3
   raw: |
     /usr/bin/env iperf3 -v || \
-    (yum install -y iperf3 || apt install -y iperf3 || apk add iperf3) || \
+    (yum install -y iperf3 || apt install -y --no-install-recommends iperf3 || apk add --no-cache iperf3) || \
     (yum makecache -y && yum install -y iperf3) || \
-    (apt update -y && apt install -y iperf3) || \
-    (apk update && apk add iperf3)
+    (apt update -y && apt install -y --no-install-recommends iperf3) || \
+    (apk update && apk add --no-cache iperf3)
