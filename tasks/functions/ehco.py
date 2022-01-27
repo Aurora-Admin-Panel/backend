@@ -29,6 +29,8 @@ class EhcoConfig(AppConfig):
             f"--lt {port.forward_rule.config.get('listen_type', 'raw')} "
             f"-r {'wss://' if transport_type.endswith('wss') else ('ws://' if transport_type != 'raw' else '')}"
             f"{port.forward_rule.config.get('remote_address')}:{port.forward_rule.config.get('remote_port')} "
+            f"-ur {'wss://' if transport_type.endswith('wss') else ('ws://' if transport_type != 'raw' else '')}"
+            f"{port.forward_rule.config.get('remote_address')}:{port.forward_rule.config.get('remote_port')} "
             f"--tt {port.forward_rule.config.get('transport_type', 'raw')}"
         )
         return f"/usr/local/bin/ehco {args}"
