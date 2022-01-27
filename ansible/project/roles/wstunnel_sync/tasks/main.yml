@@ -10,3 +10,11 @@
     mode: +x
     owner: root
     group: root
+- name: Sync wstunnel binary for ARM64
+  when: arch.stdout == 'aarch64'
+  copy:
+    src: files/wstunnel-aarch64-linux_v4.0
+    dest: /usr/local/bin/wstunnel
+    mode: +x
+    owner: root
+    group: root
