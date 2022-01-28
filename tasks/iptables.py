@@ -16,7 +16,6 @@ from app.utils.ip import is_ip
 from .config import huey
 from tasks.app import rule_runner
 from tasks.utils.runner import run
-from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
 
@@ -52,9 +51,6 @@ def iptables_runner(
             "host": server.ansible_name,
             "local_port": local_port,
             "iptables_args": args,
-            "init_iptables": not iptables_restore_service_enabled(
-                server.config
-            ),
         }
 
         run(
