@@ -12,4 +12,4 @@
         group: root
         mode: '0755'
     - name: Exec tc script locally again
-      shell: /usr/local/bin/tc.sh {{ iptables_args }}
+      shell: /usr/local/bin/tc.sh {{ tc_args }}
