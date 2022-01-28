@@ -5,7 +5,6 @@
 - name: Check shadowsocks exist
   block:
     - name: Get shadowsocks_go version
-      when: arch.stdout == 'x86_64'
       shell: shadowsocks_go -version
     - name: Get shadowsocks_go2 version
       shell: shadowsocks_go2 version
