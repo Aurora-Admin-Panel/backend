@@ -95,7 +95,7 @@ async def forward_rule_create(
             detail="Cannot create more than one rule on same port",
         )
 
-    forward_rule = trim_forward_rule(db_port, forward_rule)
+    forward_rule = trim_forward_rule(forward_rule)
 
     if forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_gost_config(db_port, forward_rule)
@@ -133,7 +133,7 @@ async def forward_rule_edit(
             status_code=403,
             detail=f"{forward_rule.method.value} is not allowed")
 
-    forward_rule = trim_forward_rule(db_port, forward_rule)
+    forward_rule = trim_forward_rule(forward_rule)
 
     if forward_rule.method == MethodEnum.GOST:
         forward_rule = verify_gost_config(db_port, forward_rule)
@@ -201,21 +201,11 @@ async def forward_rule_runner_get(
 
 
 def trim_forward_rule(
-    port: Port, rule: t.Union[PortForwardRuleCreate, PortForwardRuleEdit]
+    rule: t.Union[PortForwardRuleCreate, PortForwardRuleEdit]
 ) -> t.Union[PortForwardRuleCreate, PortForwardRuleEdit]:
-    if rule.method not in (
-        MethodEnum.IPTABLES,
-        MethodEnum.SOCAT,
-        MethodEnum.EHCO,
-        MethodEnum.BROOK,
-        MethodEnum.WSTUNNEL,
-    ):
-        return rule
-
     config = rule.config
     if hasattr(config, "remote_address"):
         rule.config.remote_address = config.remote_address.strip()
-
     return rule
 
 
