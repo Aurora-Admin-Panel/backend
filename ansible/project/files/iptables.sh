@@ -226,6 +226,7 @@ delete () {
 
 outipcheck () {
     # echo "start out interface ip check, now is: $INET"
+    [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
     for snat_info in $(iptables  -t  nat  -nL --line-number|grep SNAT|grep BACKWARD|awk '{printf("%s:%s\n",$11,$13)}');do
         outip=$(echo $snat_info|awk -F: '{print $4}')
         if [ -n "$outip" ]; then
