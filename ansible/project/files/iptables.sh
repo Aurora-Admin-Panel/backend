@@ -26,15 +26,11 @@ check_system () {
     systemctl --version > /dev/null 2>&1 && IS_SYSTEMD=1
 }
 
-get_ips () {
-    IFACE=$(ip route show | grep default | awk -F 'dev ' '{ print $2; }' | awk '{ print $1; }')
-    INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
-    INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
-    [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
+install_iptables () {
+    iptables -V > /dev/null || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
 }
 
-install_deps () {
-    iptables -V > /dev/null || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
+install_ip () {
     ip a > /dev/null && return 0
     if [[ $OS_FAMILY == "centos" ]]; then
         $INSTALL iproute || ($UPDATE && $INSTALL iproute) || (echo "Failed to install iproute" && exit 1)
@@ -43,6 +39,14 @@ install_deps () {
     else
         echo "ip command not found" && exit 1
     fi
+}
+
+get_ips () {
+    install_ip || exit 1
+    IFACE=$(ip route show | grep default | awk -F 'dev ' '{ print $2; }' | awk '{ print $1; }')
+    INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
+    INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
+    [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
 }
 
 delete_service () {
@@ -131,7 +135,7 @@ set_forward () {
     fi
     $SUDO sysctl -p > /dev/null
     # check and make sure ip_forward enabled
-    [[ $(cat /proc/sys/net/ipv4/ip_forward) -ne 1 ]] && echo "Cannot enable ipv4 forward for iptables" && exit 1
+    [[ $(cat /proc/sys/net/ipv4/ip_forward) -ne 1 ]] && echo 1 | $SUDO tee /proc/sys/net/ipv4/ip_forward
 }
 
 forward () {
@@ -231,7 +235,7 @@ REMOTE_IP=$(echo $REMOTE_IP | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)
 [[ $OPERATION == "forward" && -z $REMOTE_PORT ]] && echo "Unknow remote port for operation $OPERATION" && exit 1
 
 check_system
-install_deps
+install_iptables
 disable_firewall
 check_ipt_service
 if [[ $OPERATION == "forward" ]]; then
