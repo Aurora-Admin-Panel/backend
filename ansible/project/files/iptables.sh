@@ -146,6 +146,7 @@ forward () {
             $SUDO iptables -t nat -A POSTROUTING -d $REMOTE_IP -p tcp --dport $REMOTE_PORT -j SNAT --to-source $SNATIP -m comment --comment "BACKWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
         done
         $SUDO iptables -t nat -A PREROUTING -p tcp --dport $LOCAL_PORT -j DNAT --to-destination $REMOTE_IP:$REMOTE_PORT  -m comment --comment "FORWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
+        # for ipt port traffic monitor
         $SUDO iptables -I FORWARD -p tcp -d $REMOTE_IP --dport $REMOTE_PORT -j ACCEPT -m comment --comment "UPLOAD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
         $SUDO iptables -I FORWARD -p tcp -s $REMOTE_IP -j ACCEPT -m comment --comment "DOWNLOAD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
     fi
@@ -155,6 +156,7 @@ forward () {
             $SUDO iptables -t nat -A POSTROUTING -d $REMOTE_IP -p udp --dport $REMOTE_PORT -j SNAT --to-source $SNATIP -m comment --comment "BACKWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
         done
         $SUDO iptables -t nat -A PREROUTING -p udp --dport $LOCAL_PORT -j DNAT --to-destination $REMOTE_IP:$REMOTE_PORT  -m comment --comment "FORWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
+        # for ipt port traffic monitor
         $SUDO iptables -I FORWARD -p udp -d $REMOTE_IP --dport $REMOTE_PORT -j ACCEPT -m comment --comment "UPLOAD-UDP $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
         $SUDO iptables -I FORWARD -p udp -s $REMOTE_IP -j ACCEPT -m comment --comment "DOWNLOAD-UDP $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
     fi
@@ -239,17 +241,22 @@ install_iptables
 disable_firewall
 check_ipt_service
 if [[ $OPERATION == "forward" ]]; then
+    # for ipt/app -> ipt traffic get
     list
     delete
     delete_service
     get_ips
     forward
+# for app port traffic monitor
 elif [[ $OPERATION == "monitor" ]]; then
+    # for ipt/app -> ipt traffic get
     list
     delete
     monitor
+# for clean port traffic get
 elif [[ $OPERATION == "list" ]]; then
     list
+# for traffic schedule task
 elif [[ $OPERATION == "list_all" ]]; then
     list_all
 elif [[ $OPERATION == "delete_service" ]]; then
