@@ -1,14 +1,19 @@
 ---
-- name: Sync wstunnel-template.service
-  copy:
-    src: files/wstunnel-template.service
-    dest: /usr/lib/systemd/system/wstunnel-template.service
-    owner: root
-    group: root
-
-- name: Sync wstunnel binary
+- name: Get architecture
+  shell: uname -m
+  register: arch
+- name: Sync wstunnel binary for X64
+  when: arch.stdout == 'x86_64'
   copy:
     src: files/wstunnel-x64-linux_v4.0
+    dest: /usr/local/bin/wstunnel
+    mode: +x
+    owner: root
+    group: root
+- name: Sync wstunnel binary for ARM64
+  when: arch.stdout == 'aarch64'
+  copy:
+    src: files/wstunnel-aarch64-linux_v4.0
     dest: /usr/local/bin/wstunnel
     mode: +x
     owner: root

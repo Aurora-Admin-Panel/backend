@@ -35,8 +35,3 @@ def prepare_priv_dir_dict(server: t.Dict) -> str:
 
 def prepare_priv_dir(server: Server) -> str:
     return prepare_priv_dir_dict(server.__dict__)
-
-
-def iptables_restore_service_enabled(config: t.Dict) -> bool:
-    status = config.get('services', {}).get('iptables-restore', {})
-    return status.get('status') == 'enabled'

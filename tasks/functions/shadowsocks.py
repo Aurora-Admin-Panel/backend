@@ -15,7 +15,6 @@ class ShadowsocksConfig(AppConfig):
 
         self.app_get_role_name = "shadowsocks_get"
         self.app_sync_role_name = "shadowsocks_sync"
-        self.app_download_role_name = "shadowsocks_download"
 
     def apply(self, db: Session, port: Port):
         self.local_port = port.num

@@ -13,8 +13,7 @@ class SocatConfig(AppConfig):
         super().__init__()
         self.app_name = "socat"
         self.app_version_arg = "-V"
-        self.app_sync_role_name = "socat_update"
-        self.app_download_role_name = "void"
+        self.app_sync_role_name = "socat_install"
 
 
     def apply(self, db: Session, port: Port):

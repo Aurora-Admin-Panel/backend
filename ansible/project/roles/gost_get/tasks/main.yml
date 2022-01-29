@@ -1,6 +1,0 @@
----
-- name: Check gost exist
-  include_role:
-    name: app_get
-  vars:
-    app_version_arg: "-V"

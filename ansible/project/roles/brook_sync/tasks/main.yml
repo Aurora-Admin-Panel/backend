@@ -1,19 +1,17 @@
 ---
-- name: Gather facts
-  gather_facts:
-    parallel: yes
-
+- name: Get architecture
+  shell: uname -m
+  register: arch
 - name: Sync brook binary for X64
-  when: ansible_facts.architecture == 'x86_64'
+  when: arch.stdout == 'x86_64'
   copy:
     src: files/brook_linux_amd64_v20210701
     dest: /usr/local/bin/brook
     mode: +x
     owner: root
     group: root
-
 - name: Sync brook binary for ARM64
-  when: ansible_facts.architecture == 'aarch64'
+  when: arch.stdout == 'aarch64'
   copy:
     src: files/brook_linux_arm64_v20210701
     dest: /usr/local/bin/brook

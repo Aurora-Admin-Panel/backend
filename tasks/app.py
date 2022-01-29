@@ -12,7 +12,6 @@ from .config import huey
 from tasks.clean import clean_port_runner
 from tasks.functions import AppConfig
 from tasks.utils.runner import run
-from tasks.utils.server import iptables_restore_service_enabled
 from tasks.utils.handlers import iptables_finished_handler, status_handler
 
 
@@ -52,7 +51,6 @@ def app_runner(
         "app_get_role_name": app_get_role_name,
         "update_status": update_status,
         "update_app": update_status and not server.config.get(app_name),
-        "init_iptables": not iptables_restore_service_enabled(server.config),
     }
     if app_config is not None:
         with open(

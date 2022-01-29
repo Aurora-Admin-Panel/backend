@@ -1,8 +1,13 @@
 ---
+- name: Get architecture
+  shell: uname -m
+  register: arch
 - name: Check shadowsocks exist
   block:
-    - name: Get shadowsocks version
+    - name: Get shadowsocks_go version
       shell: shadowsocks_go -version
+    - name: Get shadowsocks_go2 version
+      shell: shadowsocks_go2 version
       register: shadowsocks
     - name: Set fact for shadowsocks version
       set_fact:
