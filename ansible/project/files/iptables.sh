@@ -139,7 +139,7 @@ set_forward () {
 }
 
 forward () {
-    set_forward || exit 1
+    set_forward
     if [ $TYPE == "ALL" ] || [ $TYPE == "TCP" ]
     then
         for SNATIP in $INET; do
