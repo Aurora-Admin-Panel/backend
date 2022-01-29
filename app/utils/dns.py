@@ -7,8 +7,9 @@ from urllib.error import URLError
 from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
-
 import dns.resolver
+
+from app.utils.ip import is_ip
 
 
 def get_ipv4_by_custom_server(hostname: str, dns_server: str) -> Optional[str]:
@@ -83,6 +84,12 @@ def get_ipv4_by_cloudflare(hostname: str) -> Optional[str]:
 
 def dns_query(hostname: str) -> Optional[str]:
     # TODO: Support ipv6
+    hostname = hostname.strip()
+    if not hostname:
+        return None
+    elif is_ip(hostname):
+        return hostname
+
     if custom_dns := os.environ.get('DNS_SERVER', None):
         if result := get_ipv4_by_custom_server(hostname, custom_dns):
             return result
