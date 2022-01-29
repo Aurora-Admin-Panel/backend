@@ -89,7 +89,8 @@ install_ipt_service () {
     elif [[ $OS_FAMILY == "debian" ]]; then
         RULE_PATH="/etc/iptables/rules.v4"
     fi
-    [[ ! -z $RULE_PATH ]] && $SUDO cat > /etc/systemd/system/iptables-restore.service <<EOF
+    [[ -z $RULE_PATH || -f $RULE_PATH ]] && return 0
+    $SUDO tee /etc/systemd/system/iptables-restore.service > /dev/null <<EOF
 [Unit]
 Description=Restore iptables rule by Aurora Admin Panel
 
@@ -107,9 +108,8 @@ check_ipt_service () {
     if [[ $IS_SYSTEMD -eq 1 ]]; then
         ! systemctl is-enabled --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service \
         $SUDO systemctl daemon-reload && \
-        $SUDO systemctl enable iptables-restore.service
-        ! systemctl is-enabled --quiet iptables-restore.service && \
-        echo "Failed to install iptables restore service"
+        $SUDO systemctl enable iptables-restore.service > /dev/null 2>&1
+        # systemctl enable output is stderr, use 2>&1 redirection to ignore it
     fi
     # Not force to exit if the system does not use the systemd
     if [[ $OS_FAMILY == "alpine" ]]; then
