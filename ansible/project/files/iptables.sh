@@ -108,11 +108,18 @@ check_ipt_service () {
         echo "Failed to install iptables restore service"
     fi
     # Not force to exit if the system does not use the systemd
+    if [[ $OS_FAMILY == "alpine" ]]; then
+        rc-update add iptables > /dev/null
+    fi
 }
 
 save_iptables () {
     check_ipt_restore_file
-    [[ -f $IPT_RESTORE_FILE ]] && $SUDO iptables-save -c | $SUDO tee $IPT_RESTORE_FILE > /dev/null
+    if [[ $OS_FAMILY == "centos" || $OS_FAMILY == "debian" ]]; then
+        [[ -f $IPT_RESTORE_FILE ]] && $SUDO iptables-save -c | $SUDO tee $IPT_RESTORE_FILE > /dev/null
+    elif [[ $OS_FAMILY == "alpine" ]]; then
+        /etc/init.d/iptables save > /dev/null
+    fi
 }
 
 set_forward () {
@@ -175,6 +182,7 @@ list_all () {
     $SUDO iptables -nxvL INPUT | grep '\/\*.*\*\/$'
     $SUDO iptables -nxvL FORWARD | grep '\/\*.*\*\/$'
     $SUDO iptables -nxvL OUTPUT | grep '\/\*.*\*\/$'
+    save_iptables
 }
 
 reset () {
@@ -194,6 +202,7 @@ delete () {
     do
         $SUDO iptables -t nat -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -t nat -D "$0; system($COMMEND)}'
     done
+    save_iptables
 }
 
 for i in "$@"
@@ -211,45 +220,42 @@ then
     echo "Unsupported forward type: $TYPE" && exit 1
 fi
 
-[ -n $1 ] && OPERATION=$1
-[ -z $OPERATION ] && echo "No operation specified!" && exit 1
-[ -n $2 ] && LOCAL_PORT=$2
-[ -z $LOCAL_PORT ] && echo "Illegal port $PORT" && exit 1
-[ -n $3 ] && REMOTE_IP=$3
+[[ -n $1 ]] && OPERATION=$1
+[[ -z $OPERATION ]] && echo "No operation specified" && exit 1
+[[ -n $2 ]] && LOCAL_PORT=$2
+[[ $OPERATION != "check" && -z $LOCAL_PORT ]] && echo "Unknow local port for operation $OPERATION" && exit 1
+[[ -n $3 ]] && REMOTE_IP=$3
 REMOTE_IP=$(echo $REMOTE_IP | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
-if [ $OPERATION == "forward" ] && [ -z $REMOTE_IP ]
-then
-    echo "Unknow remote ip for operation $OPERATION" && exit 1
-fi
-[ -n $4 ] && REMOTE_PORT=$4
-if [ $OPERATION == "forward" ] && [ -z $REMOTE_PORT ]
-then
-    echo "Unknow remote port for operation $OPERATION" && exit 1
-fi
+[[ $OPERATION == "forward" && -z $REMOTE_IP ]] && echo "Unknow remote ip for operation $OPERATION" && exit 1
+[[ -n $4 ]] && REMOTE_PORT=$4
+[[ $OPERATION == "forward" && -z $REMOTE_PORT ]] && echo "Unknow remote port for operation $OPERATION" && exit 1
 
+# $OPERATION == "check"
 check_system
 install_deps
 disable_firewall
 check_ipt_service
-get_ips
-if [ $OPERATION == "forward" ]; then
+[[ $OPERATION == "check" ]] && exit 0
+
+if [[ $OPERATION == "forward" ]]; then
     list
-    delete_service
     delete
+    delete_service
+    get_ips
     forward
-elif [ $OPERATION == "monitor" ]; then
+elif [[ $OPERATION == "monitor" ]]; then
     list
     delete
     monitor
-elif [ $OPERATION == "list" ]; then
+elif [[ $OPERATION == "list" ]]; then
     list
-elif [ $OPERATION == "list_all" ]; then
+elif [[ $OPERATION == "list_all" ]]; then
     list_all
-elif [ $OPERATION == "delete_service" ]; then
+elif [[ $OPERATION == "delete_service" ]]; then
     delete_service
-elif [ $OPERATION == "delete" ]; then
+elif [[ $OPERATION == "delete" ]]; then
     delete
-elif [ $OPERATION == "reset" ]; then
+elif [[ $OPERATION == "reset" ]]; then
     reset
 else
     echo "Unrecognized command: $OPERATION"

@@ -1,21 +1,20 @@
 ---
 - name: Exec traffic script
   block:
-    - name: Exec get_traffic script locally
-      shell: /usr/local/bin/get_traffic.sh
+    - name: Exec iptables script locally
+      shell: /usr/local/bin/iptables.sh list_all
       register: traffic
   rescue:
-    - name: Sync get_traffic.sh
+    - name: Sync iptables.sh
       copy:
-        src: files/get_traffic.sh
-        dest: /usr/local/bin/get_traffic.sh
+        src: files/iptables.sh
+        dest: /usr/local/bin/iptables.sh
         owner: root
         group: root
         mode: '0755'
-    - name: Exec get_traffci script locally again
-      shell: /usr/local/bin/get_traffic.sh
+    - name: Exec iptables script locally again
+      shell: /usr/local/bin/iptables.sh list_all
       register: traffic
-
 
 - name: Set traffic result
   set_fact:

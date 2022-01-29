@@ -22,11 +22,3 @@
     owner: root
     group: root
     mode: '0755'
-
-- name: Sync get_traffic.sh
-  copy:
-    src: files/get_traffic.sh
-    dest: /usr/local/bin/get_traffic.sh
-    owner: root
-    group: root
-    mode: '0755'
