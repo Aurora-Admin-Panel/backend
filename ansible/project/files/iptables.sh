@@ -223,20 +223,17 @@ fi
 [[ -n $1 ]] && OPERATION=$1
 [[ -z $OPERATION ]] && echo "No operation specified" && exit 1
 [[ -n $2 ]] && LOCAL_PORT=$2
-[[ $OPERATION != "check" && -z $LOCAL_PORT ]] && echo "Unknow local port for operation $OPERATION" && exit 1
+[[ $OPERATION != "list_all" && -z $LOCAL_PORT ]] && echo "Unknow local port for operation $OPERATION" && exit 1
 [[ -n $3 ]] && REMOTE_IP=$3
 REMOTE_IP=$(echo $REMOTE_IP | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 [[ $OPERATION == "forward" && -z $REMOTE_IP ]] && echo "Unknow remote ip for operation $OPERATION" && exit 1
 [[ -n $4 ]] && REMOTE_PORT=$4
 [[ $OPERATION == "forward" && -z $REMOTE_PORT ]] && echo "Unknow remote port for operation $OPERATION" && exit 1
 
-# $OPERATION == "check"
 check_system
 install_deps
 disable_firewall
 check_ipt_service
-[[ $OPERATION == "check" ]] && exit 0
-
 if [[ $OPERATION == "forward" ]]; then
     list
     delete

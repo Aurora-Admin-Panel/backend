@@ -1,12 +1,4 @@
 ---
-- name: Sync app.sh
-  copy:
-    src: files/app.sh
-    dest: /usr/local/bin/app.sh
-    owner: root
-    group: root
-    mode: '0755'
-
 - name: Sync iptables.sh
   copy:
     src: files/iptables.sh
