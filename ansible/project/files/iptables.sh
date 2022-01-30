@@ -3,9 +3,9 @@
 SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 [ -z $SUDO ] || sudo -n true 2>/dev/null || (echo "Failed to use sudo" && exit 1)
 TYPE="ALL"
-LOCAL_PORT=0
-REMOTE_IP=0
-REMOTE_PORT=0
+LOCAL_PORT=65536
+REMOTE_IP=""
+REMOTE_PORT=65536
 
 check_system () {
     source '/etc/os-release'
@@ -23,7 +23,8 @@ check_system () {
         INSTALL="$SUDO apk add --no-cache"
     fi
     # Not force to exit if the system is not supported
-    systemctl --version > /dev/null 2>&1 && IS_SYSTEMD=1
+    [[ -d /run/systemd/system ]] && IS_SYSTEMD=1
+    /sbin/openrc --version > /dev/null 2>&1 && [[ $IS_SYSTEMD -ne 1 ]] && IS_OPENRC=1
 }
 
 install_iptables () {
@@ -42,7 +43,7 @@ install_ip () {
 }
 
 get_ips () {
-    install_ip || exit 1
+    install_ip
     IFACE=$(ip route show | grep default | awk -F 'dev ' '{ print $2; }' | awk '{ print $1; }')
     INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
     INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
@@ -112,7 +113,7 @@ check_ipt_service () {
         # systemctl enable output is stderr, use 2>&1 redirection to ignore it
     fi
     # Not force to exit if the system does not use the systemd
-    if [[ $OS_FAMILY == "alpine" ]]; then
+    if [[ $IS_OPENRC -eq 1 ]]; then
         rc-update add iptables > /dev/null
     fi
 }
@@ -121,7 +122,7 @@ save_iptables () {
     check_ipt_restore_file
     if [[ $OS_FAMILY == "centos" || $OS_FAMILY == "debian" ]]; then
         [[ -f $IPT_RESTORE_FILE ]] && $SUDO iptables-save -c | $SUDO tee $IPT_RESTORE_FILE > /dev/null
-    elif [[ $OS_FAMILY == "alpine" ]]; then
+    elif [[ $IS_OPENRC -eq 1 ]]; then
         /etc/init.d/iptables save > /dev/null
     fi
 }
@@ -229,12 +230,14 @@ fi
 [[ -n $1 ]] && OPERATION=$1
 [[ -z $OPERATION ]] && echo "No operation specified" && exit 1
 [[ -n $2 ]] && LOCAL_PORT=$2
-[[ $OPERATION != "list_all" && -z $LOCAL_PORT ]] && echo "Unknow local port for operation $OPERATION" && exit 1
+[[ $OPERATION != "list_all" && ($LOCAL_PORT -ge 65536 || $LOCAL_PORT -lt 0) ]] && \
+echo "Unknow local port for operation $OPERATION" && exit 1
 [[ -n $3 ]] && REMOTE_IP=$3
 REMOTE_IP=$(echo $REMOTE_IP | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 [[ $OPERATION == "forward" && -z $REMOTE_IP ]] && echo "Unknow remote ip for operation $OPERATION" && exit 1
 [[ -n $4 ]] && REMOTE_PORT=$4
-[[ $OPERATION == "forward" && -z $REMOTE_PORT ]] && echo "Unknow remote port for operation $OPERATION" && exit 1
+[[ $OPERATION == "forward" && ($REMOTE_PORT -ge 65536 || $REMOTE_PORT -lt 0) ]] && \
+echo "Unknow remote port for operation $OPERATION" && exit 1
 
 check_system
 install_iptables
