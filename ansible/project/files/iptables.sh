@@ -24,7 +24,7 @@ check_system () {
     fi
     # Not force to exit if the system is not supported
     [[ -d /run/systemd/system ]] && IS_SYSTEMD=1
-    /sbin/openrc --version > /dev/null 2>&1 && [[ $IS_SYSTEMD -ne 1 ]] && IS_OPENRC=1
+    [[ -d /run/openrc ]] && IS_OPENRC=1
 }
 
 install_iptables () {
