@@ -34,6 +34,7 @@ class MethodEnum(enum.Enum):
     V2RAY = "v2ray"
     WSTUNNEL = "wstunnel"
     REALM = "realm"
+    HAPROXY = "haproxy"
 
 
 class PortForwardRule(Base):

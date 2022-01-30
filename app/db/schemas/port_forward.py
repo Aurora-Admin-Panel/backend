@@ -68,6 +68,14 @@ class ShadowsocksConfig(BaseModel):
     udp: t.Optional[bool]
 
 
+class HaproxyConfig(BaseModel):
+    mode: str
+    maxconn: int
+    send_proxy: str
+    balance_mode: str
+    backend_nodes: t.List
+
+
 class PortForwardRuleBase(BaseModel):
     config: t.Dict
     method: MethodEnum
@@ -95,6 +103,7 @@ class PortForwardRuleCreate(PortForwardRuleBase):
         SocatConfig,
         GostConfig,
         V2rayConfig,
+        HaproxyConfig,
         t.Dict,
     ]
 
@@ -113,6 +122,7 @@ class PortForwardRuleEdit(BaseModel):
         IperfConfig,
         GostConfig,
         V2rayConfig,
+        HaproxyConfig,
         t.Dict,
     ]
     method: t.Optional[MethodEnum]
