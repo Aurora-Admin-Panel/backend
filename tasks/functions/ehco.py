@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.db.models.port import Port
-
 from app.db.models.port_forward import MethodEnum
+from app.utils.ip import is_ipv6
 from tasks.functions.base import AppConfig
 
 
@@ -24,14 +24,18 @@ class EhcoConfig(AppConfig):
 
     def get_app_command(self, port: Port):
         transport_type = port.forward_rule.config.get("transport_type", "raw")
+        remote_port = port.forward_rule.config.get('remote_port')
+        remote_address = port.forward_rule.config.get('remote_address')
+        if is_ipv6(remote_address):
+            remote_address = f"[{remote_address}]"
         args = (
-            f"-l 0.0.0.0:{port.num} "
+            f"-l :{port.num} "
             f"--lt {port.forward_rule.config.get('listen_type', 'raw')} "
             f"-r {'wss://' if transport_type.endswith('wss') else ('ws://' if transport_type != 'raw' else '')}"
-            f"{port.forward_rule.config.get('remote_address')}:{port.forward_rule.config.get('remote_port')} "
+            f"{remote_address}:{remote_port} "
             f"-ur {'wss://' if transport_type.endswith('wss') else ('ws://' if transport_type != 'raw' else '')}"
-            f"{port.forward_rule.config.get('remote_address')}:{port.forward_rule.config.get('remote_port')} "
-            f"--tt {port.forward_rule.config.get('transport_type', 'raw')}"
+            f"{remote_address}:{remote_port} "
+            f"--tt {transport_type}"
         )
         return f"/usr/local/bin/ehco {args}"
 

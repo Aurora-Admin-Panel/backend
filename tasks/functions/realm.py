@@ -1,9 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.db.models.port import Port
-
 from app.db.models.port_forward import MethodEnum
-
+from app.utils.ip import is_ipv6
 from tasks.functions.base import AppConfig
 
 
@@ -25,14 +24,17 @@ class RealmConfig(AppConfig):
         return self
 
     def get_app_command(self, db: Session, port: Port):
-        remote_address = port.forward_rule.config.get('remote_address')
         remote_port = port.forward_rule.config.get('remote_port')
-
-        return (
-            f"/usr/local/bin/realm "
-            f"-l 0.0.0.0:{port.num} "
-            f"-uzr {remote_address}:{remote_port}"
+        remote_address = port.forward_rule.config.get('remote_address')
+        if is_ipv6(remote_address):
+            remote_address = f"[{remote_address}]"
+        args =(
+            f"-l [::]:{port.num} "
+            f"-uzr {remote_address}:{remote_port} "
+            f"--tcp-timeout 0 "
+            f"--udp-timeout 0"
         )
+        return f"/usr/local/bin/realm {args}"
 
     @property
     def playbook(self):

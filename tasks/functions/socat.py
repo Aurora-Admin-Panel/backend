@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 
 from app.db.models.port import Port
-
 from app.db.models.port_forward import MethodEnum
+from app.utils.ip import is_ipv6
 from tasks.functions.base import AppConfig
 
 
@@ -24,16 +24,18 @@ class SocatConfig(AppConfig):
         return self
 
     def get_app_command(self, port: Port):
-        remote = f'{port.forward_rule.config.get("remote_address")}:{port.forward_rule.config.get("remote_port")}'
-        if port.forward_rule.config.get("type") == "UDP":
-            return f'/bin/sh -c \\"socat UDP4-LISTEN:{port.num},fork,reuseaddr UDP4:{remote}\\"'
-        elif port.forward_rule.config.get("type") == "ALL":
-            return (
-                f'/bin/sh -c '
-                f'\\"socat UDP4-LISTEN:{port.num},fork,reuseaddr UDP4:{remote} & '
-                f'socat TCP4-LISTEN:{port.num},fork,reuseaddr TCP4:{remote}\\"'
-            )
-        return f'/bin/sh -c \\"socat TCP4-LISTEN:{port.num},fork,reuseaddr TCP4:{remote}\\"'
+        remote_port = port.forward_rule.config.get('remote_port')
+        remote_address = port.forward_rule.config.get('remote_address')
+        if is_ipv6(remote_address):
+            remote_address = f"[{remote_address}]"
+        relay_type = port.forward_rule.config.get('type')
+        args = []
+        if relay_type in ("ALL", "TCP"):
+            args.append(f"socat TCP6-LISTEN:{port.num},fork,reuseaddr TCP:{remote_address}:{remote_port}")
+        if relay_type in ("ALL", "UDP"):
+            args.append(f"socat UDP6-LISTEN:{port.num},fork,reuseaddr UDP:{remote_address}:{remote_port}")
+        args = " & ".join(args)
+        return f'/bin/sh -c \\"{args}\\"'
 
     @property
     def playbook(self):
