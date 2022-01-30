@@ -227,30 +227,24 @@ delete () {
 outipcheck () {
     # echo "start out interface ip check, now is: $INET"
     [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
-    for snat_info in $(iptables  -t  nat  -nL --line-number|grep SNAT|grep BACKWARD|awk '{printf("%s:%s\n",$11,$13)}');do
+    INETList=(${INET// / })
+    if [[ ${#INETList[*]} -gt 1 ]]; then
+        # auto fix not support in multi ip env.
+        return 0
+    fi
+    for snat_info in $(iptables  -t  nat  -nL --line-number|grep SNAT|grep BACKWARD|awk '{printf("%s:%s:%s:%s\n",$11,$13,$1,$3)}');do
         outip=$(echo $snat_info|awk -F: '{print $4}')
         if [ -n "$outip" ]; then
         if [ "$INET" != $outip ]; then
             in_port=$(echo $snat_info|awk -F'->' '{print $1}')
             target_ip=$(echo $snat_info|awk -F'->|:' '{print $2}')
             target_port=$(echo $snat_info|awk -F'->|:| ' '{print $3}')
-            if [[ -n $in_port && -n $target_ip && -n $target_port ]]; then
+            iptSNATNum=$(echo $snat_info|awk -F'->|:| ' '{print $6}')
+            forwardType=$(echo $snat_info|awk -F'->|:| ' '{print $7}')
+            if [[ -n $in_port && -n $target_ip && -n $target_port && -n $iptSNATNum ]]; then
                 # echo "fix outip from $outip to $INET, $in_port -> $target_ip:$target_port"
-                count=$(iptables  -t  nat  -nL --line-number|grep SNAT|grep "BACKWARD $in_port->" -c)
-                TYPE=""
-                if [ $count -gt 1 ]; then
-                    TYPE="ALL"
-                elif [ $count -eq 1 ]; then
-                    TYPE=$(iptables  -t  nat  -nL --line-number|grep SNAT|grep "BACKWARD $in_port->" |awk '{print $3}')
-                    typeset -u TYPE
-                fi
-                if [ -n "$TYPE" ]; then
-                    LOCAL_PORT="$in_port"
-                    REMOTE_IP="$target_ip"
-                    REMOTE_PORT="$target_port"
-                    delete
-                    forward
-                fi
+                iptables -t nat -D POSTROUTING $iptSNATNum
+                $SUDO iptables -t nat -A POSTROUTING -d $target_ip -p $forwardType --dport $target_port -j SNAT --to-source $INET -m comment --comment "BACKWARD $in_port->$target_ip:$target_port"
             fi
         fi
         fi
