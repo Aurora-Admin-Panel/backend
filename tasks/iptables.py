@@ -19,7 +19,7 @@ from tasks.utils.runner import run
 from tasks.utils.handlers import status_handler, iptables_finished_handler
 
 
-@huey.task(priority=3)
+@huey.task(priority=4)
 def iptables_runner(
     port_id: int,
     server_id: int,
@@ -77,7 +77,7 @@ def iptables_runner(
             db.commit()
 
 
-@huey.task(priority=3)
+@huey.task(priority=4)
 def iptables_reset_runner(
     server_id: int,
     port_num: int,

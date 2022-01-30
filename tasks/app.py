@@ -15,7 +15,7 @@ from tasks.utils.runner import run
 from tasks.utils.handlers import iptables_finished_handler, status_handler
 
 
-@huey.task(priority=3)
+@huey.task(priority=4)
 def app_runner(
     port_id: int,
     server_id: int,
@@ -71,7 +71,7 @@ def app_runner(
     )
 
 
-@huey.task(priority=2)
+@huey.task(priority=4)
 def rule_runner(rule_id: int):
     try:
         with db_session() as db:

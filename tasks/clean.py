@@ -21,7 +21,7 @@ def clean_runner(server: t.Dict):
     )
 
 
-@huey.task()
+@huey.task(priority=4)
 def clean_port_runner(
     server_id: int, port_num: int, update_traffic: bool = True
 ):
