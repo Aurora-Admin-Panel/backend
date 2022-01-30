@@ -1,10 +1,9 @@
 from sqlalchemy.orm import Session
 
 from app.db.models.port import Port
-
 from app.db.models.port_forward import MethodEnum
 from app.utils.dns import dns_query
-from app.utils.ip import is_ip
+from app.utils.ip import is_ip, is_ipv6
 from tasks.functions.base import AppConfig
 
 
@@ -26,14 +25,13 @@ class BrookConfig(AppConfig):
 
     def get_app_command(self, db: Session, port: Port):
         command = port.forward_rule.config.get("command")
-        if port.forward_rule.config.get("remote_address"):
-            if not is_ip(port.forward_rule.config.get("remote_address")):
-                remote_ip = dns_query(port.forward_rule.config.get("remote_address"))
-            else:
-                remote_ip = port.forward_rule.config.get("remote_address")
+        if remote_address := port.forward_rule.config.get("remote_address"):
+            remote_ip = dns_query(remote_address)
             port.forward_rule.config['remote_ip'] = remote_ip
             db.add(port.forward_rule)
             db.commit()
+        if is_ipv6(remote_ip):
+            remote_ip = f"[{remote_ip}]"
         if command == "relay":
             args = (
                 f"-f :{port.num} "
@@ -43,13 +41,13 @@ class BrookConfig(AppConfig):
             args = f"-l :{port.num} -p {port.forward_rule.config.get('password')}"
         elif command in ("client"):
             args = (
-                f"--socks5 0.0.0.0:{port.num} "
+                f"--socks5 127.0.0.1:{port.num} "
                 f"-s {remote_ip}:{port.forward_rule.config.get('remote_port')} "
                 f"-p {port.forward_rule.config.get('password')}"
             )
         elif command in ("wsclient"):
             args = (
-                f"--socks5 0.0.0.0:{port.num} "
+                f"--socks5 127.0.0.1:{port.num} "
                 f"--wsserver ws://{remote_ip}:{port.forward_rule.config.get('remote_port')} "
                 f"-p {port.forward_rule.config.get('password')}"
             )
