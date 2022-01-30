@@ -75,6 +75,14 @@ check_paths () {
     [[ ! -d /etc/systemd/system ]] && $SUDO mkdir -p /etc/systemd/system
 }
 
+check_envs () {
+    echo "Checking envs ..."
+    ENV_PATH=$(env | grep PATH | grep "\/usr\/local\/bin")
+    [[ -n $ENV_PATH ]] && return 0
+    echo "Adding local bin ..."
+    echo "export PATH=/usr/local/bin:$PATH" >> /etc/environment
+}
+
 delete_service () {
     [[ -z $1 ]] && return 0 || SERVICE=$1
     systemctl --version > /dev/null 2>&1 || return 0
@@ -98,5 +106,6 @@ install_deps () {
 check_system
 install_deps
 check_paths
+check_envs
 disable_firewall
 exit 0

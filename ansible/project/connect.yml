@@ -4,4 +4,5 @@
   become: yes
   gather_facts: no
   roles:
+    - role: server_init
     - role: get_facts
