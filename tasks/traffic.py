@@ -10,7 +10,7 @@ from tasks.utils.runner import run
 from tasks.utils.handlers import iptables_finished_handler
 
 
-@huey.task(priority=6)
+@huey.task()
 def traffic_server_runner(server_id: Server):
     with db_session() as db:
         server = get_server_with_ports_usage(db, server_id)

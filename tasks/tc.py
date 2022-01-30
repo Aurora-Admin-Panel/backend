@@ -5,7 +5,7 @@ from .config import huey
 from tasks.utils.runner import run
 
 
-@huey.task()
+@huey.task(priority=1)
 def tc_runner(
     server_id: int,
     port_num: int,
