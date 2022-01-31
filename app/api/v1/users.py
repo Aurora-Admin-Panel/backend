@@ -205,8 +205,9 @@ async def user_delete(
         for port in user.ports:
             edit_port_usage(
                 db,
-                port,
+                port.id,
                 PortUsageEdit(
+                    port_id=port.id,
                     download=0,
                     upload=0,
                     download_accumulate=0,
@@ -215,9 +216,9 @@ async def user_delete(
                     upload_checkpoint=0,
                 ),
             )
-            if port.rule:
+            if port.forward_rule:
                 trigger_port_clean(port.server, port, False)
-                delete_forward_rule_by_id(db, port.rule.id)
+                delete_forward_rule_by_id(db, port.forward_rule.id)
         for port_user in user.allowed_ports:
             delete_port_user(
                 db, port_user.port.server.id, port_user.port_id, user.id
