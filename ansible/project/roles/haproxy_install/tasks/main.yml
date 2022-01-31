@@ -1,0 +1,14 @@
+---
+- name: Install haproxy
+  raw: |
+    /usr/bin/env haproxy -v || \
+    (yum install -y haproxy || apt install -y --no-install-recommends haproxy || apk add --no-cache haproxy) || \
+    (yum makecache -y && yum install -y haproxy) || \
+    (apt update -y && apt install -y --no-install-recommends haproxy) || \
+    (apk update && apk add --no-cache haproxy)
+
+- name: Stop and disable haproxy systemd file
+  ansible.builtin.systemd:
+    state: stopped
+    enabled: no
+    name: haproxy

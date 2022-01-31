@@ -10,5 +10,6 @@ from tasks.functions.tiny_port_mapper import TinyPortMapperConfig
 from tasks.functions.v2ray import V2rayConfig
 from tasks.functions.wstunnel import WstunnelConfig
 from tasks.functions.realm import RealmConfig
+from tasks.functions.haproxy import HaproxyConfig
 
 from tasks.functions.base import AppConfig

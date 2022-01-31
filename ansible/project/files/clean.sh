@@ -29,9 +29,10 @@ clean_aurora () {
 }
 
 clean_scripts () {
-    $SUDO rm /usr/local/bin/app.sh
     $SUDO rm /usr/local/bin/iptables.sh
     $SUDO rm /usr/local/bin/tc.sh
+    # compatible with 0.17.4- version
+    $SUDO rm /usr/local/bin/app.sh
     $SUDO rm /usr/local/bin/get_traffic.sh
 }
 

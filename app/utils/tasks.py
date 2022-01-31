@@ -44,10 +44,13 @@ def trigger_forward_rule(rule: PortForwardRule):
         MethodEnum.V2RAY,
         MethodEnum.WSTUNNEL,
         MethodEnum.REALM,
+        MethodEnum.HAPROXY,
     ):
         rule_runner(rule_id=rule.id)
     elif rule.method == MethodEnum.IPTABLES:
         send_iptables(rule)
+    else:
+        print(f"Not supported rule method: {rule.method}")
 
 
 def trigger_tc(port: Port):

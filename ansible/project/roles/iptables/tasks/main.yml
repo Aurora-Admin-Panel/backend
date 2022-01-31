@@ -6,7 +6,7 @@
     owner: root
     group: root
     mode: '0755'
-- name: Exec iptables script locally again
+- name: Exec iptables script locally
   shell: /usr/local/bin/iptables.sh {{ iptables_args }}
   register: traffic
 - name: Set traffic result
