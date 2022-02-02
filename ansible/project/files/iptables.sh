@@ -31,6 +31,10 @@ install_iptables () {
     iptables -V > /dev/null || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
 }
 
+install_ip6tables () {
+    ip6tables -V > /dev/null || $INSTALL ip6tables || ($UPDATE && $INSTALL ip6tables) || (echo "Failed to install ip6tables" && exit 1)
+}
+
 install_ip () {
     ip a > /dev/null && return 0
     if [[ $OS_FAMILY == "centos" ]]; then
@@ -76,17 +80,24 @@ check_ipt_restore_file () {
     fi
     if [[ $OS_FAMILY == "centos" ]]; then
         IPT_RESTORE_FILE=$IPT_PATH/iptables
+        IPT6_RESTORE_FILE=$IPT_PATH/ip6tables
     elif [[ $OS_FAMILY == "debian" ]]; then
         IPT_RESTORE_FILE=$IPT_PATH/rules.v4
+        IPT6_RESTORE_FILE=$IPT_PATH/rules.v6
     fi
     if [[ -n $IPT_RESTORE_FILE && ! -f $IPT_RESTORE_FILE ]]; then
         $SUDO touch $IPT_RESTORE_FILE
     fi
+    if [[ -n $IPT6_RESTORE_FILE && ! -f $IPT6_RESTORE_FILE ]]; then
+        $SUDO touch $IPT6_RESTORE_FILE
+    fi
 }
 
 install_ipt_service () {
+    # /usr/lib/systemd/system/iptables.service (iptables-services)
     if [[ $OS_FAMILY == "centos" ]]; then
         RULE_PATH="/etc/sysconfig/iptables"
+    # /lib/systemd/system/netfilter-persistent.service (iptables-persistent)
     elif [[ $OS_FAMILY == "debian" ]]; then
         RULE_PATH="/etc/iptables/rules.v4"
     fi
@@ -98,6 +109,29 @@ Description=Restore iptables rules by Aurora Admin Panel
 [Service]
 Type=oneshot
 ExecStart=/bin/sh -c '/usr/sbin/iptables-restore -c < $RULE_PATH'
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    check_ipt_restore_file
+}
+
+install_ipt6_service () {
+    # /usr/lib/systemd/system/ip6tables.service (iptables-services)
+    if [[ $OS_FAMILY == "centos" ]]; then
+        RULE6_PATH="/etc/sysconfig/ip6tables"
+    # /lib/systemd/system/netfilter-persistent.service (iptables-persistent)
+    elif [[ $OS_FAMILY == "debian" ]]; then
+        RULE6_PATH="/etc/iptables/rules.v6"
+    fi
+    [[ -z $RULE6_PATH ]] && return 0
+    $SUDO tee /etc/systemd/system/ip6tables-restore.service > /dev/null <<EOF
+[Unit]
+Description=Restore ip6tables rules by Aurora Admin Panel
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/sbin/ip6tables-restore -c < $RULE6_PATH'
 
 [Install]
 WantedBy=multi-user.target
@@ -140,6 +174,19 @@ check_ipt_service () {
     fi
 }
 
+check_ipt6_service () {
+    if [[ $IS_SYSTEMD -eq 1 ]]; then
+        ! systemctl is-enabled --quiet ip6tables-restore.service > /dev/null 2>&1 && install_ipt6_service && \
+        $SUDO systemctl daemon-reload && \
+        $SUDO systemctl enable ip6tables-restore.service > /dev/null 2>&1
+        # systemctl enable output is stderr, use 2>&1 redirection to ignore it
+    fi
+    # Not force to exit if the system does not use the systemd
+    if [[ $IS_OPENRC -eq 1 ]]; then
+        rc-update add ip6tables > /dev/null
+    fi
+}
+
 check_ipt_timer () {
     [[ $IS_SYSTEMD -ne 1 ]] && return 0
     ! systemctl is-enabled --quiet iptables-check.timer > /dev/null 2>&1 && install_ipt_timer && \
@@ -152,8 +199,12 @@ save_iptables () {
     check_ipt_restore_file
     if [[ $OS_FAMILY == "centos" || $OS_FAMILY == "debian" ]]; then
         [[ -f $IPT_RESTORE_FILE ]] && $SUDO iptables-save -c | $SUDO tee $IPT_RESTORE_FILE > /dev/null
+        [[ -f $IPT6_RESTORE_FILE ]] && $SUDO ip6tables-save -c | $SUDO tee $IPT6_RESTORE_FILE > /dev/null
     elif [[ $IS_OPENRC -eq 1 ]]; then
+        # /etc/iptables/rules-save
         /etc/init.d/iptables save > /dev/null
+        # /etc/iptables/rules6-save
+        /etc/init.d/ip6tables save > /dev/null
     fi
 }
 
@@ -200,11 +251,15 @@ monitor () {
     then
         $SUDO iptables -A INPUT -p tcp --dport $LOCAL_PORT -j ACCEPT -m comment --comment "UPLOAD $LOCAL_PORT->$REMOTE_IP"
         $SUDO iptables -A OUTPUT -p tcp  --sport $LOCAL_PORT -j ACCEPT -m comment --comment "DOWNLOAD $LOCAL_PORT->$REMOTE_IP"
+        $SUDO ip6tables -A INPUT -p tcp --dport $LOCAL_PORT -j ACCEPT -m comment --comment "UPLOAD $LOCAL_PORT->$REMOTE_IP"
+        $SUDO ip6tables -A OUTPUT -p tcp  --sport $LOCAL_PORT -j ACCEPT -m comment --comment "DOWNLOAD $LOCAL_PORT->$REMOTE_IP"
     fi
     if [ $TYPE == "ALL" ] || [ $TYPE == "UDP" ]
     then
         $SUDO iptables -A INPUT -p udp --dport $LOCAL_PORT -j ACCEPT -m comment --comment "UPLOAD-UDP $LOCAL_PORT->$REMOTE_IP"
         $SUDO iptables -A OUTPUT -p udp --sport $LOCAL_PORT -j ACCEPT -m comment --comment "DOWNLOAD-UDP $LOCAL_PORT->$REMOTE_IP"
+        $SUDO ip6tables -A INPUT -p udp --dport $LOCAL_PORT -j ACCEPT -m comment --comment "UPLOAD-UDP $LOCAL_PORT->$REMOTE_IP"
+        $SUDO ip6tables -A OUTPUT -p udp --sport $LOCAL_PORT -j ACCEPT -m comment --comment "DOWNLOAD-UDP $LOCAL_PORT->$REMOTE_IP"
     fi
     save_iptables
 }
@@ -213,12 +268,17 @@ list () {
     COMMENT="$LOCAL_PORT->"
     $SUDO iptables -nxvL | grep $COMMENT
     $SUDO iptables -t nat -nxvL | grep $COMMENT
+    $SUDO ip6tables -nxvL | grep $COMMENT
+    $SUDO ip6tables -t nat -nxvL | grep $COMMENT
 }
 
 list_all () {
     $SUDO iptables -nxvL INPUT | grep '\/\*.*\*\/$'
     $SUDO iptables -nxvL FORWARD | grep '\/\*.*\*\/$'
     $SUDO iptables -nxvL OUTPUT | grep '\/\*.*\*\/$'
+    $SUDO ip6tables -nxvL INPUT | grep '\/\*.*\*\/$'
+    $SUDO ip6tables -nxvL FORWARD | grep '\/\*.*\*\/$'
+    $SUDO ip6tables -nxvL OUTPUT | grep '\/\*.*\*\/$'
     save_iptables
 }
 
@@ -235,9 +295,17 @@ delete () {
     do
         $SUDO iptables -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -D "$0; system($COMMEND)}'
     done
+    while [[ ! -z "$($SUDO ip6tables -S | grep $COMMENT)" ]]
+    do
+        $SUDO ip6tables -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" ip6tables -D "$0; system($COMMEND)}'
+    done
     while [[ ! -z "$($SUDO iptables -t nat -S | grep $COMMENT)" ]]
     do
         $SUDO iptables -t nat -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" iptables -t nat -D "$0; system($COMMEND)}'
+    done
+    while [[ ! -z "$($SUDO ip6tables -t nat -S | grep $COMMENT)" ]]
+    do
+        $SUDO ip6tables -t nat -S | grep $COMMENT | awk -v SUDO="$SUDO" '{$1="";$COMMEND=SUDO" ip6tables -t nat -D "$0; system($COMMEND)}'
     done
     save_iptables
 }
@@ -283,7 +351,6 @@ fi
 [[ $OPERATION != "list_all" && "$OPERATION" != "check" && ($LOCAL_PORT -ge 65536 || $LOCAL_PORT -lt 0) ]] && \
 echo "Unknow local port for operation $OPERATION" && exit 1
 [[ -n $3 ]] && REMOTE_IP=$3
-REMOTE_IP=$(echo $REMOTE_IP | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$")
 [[ $OPERATION == "forward" && -z $REMOTE_IP ]] && echo "Unknow remote ip for operation $OPERATION" && exit 1
 [[ -n $4 ]] && REMOTE_PORT=$4
 [[ $OPERATION == "forward" && ($REMOTE_PORT -ge 65536 || $REMOTE_PORT -lt 0) ]] && \
@@ -291,8 +358,10 @@ echo "Unknow remote port for operation $OPERATION" && exit 1
 
 check_system
 install_iptables
+install_ip6tables
 disable_firewall
 check_ipt_service
+check_ipt6_service
 check_ipt_timer
 if [[ $OPERATION == "forward" ]]; then
     # for ipt/app -> ipt traffic get
