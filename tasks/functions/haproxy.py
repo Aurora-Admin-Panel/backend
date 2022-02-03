@@ -46,11 +46,13 @@ global
     ulimit-n 51200
 defaults
     log global
+    retries 1
+    option redispatch
     mode {rule.config.get("mode", "tcp")}
     option dontlognull
         timeout connect 5000
-        timeout client 50000
-        timeout server 50000
+        timeout client 95000
+        timeout server 95000
 
 frontend {rule.port.num}-in
     bind *:{rule.port.num}
@@ -63,7 +65,7 @@ backend {rule.port.num}-out
 """ + "\n".join(
             [
                 f"    server server{idx} "
-                f"{val} "
+                f"{val} check inter 10000 "
                 f"maxconn {rule.config.get('maxconn', 20480)} "
                 f"{rule.config.get('send_proxy', '')}"
                 for idx, val in enumerate(rule.config.get("backend_nodes", []))
