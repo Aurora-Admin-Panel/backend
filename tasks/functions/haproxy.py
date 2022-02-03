@@ -55,7 +55,7 @@ defaults
         timeout server 95000
 
 frontend {rule.port.num}-in
-    bind *:{rule.port.num}
+    bind :::{rule.port.num}
     mode {rule.config.get("mode", "tcp")}
     default_backend {rule.port.num}-out
 
