@@ -25,12 +25,13 @@ class BrookConfig(AppConfig):
 
     def get_app_command(self, db: Session, port: Port):
         command = port.forward_rule.config.get("command")
-        if remote_address := port.forward_rule.config.get("remote_address"):
+        remote_address = port.forward_rule.config.get("remote_address")
+        if command.endswith(("relay", "client")) and remote_address:
             remote_ip = dns_query(remote_address)
             port.forward_rule.config['remote_ip'] = remote_ip
             db.add(port.forward_rule)
             db.commit()
-        if is_ipv6(remote_ip):
+        if command.endswith(("relay", "client")) and is_ipv6(remote_ip):
             remote_ip = f"[{remote_ip}]"
         if command == "relay":
             args = (
