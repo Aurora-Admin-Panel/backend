@@ -76,7 +76,8 @@ def rule_runner(rule_id: int):
     try:
         with db_session() as db:
             rule = get_forward_rule_by_id(db, rule_id)
-            port_id, port_num, server_id = (
+            port, port_id, port_num, server_id = (
+                rule.port,
                 rule.port.id,
                 rule.port.num,
                 rule.port.server.id,
@@ -113,7 +114,7 @@ def rule_runner(rule_id: int):
                 break
         if rule.config.get("expire_second"):
             clean_port_runner.schedule(
-                (server_id, port_num),
+                (server_id, port),
                 delay=rule.config.get("expire_second"))
     except Exception:
         with db_session() as db:
