@@ -26,13 +26,13 @@ class BrookConfig(AppConfig):
     def get_app_command(self, db: Session, port: Port):
         command = port.forward_rule.config.get("command")
         remote_address = port.forward_rule.config.get("remote_address")
-        if command == "relay" and remote_address:
+        if command.endswith(("relay", "client")):
             remote_ip = dns_query(remote_address)
             port.forward_rule.config['remote_ip'] = remote_ip
             db.add(port.forward_rule)
             db.commit()
-        if command == "relay" and is_ipv6(remote_ip):
-            remote_ip = f"[{remote_ip}]"
+            if is_ipv6(remote_ip):
+                remote_ip = f"[{remote_ip}]"
         if command == "relay":
             args = (
                 f"{command} "
@@ -43,20 +43,18 @@ class BrookConfig(AppConfig):
             args = f"{command} -l :{port.num} -p {port.forward_rule.config.get('password')}"
         elif command.endswith("client"):
             server_address = port.forward_rule.config.get("server_address")
+            if is_ipv6(server_address):
+                server_address = f"[{server_address}]"
             server_port = port.forward_rule.config.get("server_port")
-            remote_address = port.forward_rule.config.get("remote_address")
             remote_port = port.forward_rule.config.get("remote_port")
             password = port.forward_rule.config.get("password")
             args = (
                 f"relayoverbrook -f :{port.num} "
-                f"-t {remote_address}:{remote_port} "
+                f"-t {remote_ip}:{remote_port} "
                 f"-p {password} "
+                f"-s {'ws://' if command  == 'wsclient' else ''}"
+                f"{server_address}:{server_port}"
             )
-            if command == "client":
-                args += f"-s {server_address}:{server_port}"
-            elif command  == "wsclient":
-                server_type = command.strip('client')
-                args += f"-s {server_type}://{server_address}:{server_port}"
         return f"/usr/local/bin/brook {args}"
 
     @property
