@@ -51,7 +51,7 @@ get_ips () {
     IFACE=$(ip route show | grep default | awk -F 'dev ' '{ print $2; }' | awk '{ print $1; }')
     INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
     INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
-    [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
+    [[ -z $INET ]] && echo "No valid interface ipv4 addresses found" && exit 1
 }
 
 delete_service () {
@@ -311,7 +311,7 @@ delete () {
 }
 
 check () {
-    [ -z $INET ] && echo "No valid interface ipv4 addresses found" && exit 1
+    [[ -z $INET ]] && echo "No valid interface ipv4 addresses found" && exit 1
     # snat update only support one ip for now.
     [[ $(echo $INET | awk '{print NF}') -gt 1 ]] && return 0
     SNAT_RULES=$(iptables -t nat -nL POSTROUTING --line-number | grep -E "BACKWARD [[:digit:]]+->" | awk '{ printf("%s:%s:%s:%s\n", $11,$13,$1,$3); }')
