@@ -3,6 +3,7 @@
 SUDO=$(if [ $(id -u $whoami) -gt 0 ]; then echo "sudo "; fi)
 [ -z $SUDO ] || sudo -n true 2>/dev/null || (echo "Failed to use sudo" && exit 1)
 TYPE="ALL"
+IP_VERSION="4"
 LOCAL_PORT=65536
 REMOTE_IP=""
 REMOTE_PORT=65536
@@ -28,11 +29,11 @@ check_system () {
 }
 
 install_iptables () {
-    iptables -V > /dev/null || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
+    iptables -V > /dev/null 2>&1 || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
 }
 
 install_ip6tables () {
-    ip6tables -V > /dev/null || $INSTALL ip6tables || ($UPDATE && $INSTALL ip6tables) || (echo "Failed to install ip6tables" && exit 1)
+    ip6tables -V > /dev/null 2>&1 || $INSTALL ip6tables || ($UPDATE && $INSTALL ip6tables) || (echo "Failed to install ip6tables" && exit 1)
 }
 
 install_ip () {
@@ -48,10 +49,9 @@ install_ip () {
 
 get_ips () {
     install_ip
-    IFACE=$(ip route show | grep default | awk -F 'dev ' '{ print $2; }' | awk '{ print $1; }')
-    INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
+    INET=$(ip -4 addr | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -v "127.0.0.1")
     INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
-    [[ -z $INET ]] && echo "No valid interface ipv4 addresses found" && exit 1
+    INET6=$(ip -6 addr | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1)
 }
 
 delete_service () {
@@ -210,19 +210,34 @@ save_iptables () {
 
 set_forward () {
     [[ $(cat /proc/sys/net/ipv4/ip_forward) -eq 1 ]] && return 0
-    if [[ -z $($SUDO cat /etc/sysctl.conf | grep "net.ipv4.ip_forward") ]]; then
+    # ipv4
+    if [[ -z $($SUDO grep "net.ipv4.ip_forward" /etc/sysctl.conf) ]]; then
         echo "net.ipv4.ip_forward = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
     else
-        sed -i "s/.*net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/g" /etc/sysctl.conf > /dev/null
+        $SUDO sed -i "s/.*net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/g" /etc/sysctl.conf > /dev/null
+    fi
+    # ipv6 support
+    if [[ -z $($SUDO grep "net.ipv6.conf.all.forwarding" /etc/sysctl.conf) ]]; then
+        echo "net.ipv6.conf.all.forwarding = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
+    else
+        $SUDO sed -i "s/.*net.ipv6.conf.all.forwarding.*/net.ipv6.conf.all.forwarding = 1/g" /etc/sysctl.conf > /dev/null
+    fi
+    if [[ -z $($SUDO grep "net.ipv6.conf.all.accept_ra" /etc/sysctl.conf) ]]; then
+        echo "net.ipv6.conf.all.accept_ra = 2" | $SUDO tee -a /etc/sysctl.conf > /dev/null
+    else
+        $SUDO sed -i "s/.*net.ipv6.conf.all.accept_ra.*/net.ipv6.conf.all.accept_ra = 2/g" /etc/sysctl.conf > /dev/null
     fi
     $SUDO sysctl -p > /dev/null
     # check and make sure ip_forward enabled
     [[ $(cat /proc/sys/net/ipv4/ip_forward) -ne 1 ]] && echo 1 | $SUDO tee /proc/sys/net/ipv4/ip_forward
+    # ipv6 support
+    [[ $(cat /proc/sys/net/ipv6/conf/all/forwarding) -ne 1 ]] && echo 1 | $SUDO tee /proc/sys/net/ipv6/conf/all/forwarding
+    [[ $(cat /proc/sys/net/ipv6/conf/all/accept_ra) -ne 2 ]] && echo 2 | $SUDO tee /proc/sys/net/ipv6/conf/all/accept_ra
 }
 
-forward () {
-    set_forward
-    if [ $TYPE == "ALL" ] || [ $TYPE == "TCP" ]
+forward4 () {
+    [[ -z $INET ]] && echo "No valid interface ipv4 addresses found" && exit 1
+    if [[ $TYPE == "ALL" || $TYPE == "TCP" ]]
     then
         for SNATIP in $INET; do
             $SUDO iptables -t nat -A POSTROUTING -d $REMOTE_IP -p tcp --dport $REMOTE_PORT -j SNAT --to-source $SNATIP -m comment --comment "BACKWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
@@ -232,7 +247,7 @@ forward () {
         $SUDO iptables -I FORWARD -p tcp -d $REMOTE_IP --dport $REMOTE_PORT -j ACCEPT -m comment --comment "UPLOAD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
         $SUDO iptables -I FORWARD -p tcp -s $REMOTE_IP -j ACCEPT -m comment --comment "DOWNLOAD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
     fi
-    if [ $TYPE == "ALL" ] || [ $TYPE == "UDP" ]
+    if [[ $TYPE == "ALL" || $TYPE == "UDP" ]]
     then
         for SNATIP in $INET; do
             $SUDO iptables -t nat -A POSTROUTING -d $REMOTE_IP -p udp --dport $REMOTE_PORT -j SNAT --to-source $SNATIP -m comment --comment "BACKWARD $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
@@ -241,6 +256,35 @@ forward () {
         # for ipt port traffic monitor
         $SUDO iptables -I FORWARD -p udp -d $REMOTE_IP --dport $REMOTE_PORT -j ACCEPT -m comment --comment "UPLOAD-UDP $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
         $SUDO iptables -I FORWARD -p udp -s $REMOTE_IP -j ACCEPT -m comment --comment "DOWNLOAD-UDP $LOCAL_PORT->$REMOTE_IP:$REMOTE_PORT"
+    fi
+}
+
+forward6 () {
+    #[[ -z $INET6 ]] && echo "No valid interface ipv6 addresses found" && exit 1
+    if [[ $TYPE == "ALL" || $TYPE == "TCP" ]]
+    then
+        $SUDO ip6tables -t nat -A POSTROUTING -d $REMOTE_IP -p tcp --dport $REMOTE_PORT -j MASQUERADE -m comment --comment "BACKWARD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+        $SUDO ip6tables -t nat -A PREROUTING -p tcp --dport $LOCAL_PORT -j DNAT --to-destination "[$REMOTE_IP]":$REMOTE_PORT  -m comment --comment "FORWARD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+        # for ipt port traffic monitor
+        $SUDO ip6tables -I FORWARD -p tcp -d $REMOTE_IP --dport $REMOTE_PORT -j ACCEPT -m comment --comment "UPLOAD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+        $SUDO ip6tables -I FORWARD -p tcp -s $REMOTE_IP -j ACCEPT -m comment --comment "DOWNLOAD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+    fi
+    if [[ $TYPE == "ALL" || $TYPE == "UDP" ]]
+    then
+        $SUDO ip6tables -t nat -A POSTROUTING -d $REMOTE_IP -p udp --dport $REMOTE_PORT -j MASQUERADE -m comment --comment "BACKWARD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+        $SUDO ip6tables -t nat -A PREROUTING -p udp --dport $LOCAL_PORT -j DNAT --to-destination "[$REMOTE_IP]":$REMOTE_PORT  -m comment --comment "FORWARD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+        # for ipt port traffic monitor
+        $SUDO ip6tables -I FORWARD -p udp -d $REMOTE_IP --dport $REMOTE_PORT -j ACCEPT -m comment --comment "UPLOAD-UDP $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+        $SUDO ip6tables -I FORWARD -p udp -s $REMOTE_IP -j ACCEPT -m comment --comment "DOWNLOAD-UDP $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
+    fi
+}
+
+forward () {
+    set_forward
+    if [[ $IP_VERSION == "4" ]]; then
+        forward4
+    elif [[ $IP_VERSION == "6" ]]; then
+        forward6
     fi
     save_iptables
 }
@@ -337,12 +381,20 @@ case $i in
     TYPE="${i#*=}"
     shift
     ;;
+    -v=*|--version=*)
+    IP_VERSION="${i#*=}"
+    shift
+    ;;
 esac
 done
 
-if [ ! $TYPE == "ALL" ] && [ ! $TYPE == "TCP" ] && [ ! $TYPE == "UDP" ]
+if [[ ! $TYPE == "ALL" && ! $TYPE == "TCP" && ! $TYPE == "UDP" ]]
 then
     echo "Unsupported forward type: $TYPE" && exit 1
+fi
+if [[ ! $IP_VERSION == "4" && ! $IP_VERSION == "6" ]]
+then
+    echo "Unsupported forward version: $IP_VERSION" && exit 1
 fi
 
 [[ -n $1 ]] && OPERATION=$1
