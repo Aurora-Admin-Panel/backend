@@ -31,8 +31,9 @@ class RealmConfig(AppConfig):
         args =(
             f"-l [::]:{port.num} "
             f"-uzr {remote_address}:{remote_port} "
+            f"-f "
             f"--tcp-timeout 0 "
-            f"--udp-timeout 0"
+            f"--udp-timeout 120"
         )
         return f"/usr/local/bin/realm {args}"
 
