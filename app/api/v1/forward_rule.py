@@ -203,9 +203,10 @@ async def forward_rule_runner_get(
 def trim_forward_rule(
     rule: t.Union[PortForwardRuleCreate, PortForwardRuleEdit]
 ) -> t.Union[PortForwardRuleCreate, PortForwardRuleEdit]:
-    config = rule.config
-    if hasattr(config, "remote_address"):
-        rule.config.remote_address = config.remote_address.strip()
+    if remote_address := rule.config.get("remote_address"):
+        rule.config["remote_address"] = remote_address.strip()
+    if server_address := rule.config.get("server_address"):
+        rule.config["server_address"] = server_address.strip()
     return rule
 
 
@@ -216,7 +217,8 @@ def verify_gost_config(
         return rule
 
     num = port.external_num if port.external_num else port.num
-    for node in rule.config.ServeNodes:
+    nodes = rule.config.get("ServeNodes", [])
+    for node in nodes:
         if node.startswith(":"):
             if not node.startswith(f":{num}"):
                 raise HTTPException(
