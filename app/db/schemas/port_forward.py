@@ -48,8 +48,11 @@ class V2rayConfig(BaseModel):
 
 class BrookConfig(BaseModel):
     command: str
+    remote_ip: t.Optional[str]
     remote_address: t.Optional[str]
     remote_port: t.Optional[int]
+    server_address: t.Optional[str]
+    server_port: t.Optional[int]
     password: t.Optional[str]
 
 
