@@ -2,6 +2,8 @@ import typing as t
 
 from app.db.session import db_session
 from app.db.crud.server import get_server_with_ports_usage
+from app.db.crud.port_forward import get_forward_rule
+from app.db.models.port import Port
 from .config import huey
 from tasks.ansible import ansible_hosts_runner
 from tasks.utils.runner import run
@@ -23,14 +25,17 @@ def clean_runner(server: t.Dict):
 
 @huey.task(priority=4)
 def clean_port_runner(
-    server_id: int, port_num: int, update_traffic: bool = True
+    server_id: int, port: Port, update_traffic: bool = True
 ):
     with db_session() as db:
+        if db_forward_rule := get_forward_rule(db, server_id, port.id):
+            db.delete(db_forward_rule)
+            db.commit()
         server = get_server_with_ports_usage(db, server_id)
     run(
         server=server,
         playbook="clean_port.yml",
-        extravars={"local_port": port_num},
+        extravars={"local_port": port.num},
         finished_callback=iptables_finished_handler(
             server.id, accumulate=True, update_traffic_bool=update_traffic
         ),
