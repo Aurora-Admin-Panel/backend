@@ -42,6 +42,8 @@ def update_facts(server_id: int, facts: t.Dict, md5: str = None):
             "tiny_port_mapper",
             "v2ray",
             "wstunnel",
+            "realm",
+            "haproxy",
         ]:
             if func in facts:
                 db_server.config[func] = facts.get(func)

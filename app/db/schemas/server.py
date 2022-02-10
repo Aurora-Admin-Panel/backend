@@ -103,6 +103,8 @@ class ServerConfig(BaseModel):
     realm_disabled: t.Optional[bool]
     iperf: t.Optional[str]
     iperf_disabled: t.Optional[bool]
+    haproxy: t.Optional[str]
+    haproxy_disabled: t.Optional[bool]
 
 
 class ServerBase(BaseModel):
@@ -201,6 +203,7 @@ class ServerConfigEdit(BaseModel):
     wstunnel_disabled: t.Optional[bool]
     realm_disabled: t.Optional[bool]
     iperf_disabled: t.Optional[bool]
+    haproxy_disabled: t.Optional[bool]
 
     class Config:
         orm_mode = True
