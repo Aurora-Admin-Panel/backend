@@ -15,6 +15,7 @@ class V2rayConfig(AppConfig):
         super().__init__()
 
         self.app_name = "v2ray"
+        self.app_path = "/usr/local/bin/"
         self.app_version_arg = "-version"
 
         self.app_get_role_name = "v2ray_get"

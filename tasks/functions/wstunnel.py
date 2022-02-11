@@ -13,6 +13,7 @@ class WstunnelConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "wstunnel"
+        self.app_path = "/usr/local/bin/"
         self.app_version_arg = "-V"
 
         self.app_sync_role_name = "wstunnel_sync"

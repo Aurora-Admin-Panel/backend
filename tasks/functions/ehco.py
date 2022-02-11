@@ -12,6 +12,7 @@ class EhcoConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "ehco"
+        self.app_path = "/usr/local/bin/"
         self.app_sync_role_name = "ehco_sync"
 
 

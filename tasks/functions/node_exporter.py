@@ -12,6 +12,7 @@ class NodeExporterConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "node_exporter"
+        self.app_path = "/usr/local/bin/"
         self.app_version_arg = "--version"
 
         self.app_sync_role_name = "node_exporter_sync"

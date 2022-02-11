@@ -12,6 +12,7 @@ class RealmConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "realm"
+        self.app_path = "/usr/local/bin/"
         self.app_version_arg = "--version"
 
         self.app_sync_role_name = "realm_sync"

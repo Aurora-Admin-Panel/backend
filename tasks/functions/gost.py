@@ -18,6 +18,7 @@ class GostConfig(AppConfig):
         super().__init__()
 
         self.app_name = "gost"
+        self.app_path = "/usr/local/bin/"
         self.app_version_arg = "-V"
 
         self.app_sync_role_name = "gost_sync"
