@@ -22,9 +22,11 @@ from app.db.schemas.port_forward import (
 )
 from app.db.crud.port_forward import (
     get_forward_rule,
+    get_forward_rule_for_server,
     create_forward_rule,
     edit_forward_rule,
     delete_forward_rule,
+    delete_forward_rule_by_id,
     get_all_gost_rules,
 )
 from app.db.crud.port import get_port
@@ -105,6 +107,25 @@ async def forward_rule_create(
     return forward_rule
 
 
+@r.post(
+    "/servers/{server_id}/forward_rules",
+    response_model=t.List[PortForwardRuleOut],
+)
+async def forward_rules_recreate(
+    response: Response,
+    server_id: int,
+    db=Depends(get_db),
+    user=Depends(get_current_active_admin),
+):
+    """
+    Recreate all port forward rules of the server
+    """
+    db_forward_rules = get_forward_rule_for_server(db, server_id)
+    for forward_rule in db_forward_rules:
+        trigger_forward_rule(forward_rule)
+    return db_forward_rules
+
+
 @r.put(
     "/servers/{server_id}/ports/{port_id}/forward_rule",
     response_model=PortForwardRuleOut,
@@ -162,6 +183,26 @@ async def forward_rule_delete(
     )
     trigger_port_clean(port.server, port)
     return forward_rule
+
+
+@r.delete(
+    "/servers/{server_id}/forward_rules",
+    response_model=t.List[PortForwardRuleOut],
+)
+async def forward_rules_delete(
+    response: Response,
+    server_id: int,
+    db=Depends(get_db),
+    user=Depends(get_current_active_admin),
+):
+    """
+    Delete all port forward rules of the server
+    """
+    db_forward_rules = get_forward_rule_for_server(db, server_id)
+    for forward_rule in db_forward_rules:
+        delete_forward_rule_by_id(db, forward_rule.id)
+        trigger_port_clean(forward_rule.port.server, forward_rule.port)
+    return db_forward_rules
 
 
 @r.get(

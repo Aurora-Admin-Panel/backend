@@ -32,6 +32,17 @@ def get_forward_rule(
     return forward_rule
 
 
+def get_forward_rule_for_server(
+    db: Session, server_id: int
+) -> t.List[PortForwardRule]:
+    return (
+        db.query(PortForwardRule)
+        .join(Port)
+        .filter(Port.server_id == server_id)
+        .all()
+    )
+
+
 def get_forward_rule_by_id(db: Session, rule_id: int) -> PortForwardRule:
     return (
         db.query(PortForwardRule)
