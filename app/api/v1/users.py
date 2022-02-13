@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.db.crud.user import (
     get_users,
     get_user,
+    get_user_by_email,
     create_user,
     delete_user,
     edit_user,
@@ -135,6 +136,12 @@ async def user_create(
     """
     Create a new user
     """
+    db_user = get_user_by_email(db, user.email)
+    if db_user:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            detail="Account already exists",
+        )
     return create_user(db, user)
 
 
