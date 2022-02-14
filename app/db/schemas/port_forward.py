@@ -1,3 +1,4 @@
+import time
 import typing as t
 
 from pydantic import BaseModel, validator
@@ -79,6 +80,7 @@ class GostConfig(BaseModel):
 
 class IperfConfig(BaseModel):
     expire_second: int
+    expire_time: t.Optional[int]
 
     @validator("expire_second", pre=True)
     def check_expire_second(cls, v):
@@ -86,6 +88,12 @@ class IperfConfig(BaseModel):
             raise ValueError("Expire second must be greater than 0")
         elif v > 24 * 60 * 60:
             raise ValueError(f"Expire second must be less than {24 * 60 * 60}")
+        return v
+
+    @validator("expire_time", pre=True, always=True)
+    def add_expire_time(cls, v, values):
+        if not v:
+            v = time.time() + values["expire_second"]
         return v
 
 
