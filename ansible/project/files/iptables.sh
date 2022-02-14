@@ -49,9 +49,9 @@ install_ip () {
 
 get_ips () {
     install_ip
-    INET=$(ip -4 addr | grep inet | awk -F '[ \t]+|/' '{print $3}' | grep -v "127.0.0.1")
+    IFACE=$(ip route show | grep default | awk -F 'dev ' '{print $2}' | awk '{print $1}')
+    INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
     INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
-    INET6=$(ip -6 addr | grep inet6 | awk -F '[ \t]+|/' '{print $3}' | grep -v ^::1)
 }
 
 delete_service () {
@@ -260,7 +260,6 @@ forward4 () {
 }
 
 forward6 () {
-    #[[ -z $INET6 ]] && echo "No valid interface ipv6 addresses found" && exit 1
     if [[ $TYPE == "ALL" || $TYPE == "TCP" ]]
     then
         $SUDO ip6tables -t nat -A POSTROUTING -d $REMOTE_IP -p tcp --dport $REMOTE_PORT -j MASQUERADE -m comment --comment "BACKWARD $LOCAL_PORT->[$REMOTE_IP]:$REMOTE_PORT"
