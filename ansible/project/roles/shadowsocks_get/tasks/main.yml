@@ -1,13 +1,10 @@
 ---
-- name: Get architecture
-  shell: uname -m
-  register: arch
 - name: Check shadowsocks exist
   block:
     - name: Get shadowsocks_go version
-      shell: shadowsocks_go -version
+      shell: "{{ app_path }}shadowsocks_go -version"
     - name: Get shadowsocks_go2 version
-      shell: shadowsocks_go2 version
+      shell: "{{ app_path }}shadowsocks_go2 version 2>&1"
       register: shadowsocks
     - name: Set fact for shadowsocks version
       set_fact:

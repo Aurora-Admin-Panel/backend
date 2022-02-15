@@ -2,7 +2,7 @@
 - name: "Check {{ app_name }} exist"
   block:
     - name: "Get {{ app_name }} version"
-      shell: "{{ app_name }} {{ app_version_arg }}"
+      shell: "{{ app_path }}{{ app_name }} {{ app_version_arg }} 2>&1"
       register: app_version
     - name: "Set fact for {{ app_name }} version"
       set_fact: { "{{ app_name }}": "{{ app_version.stdout }}", "cacheable": yes }

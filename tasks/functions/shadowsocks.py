@@ -12,6 +12,7 @@ class ShadowsocksConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "shadowsocks"
+        self.app_path = "/usr/local/bin/"
 
         self.app_get_role_name = "shadowsocks_get"
         self.app_sync_role_name = "shadowsocks_sync"

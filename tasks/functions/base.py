@@ -21,6 +21,7 @@ class AppConfig(metaclass=ConfigMount):
     remote_ip: str
 
     app_name: str
+    app_path: str
     app_version_arg: str
 
     app_command: str
@@ -38,6 +39,7 @@ class AppConfig(metaclass=ConfigMount):
     applied: bool
 
     def __init__(self):
+        self.app_path = ""
         self.app_version_arg = "-v"
 
         self.app_role_name = "app"

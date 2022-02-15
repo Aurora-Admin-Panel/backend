@@ -13,6 +13,7 @@ class BrookConfig(AppConfig):
     def __init__(self):
         super().__init__()
         self.app_name = "brook"
+        self.app_path = "/usr/local/bin/"
         self.app_sync_role_name = "brook_sync"
 
 
