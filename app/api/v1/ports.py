@@ -6,6 +6,7 @@ from fastapi import (
     Depends,
     Response,
     encoders,
+    status,
 )
 from fastapi.encoders import jsonable_encoder
 
@@ -32,6 +33,7 @@ from app.db.crud.port import (
     create_port,
     edit_port,
     delete_port,
+    get_port_user,
     get_port_users,
     add_port_user,
     edit_port_user,
@@ -98,12 +100,16 @@ async def port_get(
     """
     port = get_port(db, server_id, port_id)
     if not port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Port not found"
+        )
 
     if user.is_admin():
         return PortOpsOut(**port.__dict__)
     if not any(user.id == u.user_id for u in port.allowed_users):
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Port not found"
+        )
     return PortOut(**port.__dict__)
 
 
@@ -145,10 +151,15 @@ async def port_edit(
     """
     db_port = get_port(db, server_id, port_id)
     if not db_port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Port not found"
+        )
     if not user.is_admin():
         if not any(u.user_id == user.id for u in db_port.allowed_users):
-            raise HTTPException(status_code=403, detail="Operation not allowed")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Operation not allowed",
+            )
         port = PortEditBase(**port.dict(exclude_unset=True))
     db_port = edit_port(db, db_port, port)
     trigger_tc(db_port)
@@ -172,7 +183,9 @@ async def port_delete(
     """
     db_port = get_port(db, server_id, port_id)
     if not db_port:
-        raise HTTPException(status_code=404, detail="Port not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Port not found"
+        )
 
     if db_port.forward_rule:
         trigger_port_clean(db_port.server, db_port)
@@ -216,7 +229,15 @@ async def port_user_add(
     """
     db_user = get_user(db, port_user.user_id)
     if not db_user:
-        raise HTTPException(status_code=400, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+    db_port_user = get_port_user(db, server_id, port_id, port_user.user_id)
+    if db_port_user:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Port user already exists",
+        )
     port_user = add_port_user(db, server_id, port_id, port_user)
     return jsonable_encoder(port_user)
 
@@ -239,7 +260,9 @@ async def port_user_edit(
     """
     port_user = edit_port_user(db, server_id, port_id, user_id, port_user)
     if not port_user:
-        raise HTTPException(status_code=400, detail="Port user not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Port user not found"
+        )
     return jsonable_encoder(port_user)
 
 
