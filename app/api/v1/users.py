@@ -15,7 +15,7 @@ from app.db.crud.user import (
     edit_user,
     edit_me,
     get_user_servers,
-    get_user_ports,
+    get_user_ports_with_usage,
 )
 from app.db.crud.server import delete_server_user
 from app.db.crud.port import delete_port_user
@@ -250,10 +250,11 @@ async def user_servers_get(
     Get user's servers
     """
     user_servers = jsonable_encoder(get_user_servers(db, user_id))
-    user_ports = get_user_ports(db, user_id)
+    user_ports = jsonable_encoder(get_user_ports_with_usage(db, user_id))
     port_by_server = defaultdict(list)
     for port_user in user_ports:
-        port_by_server[port_user.port.server.id].append(port_user)
+        port_user["usage"] = port_user["port"]["usage"]
+        port_by_server[port_user["port"]["server_id"]].append(port_user)
     formatted_user_servers = []
     for server in user_servers:
         server["ports"] = port_by_server[server['server_id']]

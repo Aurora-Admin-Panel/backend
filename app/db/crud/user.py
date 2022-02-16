@@ -52,6 +52,31 @@ def get_users(db: Session, query: str = None, user: User = None):
     )
 
 
+def get_users_with_ports_usage(
+    db: Session, query: str = None, user: User = None
+):
+    q = db.query(User).filter(User.is_superuser == False)
+    if user and user.is_ops:
+        q = db.query(User).filter(User.is_ops == False)
+    if query is not None:
+        q = q.filter(
+            or_(
+                func.lower(User.email).like(f"%{query}%"),
+                func.lower(User.notes).like(f"%{query}%"),
+            )
+        )
+    return (
+        q.options(joinedload(User.allowed_servers))
+        .options(
+            joinedload(User.allowed_ports)
+            .joinedload(PortUser.port)
+            .joinedload(Port.usage)
+        )
+        .order_by(User.is_active.desc(), User.notes.asc(), User.email.asc())
+        .all()
+    )
+
+
 def create_user(db: Session, user: UserCreate):
     hashed_password = get_password_hash(user.password)
     db_user = User(
@@ -64,7 +89,7 @@ def create_user(db: Session, user: UserCreate):
         hashed_password=hashed_password,
     )
     if user.notes:
-        setattr(db_user, 'notes', user.notes)
+        setattr(db_user, "notes", user.notes)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -126,5 +151,14 @@ def get_user_ports(db: Session, user_id: int) -> t.List[PortUser]:
         db.query(PortUser)
         .filter(PortUser.user_id == user_id)
         .options(joinedload(PortUser.port))
+        .all()
+    )
+
+
+def get_user_ports_with_usage(db: Session, user_id: int) -> t.List[PortUser]:
+    return (
+        db.query(PortUser)
+        .filter(PortUser.user_id == user_id)
+        .options(joinedload(PortUser.port).joinedload(Port.usage))
         .all()
     )
