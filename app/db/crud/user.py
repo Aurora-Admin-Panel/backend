@@ -52,9 +52,7 @@ def get_users(db: Session, query: str = None, user: User = None):
     )
 
 
-def get_users_with_ports_usage(
-    db: Session, query: str = None, user: User = None
-):
+def get_users_with_ports_usage(db: Session, query: str = None, user: User = None):
     q = db.query(User).filter(User.is_superuser == False)
     if user and user.is_ops:
         q = db.query(User).filter(User.is_ops == False)
