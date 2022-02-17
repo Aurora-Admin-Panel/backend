@@ -15,5 +15,4 @@
       when: prepare_services is defined and prepare_services
     - role: scripts_sync
       when: sync_scripts is defined and sync_scripts
-    - role: iptables_get
     - role: get_facts

@@ -88,6 +88,7 @@ def iptables_finished_handler(
             ):
                 update_rule_error(server.id, port_id, facts)
             update_facts(server.id, facts)
+
     return wrapper
 
 
@@ -115,15 +116,12 @@ def status_handler(port_id: int, status_data: dict, update_status: bool):
 
 def server_facts_event_handler(server_id: int):
     def wrapper(event):
-        if (
-            "event_data" in event
-            and event["event_data"].get("task") == "Gathering Facts"
-            and not event.get("event", "").endswith("start")
-        ):
-            res = event["event_data"].get("res", {})
-            update_facts(
-                server_id,
-                res.get("ansible_facts") if "ansible_facts" in res else res,
-            )
+        if not event.get("event", "").endswith("start"):
+            if event := event.get("event_data", ""):
+                res = event.get("res", {})
+                update_facts(
+                    server_id,
+                    res.get("ansible_facts") if "ansible_facts" in res else res,
+                )
 
     return wrapper

@@ -2,8 +2,6 @@
 - name: Connect server
   hosts: "{{ host | default('web') }}"
   become: yes
-  gather_facts: true
-  tasks:
-  - name: get service facts
-    service_facts:
-    register: services
+  gather_facts: no
+  roles:
+    - role: get_facts
