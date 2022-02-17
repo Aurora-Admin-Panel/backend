@@ -129,7 +129,6 @@ async def port_create(
     Create a new port on server
     """
     db_port = create_port(db, server_id, port)
-    trigger_tc(db_port)
     return db_port
 
 
