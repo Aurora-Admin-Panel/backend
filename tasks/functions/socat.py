@@ -33,7 +33,7 @@ class SocatConfig(AppConfig):
         if relay_type in ("ALL", "TCP"):
             args.append(f"socat TCP6-LISTEN:{port.num},fork,reuseaddr TCP:{remote_address}:{remote_port}")
         if relay_type in ("ALL", "UDP"):
-            args.append(f"socat UDP6-LISTEN:{port.num},fork,reuseaddr UDP:{remote_address}:{remote_port}")
+            args.append(f"socat -T 120 UDP6-LISTEN:{port.num},fork,reuseaddr UDP:{remote_address}:{remote_port}")
         args = " & ".join(args)
         return f'/bin/sh -c \\"{args}\\"'
 
