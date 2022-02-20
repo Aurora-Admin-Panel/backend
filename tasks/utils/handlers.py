@@ -7,6 +7,7 @@ from app.db.models.port_forward import PortForwardRule
 from app.db.crud.port_forward import get_forward_rule
 from app.db.crud.server import get_server
 from tasks.utils.usage import update_traffic
+from tasks.utils.rule import correct_running_services
 
 
 def update_facts(server_id: int, facts: t.Dict, md5: str = None):
@@ -79,10 +80,12 @@ def iptables_finished_handler(
             server = get_server(db, server_id)
         facts = runner.get_fact_cache(server.ansible_name)
         if facts:
-            if facts.get("traffic", "") and update_traffic_bool:
+            if (traffic := facts.get("traffic", "")) and update_traffic_bool:
                 update_traffic(
-                    server, facts.get("traffic", ""), accumulate=accumulate
+                    server, traffic, accumulate=accumulate
                 )
+            if rules := facts.get("rules", ""):
+                correct_running_services(server.id, rules)
             if port_id is not None and (
                 facts.get("error") or facts.get("systemd_error")
             ):

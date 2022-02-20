@@ -9,7 +9,14 @@
 - name: Exec iptables script locally to list traffic
   shell: /usr/local/bin/iptables.sh list_all
   register: traffic
+- name: Exec iptables script locally to list rules
+  shell: /usr/local/bin/iptables.sh list_rules
+  register: rules
 - name: Set traffic result
   set_fact:
     traffic: "{{ traffic.stdout }}"
+    cacheable: yes
+- name: Set rules result
+  set_fact:
+    rules: "{{ rules.stdout }}"
     cacheable: yes
