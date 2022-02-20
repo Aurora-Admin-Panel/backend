@@ -29,11 +29,13 @@ check_system () {
 }
 
 install_iptables () {
-    iptables -V > /dev/null 2>&1 || $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
+    iptables -V > /dev/null 2>&1 && iptables-restore --test /dev/null && return 0
+    $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
 }
 
 install_ip6tables () {
-    ip6tables -V > /dev/null 2>&1 || $INSTALL ip6tables || ($UPDATE && $INSTALL ip6tables) || (echo "Failed to install ip6tables" && exit 1)
+    ip6tables -V > /dev/null 2>&1 && ip6tables-restore --test /dev/null && return 0
+    $INSTALL ip6tables || ($UPDATE && $INSTALL ip6tables) || (echo "Failed to install ip6tables" && exit 1)
 }
 
 install_ip () {
@@ -102,13 +104,16 @@ install_ipt_service () {
         RULE_PATH="/etc/iptables/rules.v4"
     fi
     [[ -z $RULE_PATH ]] && return 0
+    IPTABLES_RESTORE_PATH=$(which iptables-restore)
+    [[ -z $IPTABLES_RESTORE_PATH ]] && return 0
     $SUDO tee /etc/systemd/system/iptables-restore.service > /dev/null <<EOF
 [Unit]
 Description=Restore iptables rules by Aurora Admin Panel
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c '/usr/sbin/iptables-restore -c < $RULE_PATH'
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '$IPTABLES_RESTORE_PATH -c < $RULE_PATH'
 
 [Install]
 WantedBy=multi-user.target
@@ -125,13 +130,16 @@ install_ipt6_service () {
         RULE6_PATH="/etc/iptables/rules.v6"
     fi
     [[ -z $RULE6_PATH ]] && return 0
+    IP6TABLES_RESTORE_PATH=$(which ip6tables-restore)
+    [[ -z $IP6TABLES_RESTORE_PATH ]] && return 0
     $SUDO tee /etc/systemd/system/ip6tables-restore.service > /dev/null <<EOF
 [Unit]
 Description=Restore ip6tables rules by Aurora Admin Panel
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c '/usr/sbin/ip6tables-restore -c < $RULE6_PATH'
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '$IP6TABLES_RESTORE_PATH -c < $RULE6_PATH'
 
 [Install]
 WantedBy=multi-user.target
@@ -163,7 +171,7 @@ EOF
 
 check_ipt_service () {
     if [[ $IS_SYSTEMD -eq 1 ]]; then
-        ! systemctl is-enabled --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service && \
+        ! systemctl is-active --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service && \
         $SUDO systemctl daemon-reload && \
         $SUDO systemctl enable iptables-restore.service > /dev/null 2>&1
         # systemctl enable output is stderr, use 2>&1 redirection to ignore it
@@ -176,7 +184,7 @@ check_ipt_service () {
 
 check_ipt6_service () {
     if [[ $IS_SYSTEMD -eq 1 ]]; then
-        ! systemctl is-enabled --quiet ip6tables-restore.service > /dev/null 2>&1 && install_ipt6_service && \
+        ! systemctl is-active --quiet ip6tables-restore.service > /dev/null 2>&1 && install_ipt6_service && \
         $SUDO systemctl daemon-reload && \
         $SUDO systemctl enable ip6tables-restore.service > /dev/null 2>&1
         # systemctl enable output is stderr, use 2>&1 redirection to ignore it
