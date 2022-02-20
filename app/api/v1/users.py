@@ -7,7 +7,7 @@ from fastapi.encoders import jsonable_encoder
 from app.core.security import verify_password
 from app.db.session import get_db
 from app.db.crud.user import (
-    get_users,
+    get_users_with_ports_usage,
     get_user,
     get_user_by_email,
     create_user,
@@ -53,25 +53,25 @@ async def users_list(
     current_user=Depends(get_current_active_user),
 ):
     """
-    Get all users
+    Get all users with usage
     """
-    users = jsonable_encoder(get_users(db))
+    users = jsonable_encoder(get_users_with_ports_usage(db))
     # This is necessary for react-admin to work
     response.headers["Content-Range"] = f"0-9/{len(users)}"
     users_with_usage = []
     for user in users:
+        user["download_usage"] = 0
+        user["upload_usage"] = 0
         for port in user.get("allowed_ports", []):
             if port["port"]["usage"]:
-                user["download_usage"] = port["port"]["usage"].get(
+                user["download_usage"] += port["port"]["usage"].get(
                     "download", 0
                 )
-                user["readable_download_usage"] = get_readable_size(
-                    user["download_usage"]
-                )
-                user["upload_usage"] = port["port"]["usage"].get("upload", 0)
-                user["readable_upload_usage"] = get_readable_size(
-                    user["upload_usage"]
-                )
+                user["upload_usage"] += port["port"]["usage"].get("upload", 0)
+        user["readable_download_usage"] = get_readable_size(
+            user["download_usage"]
+        )
+        user["readable_upload_usage"] = get_readable_size(user["upload_usage"])
         users_with_usage.append(user)
     return users_with_usage
 
@@ -257,6 +257,6 @@ async def user_servers_get(
         port_by_server[port_user["port"]["server_id"]].append(port_user)
     formatted_user_servers = []
     for server in user_servers:
-        server["ports"] = port_by_server[server['server_id']]
+        server["ports"] = port_by_server[server["server_id"]]
         formatted_user_servers.append(server)
     return formatted_user_servers
