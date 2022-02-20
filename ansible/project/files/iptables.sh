@@ -333,6 +333,14 @@ list_all () {
     save_iptables
 }
 
+list_all_services () {
+    [[ $IS_SYSTEMD -ne 1 ]] && return 0
+    AURORA_SERVICES=$(find /etc/systemd/system/multi-user.target.wants -maxdepth 1 -type l -regex ".*/aurora@[0-9]+\.service" -exec basename {} \;)
+    for AURORA_SERVICE in $AURORA_SERVICES; do
+        systemctl is-active $AURORA_SERVICE > /dev/null 2>&1 && echo -e "$AURORA_SERVICE $(grep -Eo "^ExecStart=.*" /etc/systemd/system/multi-user.target.wants/$AURORA_SERVICE)"
+    done
+}
+
 reset () {
    COMMENT="$LOCAL_PORT->"
    $SUDO iptables -L INPUT --line-numbers | grep $COMMENT | awk '{print $1}' | xargs -I{} $SUDO iptables -Z INPUT {}
@@ -407,7 +415,7 @@ fi
 [[ -n $1 ]] && OPERATION=$1
 [[ -z $OPERATION ]] && echo "No operation specified" && exit 1
 [[ -n $2 ]] && LOCAL_PORT=$2
-[[ $OPERATION != "list_all" && "$OPERATION" != "check" && ($LOCAL_PORT -ge 65536 || $LOCAL_PORT -lt 0) ]] && \
+[[ $OPERATION != "list_all" && $OPERATION != "list_rules" && "$OPERATION" != "check" && ($LOCAL_PORT -ge 65536 || $LOCAL_PORT -lt 0) ]] && \
 echo "Unknow local port for operation $OPERATION" && exit 1
 [[ -n $3 ]] && REMOTE_IP=$3
 [[ $OPERATION == "forward" && -z $REMOTE_IP ]] && echo "Unknow remote ip for operation $OPERATION" && exit 1
@@ -441,6 +449,8 @@ elif [[ $OPERATION == "list" ]]; then
 # for traffic schedule task
 elif [[ $OPERATION == "list_all" ]]; then
     list_all
+elif [[ $OPERATION == "list_rules" ]]; then
+    list_all_services
 elif [[ $OPERATION == "delete_service" ]]; then
     delete_service
 elif [[ $OPERATION == "delete" ]]; then
