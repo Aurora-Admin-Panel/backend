@@ -173,7 +173,7 @@ check_ipt_service () {
     if [[ $IS_SYSTEMD -eq 1 ]]; then
         ! systemctl is-active --quiet iptables-restore.service > /dev/null 2>&1 && install_ipt_service && \
         $SUDO systemctl daemon-reload && \
-        $SUDO systemctl enable iptables-restore.service > /dev/null 2>&1
+        $SUDO systemctl enable --now iptables-restore.service > /dev/null 2>&1
         # systemctl enable output is stderr, use 2>&1 redirection to ignore it
     fi
     # Not force to exit if the system does not use the systemd
@@ -186,7 +186,7 @@ check_ipt6_service () {
     if [[ $IS_SYSTEMD -eq 1 ]]; then
         ! systemctl is-active --quiet ip6tables-restore.service > /dev/null 2>&1 && install_ipt6_service && \
         $SUDO systemctl daemon-reload && \
-        $SUDO systemctl enable ip6tables-restore.service > /dev/null 2>&1
+        $SUDO systemctl enable --now ip6tables-restore.service > /dev/null 2>&1
         # systemctl enable output is stderr, use 2>&1 redirection to ignore it
     fi
     # Not force to exit if the system does not use the systemd
