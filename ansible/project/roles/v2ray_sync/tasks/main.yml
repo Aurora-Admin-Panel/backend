@@ -2,10 +2,34 @@
 - name: Get architecture
   shell: uname -m
   register: arch
+- name: Sync xray binary for X64
+  when: arch.stdout == 'x86_64'
+  copy:
+    src: files/xray-linux-64_v1.5.3
+    dest: /usr/local/bin/xray
+    mode: +x
+    owner: root
+    group: root
+- name: Sync xray binary for ARM64
+  when: arch.stdout == 'aarch64'
+  copy:
+    src: files/xray-linux-arm64-v1.5.3
+    dest: /usr/local/bin/xray
+    mode: +x
+    owner: root
+    group: root
 - name: Sync v2ray binary for X64
   when: arch.stdout == 'x86_64'
   copy:
     src: files/v2ray-linux-64_v4.44.0
+    dest: /usr/local/bin/v2ray
+    mode: +x
+    owner: root
+    group: root
+- name: Sync v2ray binary for ARM64
+  when: arch.stdout == 'aarch64'
+  copy:
+    src: files/v2ray-linux-arm64-v8a_v4.44.0
     dest: /usr/local/bin/v2ray
     mode: +x
     owner: root
@@ -15,14 +39,6 @@
   copy:
     src: files/v2ctl-linux-64_v4.44.0
     dest: /usr/local/bin/v2ctl
-    mode: +x
-    owner: root
-    group: root
-- name: Sync v2ray binary for ARM64
-  when: arch.stdout == 'aarch64'
-  copy:
-    src: files/v2ray-linux-arm64-v8a_v4.44.0
-    dest: /usr/local/bin/v2ray
     mode: +x
     owner: root
     group: root

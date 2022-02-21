@@ -107,6 +107,14 @@ class V2rayConfig(BaseModel):
     reverse_proxy: t.Optional[int]
     routing: t.Optional[t.Dict]
     dns: t.Optional[t.Dict]
+    core: t.Optional[str]
+
+    @validator("core", pre=True)
+    def check_core(cls, v):
+        if v not in ("v2ray", "xray"):
+            raise ValueError(f"Invalid v2ray core: {v}")
+        return v
+
 
 class RealmConfig(BaseModel):
     remote_address: str
