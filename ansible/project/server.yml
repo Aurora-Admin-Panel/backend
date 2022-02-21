@@ -2,18 +2,10 @@
 - hosts: "{{ host | default('web') }}"
   become: yes
   gather_facts: no
-  pre_tasks:
-    - name: Check and install bash
-      raw: |
-        /usr/bin/env bash --version || \
-        (yum install -y bash || (yum makecache -y && yum install -y bash)) || \
-        (apt install -y --no-install-recommends bash || (apt update -y && apt install -y --no-install-recommends bash)) || \
-        (apk add --no-cache bash || (apk update && apk add --no-cache bash))
   roles:
     - role: server_init
     - role: services_prepare
       when: prepare_services is defined and prepare_services
     - role: scripts_sync
       when: sync_scripts is defined and sync_scripts
-    - role: iptables_get
     - role: get_facts

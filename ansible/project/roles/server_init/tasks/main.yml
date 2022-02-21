@@ -2,4 +2,4 @@
 - name: Exec init script remotely
   script: files/init.sh
   args:
-    executable: bash
+    executable: sh
