@@ -47,8 +47,9 @@ def get_forward_rule_for_server(
 def get_forward_rule_by_id(db: Session, rule_id: int) -> PortForwardRule:
     return (
         db.query(PortForwardRule)
-          .options(joinedload(PortForwardRule.port))
-          .filter(PortForwardRule.id == rule_id).first()
+        .options(joinedload(PortForwardRule.port))
+        .filter(PortForwardRule.id == rule_id)
+        .first()
     )
 
 
@@ -163,6 +164,15 @@ def get_all_iptables_rules(db: Session) -> t.List[PortForwardRule]:
         db.query(PortForwardRule)
         .filter(PortForwardRule.method == MethodEnum.IPTABLES)
         .all()
+    )
+
+
+def get_all_expire_rules(db: Session) -> t.List[PortForwardRule]:
+    return filter(
+        lambda x: "expire_time" in x.config.keys(),
+        db.query(PortForwardRule)
+        .options(joinedload(PortForwardRule.port).joinedload(Port.server))
+        .all(),
     )
 
 

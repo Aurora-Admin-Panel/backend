@@ -112,10 +112,6 @@ def rule_runner(rule_id: int):
             )
             if runner.status != "successful":
                 break
-        if rule.config.get("expire_second"):
-            clean_port_runner.schedule(
-                (server_id, port),
-                delay=rule.config.get("expire_second"))
     except Exception:
         with db_session() as db:
             rule.status = "failed"
