@@ -1,5 +1,6 @@
 import time
 import typing as t
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, validator
 
@@ -17,6 +18,16 @@ def check_ip(ip: str) -> str:
     if not (is_ip(ip) or is_ipv6(ip)):
         raise ValueError(f"Invalid ip: {ip}")
     return ip
+
+
+def trim_address(address: str) -> str:
+    if not address:
+        raise ValueError(f"Invalid empty address: {address}")
+    if address[0] == "[" and address[-1] == "]":
+        address = address[1:-1]
+        if not address:
+            raise ValueError(f"Invalid address: [{address}]")
+    return address
 
 
 def check_port(port: int) -> int:
@@ -39,6 +50,9 @@ class IptablesConfig(BaseModel):
 
     _type = validator("type", pre=True, allow_reuse=True)(check_type)
     _remote_ip = validator("remote_ip", pre=True, allow_reuse=True)(check_ip)
+    _remote_address = validator("remote_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
 
 
@@ -48,6 +62,9 @@ class SocatConfig(BaseModel):
     remote_port: int
 
     _type = validator("type", pre=True, allow_reuse=True)(check_type)
+    _remote_address = validator("remote_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
 
 
@@ -57,6 +74,9 @@ class EhcoConfig(BaseModel):
     remote_address: str
     remote_port: int
 
+    _remote_address = validator("remote_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
 
     @validator("listen_type", pre=True)
@@ -76,6 +96,50 @@ class GostConfig(BaseModel):
     Retries: t.Optional[int]
     ServeNodes: t.List
     ChainNodes: t.Optional[t.List]
+
+    def trim_nodes(nodes: t.List) -> t.List:
+        for idx, node in enumerate(nodes):
+            url = urlparse(node)
+
+            netloc = url.netloc.split("@")
+            address_port = netloc[-1].split(":")
+            address = ":".join(address_port[:-1])
+            if address and address[0] == "[" and address[-1] == "]":
+                address = address[1:-1]
+            port = address_port[-1]
+            if not port or int(port) < 0 or int(port) > 65535:
+                raise ValueError(f"Invalid node: {node}")
+            if address and is_ipv6(address):
+                address = f"[{address}]"
+            address_port = f"{address}:{port}"
+            netloc = (
+                f"{netloc[0]}@{address_port}"
+                if len(netloc) > 1
+                else address_port
+            )
+
+            path = url.path
+            if path.lstrip("/"):
+                path = path.lstrip("/").split(":")
+                remote_port = path[-1]
+                remote_address = ":".join(path[:-1])
+                if remote_address and remote_address[0] == "[" and remote_address[-1] == "]":
+                    remote_address = remote_address[1:-1]
+                if not port or int(port) < 0 or int(port) > 65535:
+                    raise ValueError(f"Invalid node: {node}")
+                if remote_address and is_ipv6(remote_address):
+                    remote_address = f"[{remote_address}]"
+                path = f"/{remote_address}:{remote_port}"
+
+            nodes[idx] = url._replace(netloc=netloc, path=path).geturl()
+        return nodes
+
+    _serve_nodes = validator("ServeNodes", pre=False, allow_reuse=True)(
+        trim_nodes
+    )
+    _chain_nodes = validator("ChainNodes", pre=False, allow_reuse=True)(
+        trim_nodes
+    )
 
 
 class IperfConfig(BaseModel):
@@ -120,6 +184,9 @@ class RealmConfig(BaseModel):
     remote_address: str
     remote_port: int
 
+    _remote_address = validator("remote_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
 
 
@@ -132,7 +199,15 @@ class BrookConfig(BaseModel):
     server_port: t.Optional[int]
     password: t.Optional[str]
 
+    _remote_ip = validator("remote_ip", pre=True, allow_reuse=True)(check_ip)
+    _remote_address = validator("remote_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
+    _server_address = validator("server_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
+    _server_port = validator("server_port", allow_reuse=True)(check_port)
 
     @validator("command", pre=True)
     def check_command(cls, v):
@@ -157,6 +232,9 @@ class WstunnelConfig(BaseModel):
     remote_port: t.Optional[int]
 
     _proxy_port = validator("proxy_port", allow_reuse=True)(check_port)
+    _remote_address = validator("remote_address", pre=True, allow_reuse=True)(
+        trim_address
+    )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
 
     @validator("forward_type", pre=True)
@@ -237,6 +315,21 @@ class HaproxyConfig(BaseModel):
             "source",
         ):
             raise ValueError(f"Invalid balance mode: {v}")
+        return v
+
+    @validator("backend_nodes", pre=False)
+    def trim_backend_nodes(cls, v):
+        for idx, node in enumerate(v):
+            address_port = node.split(":")
+            address = ":".join(address_port[:-1])
+            if address and address[0] == "[" and address[-1] == "]":
+                address = address[1:-1]
+            port = address_port[-1]
+            if not address or not port or int(port) < 0 or int(port) > 65535:
+                raise ValueError(f"Invalid backend node: {node}")
+            if is_ipv6(address):
+                address = f"[{address}]"
+            v[idx] = f"{address}:{port}"
         return v
 
 
