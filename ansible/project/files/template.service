@@ -14,6 +14,7 @@ LimitNOFILE=1048576
 LimitNPROC=51200
 RestartSec=2s
 Restart=on-failure
+StandardOutput=null
 
 [Install]
 WantedBy=multi-user.target
