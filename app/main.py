@@ -57,14 +57,11 @@ async def sentry_exception(request: Request, call_next):
         response = await call_next(request)
         return response
     except Exception as e:
-        print(config.ENABLE_SENTRY)
         if config.ENABLE_SENTRY:
             with sentry_sdk.push_scope() as scope:
-                print("============")
                 scope.set_context("request", request)
                 scope.user = {"ip_address": request.client.host}
                 sentry_sdk.capture_exception(e)
-                print("++++++++++++")
         raise e
 
 
