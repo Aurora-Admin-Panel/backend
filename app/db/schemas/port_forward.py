@@ -181,6 +181,7 @@ class V2rayConfig(BaseModel):
 
 
 class RealmConfig(BaseModel):
+    command: str
     remote_address: str
     remote_port: int
 
@@ -188,6 +189,12 @@ class RealmConfig(BaseModel):
         trim_address
     )
     _remote_port = validator("remote_port", allow_reuse=True)(check_port)
+
+    @validator("command", pre=True)
+    def check_command(cls, v):
+        if v not in ("tcp", "ws-in", "ws-out", "wss-in", "wss-out"):
+            raise ValueError(f"Invalid command: {v}")
+        return v
 
 
 class BrookConfig(BaseModel):

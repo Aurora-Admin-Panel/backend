@@ -46,6 +46,7 @@ sentry_sdk.init(
     environment=f"{config.ENVIRONMENT}",
     dsn="https://c1a19cfeb74045f8912e5cb449c1071d@sentry.leishi.io/2",
     integrations=[SqlalchemyIntegration(), RedisIntegration()],
+    traces_sample_rate=1.0,
 )
 sentry_sdk.set_tag('panel.ip', get_external_ip())
 
@@ -56,11 +57,14 @@ async def sentry_exception(request: Request, call_next):
         response = await call_next(request)
         return response
     except Exception as e:
+        print(config.ENABLE_SENTRY)
         if config.ENABLE_SENTRY:
             with sentry_sdk.push_scope() as scope:
+                print("============")
                 scope.set_context("request", request)
                 scope.user = {"ip_address": request.client.host}
                 sentry_sdk.capture_exception(e)
+                print("++++++++++++")
         raise e
 
 

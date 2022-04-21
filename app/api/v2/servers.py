@@ -101,7 +101,7 @@ async def detailed_server_get(
     response: Response,
     server_id: int,
     db=Depends(get_db),
-    user=Depends(get_current_active_user),
+    user=Depends(get_current_active_admin),
 ):
     """
     Get detailed server by id
