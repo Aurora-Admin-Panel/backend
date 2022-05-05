@@ -39,7 +39,7 @@ class RealmConfig(AppConfig):
             remote_address = f"[{remote_address}]"
         args = (
             f"-l [::]:{port.num} "
-            f"-u -z -f "
+            f"-u "
             f"-r {remote_address}:{remote_port} "
             f"{self.command_to_arg.get(command)} "
             f"--tcp-timeout 0 "

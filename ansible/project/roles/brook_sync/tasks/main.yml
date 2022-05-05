@@ -5,7 +5,7 @@
 - name: Sync brook binary for X64
   when: arch.stdout == 'x86_64'
   copy:
-    src: files/brook_linux_amd64_v20210701
+    src: files/brook_linux_amd64_v20220406
     dest: /usr/local/bin/brook
     mode: +x
     owner: root
@@ -13,7 +13,7 @@
 - name: Sync brook binary for ARM64
   when: arch.stdout == 'aarch64'
   copy:
-    src: files/brook_linux_arm64_v20210701
+    src: files/brook_linux_arm64_v20220406
     dest: /usr/local/bin/brook
     mode: +x
     owner: root
