@@ -51,7 +51,7 @@ install_ip () {
 
 get_ips () {
     install_ip
-    IFACE=$(ip route show | grep default | awk -F 'dev ' '{print $2}' | awk '{print $1}')
+    IFACE=$(ip route show | grep default | grep metric | awk -F 'dev ' '{print $2}' | awk '{print $1}')
     INET=$(ip address show $IFACE scope global |  awk '/inet / {split($2,var,"/"); print var[1]}')
     INET=$(echo $INET | xargs -n 1 | grep -Eo "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" | sort -u)
 }
@@ -217,30 +217,44 @@ save_iptables () {
 }
 
 set_forward () {
-    [[ $(cat /proc/sys/net/ipv4/ip_forward) -eq 1 ]] && return 0
     # ipv4
-    if [[ -z $($SUDO grep "net.ipv4.ip_forward" /etc/sysctl.conf) ]]; then
-        echo "net.ipv4.ip_forward = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
-    else
-        $SUDO sed -i "s/.*net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/g" /etc/sysctl.conf > /dev/null
+    if [[ $(cat /proc/sys/net/ipv4/ip_forward) -ne 1 ]]; then
+        if [[ -z $($SUDO grep "net.ipv4.ip_forward" /etc/sysctl.conf) ]]; then
+            echo "net.ipv4.ip_forward = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
+        else
+            $SUDO sed -i "s/.*net.ipv4.ip_forward.*/net.ipv4.ip_forward = 1/g" /etc/sysctl.conf > /dev/null
+        fi
     fi
+
     # ipv6 support
-    if [[ -z $($SUDO grep "net.ipv6.conf.all.forwarding" /etc/sysctl.conf) ]]; then
-        echo "net.ipv6.conf.all.forwarding = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
-    else
-        $SUDO sed -i "s/.*net.ipv6.conf.all.forwarding.*/net.ipv6.conf.all.forwarding = 1/g" /etc/sysctl.conf > /dev/null
+    if [[ $(cat /proc/sys/net/ipv6/conf/all/accept_ra) -ne 2 ]]; then
+        if [[ -z $($SUDO grep "net.ipv6.conf.all.accept_ra" /etc/sysctl.conf) ]]; then
+            echo "net.ipv6.conf.all.accept_ra = 2" | $SUDO tee -a /etc/sysctl.conf > /dev/null
+        else
+            $SUDO sed -i "s/.*net.ipv6.conf.all.accept_ra.*/net.ipv6.conf.all.accept_ra = 2/g" /etc/sysctl.conf > /dev/null
+        fi
     fi
-    if [[ -z $($SUDO grep "net.ipv6.conf.all.accept_ra" /etc/sysctl.conf) ]]; then
-        echo "net.ipv6.conf.all.accept_ra = 2" | $SUDO tee -a /etc/sysctl.conf > /dev/null
-    else
-        $SUDO sed -i "s/.*net.ipv6.conf.all.accept_ra.*/net.ipv6.conf.all.accept_ra = 2/g" /etc/sysctl.conf > /dev/null
+    if [[ $(cat /proc/sys/net/ipv6/conf/all/forwarding) -ne 1 ]]; then
+        if [[ -z $($SUDO grep "net.ipv6.conf.all.forwarding" /etc/sysctl.conf) ]]; then
+            echo "net.ipv6.conf.all.forwarding = 1" | $SUDO tee -a /etc/sysctl.conf > /dev/null
+        else
+            $SUDO sed -i "s/.*net.ipv6.conf.all.forwarding.*/net.ipv6.conf.all.forwarding = 1/g" /etc/sysctl.conf > /dev/null
+        fi
     fi
-    $SUDO sysctl -p > /dev/null
+
+    # recover sysctl confs after reboot by systemd (accept_ra)
+    SYSCTL_CONF_LN="/etc/sysctl.d/00-local.conf"
+    if [[ ! -L $SYSCTL_CONF_LN ]]; then
+        [[ ! -d $(dirname $SYSCTL_CONF_LN) ]] && $SUDO rm -f $(dirname $SYSCTL_CONF_LN) && $SUDO mkdir $(dirname $SYSCTL_CONF_LN) > /dev/null 2>&1
+        $SUDO ln -sf /etc/sysctl.conf $SYSCTL_CONF_LN > /dev/null 2>&1
+    fi
+    $SUDO sysctl -p && $SUDO sysctl --system > /dev/null 2>&1
+
     # check and make sure ip_forward enabled
     [[ $(cat /proc/sys/net/ipv4/ip_forward) -ne 1 ]] && echo 1 | $SUDO tee /proc/sys/net/ipv4/ip_forward
     # ipv6 support
-    [[ $(cat /proc/sys/net/ipv6/conf/all/forwarding) -ne 1 ]] && echo 1 | $SUDO tee /proc/sys/net/ipv6/conf/all/forwarding
     [[ $(cat /proc/sys/net/ipv6/conf/all/accept_ra) -ne 2 ]] && echo 2 | $SUDO tee /proc/sys/net/ipv6/conf/all/accept_ra
+    [[ $(cat /proc/sys/net/ipv6/conf/all/forwarding) -ne 1 ]] && echo 1 | $SUDO tee /proc/sys/net/ipv6/conf/all/forwarding
 }
 
 forward4 () {
