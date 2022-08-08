@@ -18,6 +18,7 @@ def correct_running_services(server_id: int, rules: str):
             port_rule[int(port_match.groups()[0])] = app_match.groups()[0]
     print(f"Current rules of server {server_id}: {port_rule}")
 
+    # TODO: update db also
     with db_session() as db:
         db_forward_rules = get_forward_rule_for_server(db, server_id)
     for db_forward_rule in db_forward_rules:

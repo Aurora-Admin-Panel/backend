@@ -79,11 +79,10 @@ async def db_session_middleware(request: Request, call_next):
 
 
 @app.get("/api/v1")
-async def root():
-    with db_session() as db:
-        server = get_server_with_ports_usage(db, 34)
-    print([p for p in server.ports])
-    return {"message": "Hello World"}
+async def root(server_id: int):
+    from tasks.traffic import traffic_server_runner
+    traffic_server_runner(server_id)
+    return {"message": "OK"}
 
 
 # Routers

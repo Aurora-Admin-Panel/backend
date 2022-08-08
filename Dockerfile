@@ -3,9 +3,6 @@ FROM python:3.8-slim
 ARG BACKEND_APP_VERSION=dev
 ENV BACKEND_VERSION=$BACKEND_APP_VERSION
 
-RUN mkdir /app
-WORKDIR /app
-COPY . ./
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -15,11 +12,17 @@ RUN apt-get update && \
 RUN sed -i '/#   StrictHostKeyChecking /c StrictHostKeyChecking no' /etc/ssh/ssh_config && \
     sed -i 's/^#\s\+UserKnownHostsFile.*/UserKnownHostsFile \/dev\/null/' /etc/ssh/ssh_config
 
+
+RUN mkdir /app
+WORKDIR /app
+COPY . ./
+
 # Reference: https://github.com/docker-library/python/blob/9242c448c7e50d5671e53a393fc2c464683f35dd/3.8/bullseye/slim/Dockerfile
 RUN savedAptMark="$(apt-mark showmanual)" && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends gcc libc6-dev libffi-dev && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gcc libc6-dev libffi-dev && \
     pip install --no-cache-dir -r requirements.txt && \
+    rm -rf /var/lib/apt/lists/* && \
     find /usr/local -depth -type d -a \( -name tests -o -name __pycache__ \) -exec rm -rf '{}' + && \
     apt-mark auto '.*' > /dev/null && \
 	apt-mark manual $savedAptMark && \
