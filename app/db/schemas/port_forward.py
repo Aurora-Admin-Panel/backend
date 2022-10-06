@@ -156,10 +156,8 @@ class IperfConfig(BaseModel):
 
     @validator("expire_second", pre=True)
     def check_expire_second(cls, v):
-        if v <= 0:
-            raise ValueError("Expire second must be greater than 0")
-        elif v > 24 * 60 * 60:
-            raise ValueError(f"Expire second must be less than {24 * 60 * 60}")
+        if v <= 0 or v > 24 * 60 * 60:
+            v = 60 * 10  # default 10 min
         return v
 
     @validator("expire_time", pre=True, always=True)
