@@ -28,6 +28,12 @@ check_system () {
     [[ -d /run/openrc ]] && IS_OPENRC=1
 }
 
+install_python () {
+    python3 -V > /dev/null 2>&1 && return 0
+    (python -V > /dev/null 2>&1 || python2 -V > /dev/null 2>&1) && return 0
+    $INSTALL python3 || ($UPDATE && $INSTALL python3) || $INSTALL python || ($UPDATE && $INSTALL python) || $INSTALL python2 || ($UPDATE && $INSTALL python2)
+}
+
 install_iptables () {
     iptables -V > /dev/null 2>&1 && iptables-restore --test /dev/null && return 0
     $INSTALL iptables || ($UPDATE && $INSTALL iptables) || (echo "Failed to install iptables" && exit 1)
@@ -438,6 +444,7 @@ echo "Unknow local port for operation $OPERATION" && exit 1
 echo "Unknow remote port for operation $OPERATION" && exit 1
 
 check_system
+install_python
 install_iptables
 install_ip6tables
 disable_firewall
