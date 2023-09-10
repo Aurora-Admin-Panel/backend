@@ -3,12 +3,13 @@ from fabric import Connection, Config
 
 from app.core.config import TRAFFIC_INTERVAL_SECONDS
 from app.db.session import db_session
-from app.db.models.server import Server
+from app.db.models import Server
 from app.db.crud.server import get_server_with_ports_usage, get_servers
 
 from .config import huey
 from tasks.utils.runner import run
 from tasks.utils.handlers import iptables_finished_handler
+from tasks.utils.connection import connect
 
 
 @huey.task()
@@ -30,6 +31,7 @@ def traffic_runner():
         traffic_server_runner(server.id)
 
 
+
 @huey.task()
 def traffic_server_runner2(server_id: int):
     with db_session() as db:
@@ -43,14 +45,8 @@ def traffic_server_runner2(server_id: int):
     else:
         connect_kwargs["key_filename"] = "/app/ansible/env/ssh_key"
 
-    with Connection(
-        host=server.ansible_host,
-        user=server.ansible_user,
-        port=server.ansible_port,
-        connect_kwargs=connect_kwargs,
-        config=Config(overrides=config),
-    ) as c:
+    with connect(server_id=server_id) as c:
         result = c.put("/app/ansible/project/files/iptables.sh")
         print(result)
-        result = c.sudo("iptables.sh list_all")
+        result = c.run("iptables.sh list_all")
         print(result.stdout.strip())

@@ -2,7 +2,7 @@ import re
 
 import tasks.app
 from app.db.session import db_session
-from app.db.models.port_forward import MethodEnum
+from app.db.models import MethodEnum
 from app.db.crud.port_forward import get_forward_rule_for_server
 
 

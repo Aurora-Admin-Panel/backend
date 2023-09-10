@@ -2,7 +2,7 @@ import os
 import typing as t
 from shutil import copytree
 
-from app.db.models.server import Server
+from app.db.models import Server
 
 
 def prepare_priv_dir_dict(server: t.Dict) -> str:

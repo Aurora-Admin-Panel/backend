@@ -106,8 +106,8 @@ async def server_create(
     """
     Create a new server
     """
-    if server.ansible_host is None:
-        server.ansible_host = server.address
+    if server.host is None:
+        server.host = server.address
     if server.ssh_password:
         server.ssh_password = server.ssh_password.replace("\\", "\\\\")
         server.ssh_password = server.ssh_password.replace('"', '\\"')

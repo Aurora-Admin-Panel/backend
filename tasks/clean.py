@@ -6,7 +6,7 @@ from huey import crontab
 from app.db.session import db_session
 from app.db.crud.server import get_server_with_ports_usage
 from app.db.crud.port_forward import get_forward_rule, get_all_expire_rules
-from app.db.models.port import Port
+from app.db.models import Port
 from .config import huey
 from tasks.ansible import ansible_hosts_runner
 from tasks.utils.runner import run
@@ -43,7 +43,8 @@ def clean_port_runner(server_id: int, port: Port, update_traffic: bool = True):
     )
 
 
-@huey.periodic_task(crontab(minute="*"), priority=4)
+# TODO: change back1
+@huey.periodic_task(crontab(minute="*/60"), priority=4)
 def clean_expired_port_runner():
     with db_session() as db:
         db_expire_rules = get_all_expire_rules(db)

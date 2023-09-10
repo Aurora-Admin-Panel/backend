@@ -1,8 +1,8 @@
 from fastapi.encoders import jsonable_encoder
 
-from app.db.models.port import Port
-from app.db.models.server import Server
-from app.db.models.port_forward import PortForwardRule, MethodEnum
+from app.db.models import Port
+from app.db.models import Server
+from app.db.models import PortForwardRule, MethodEnum
 from app.db.schemas.server import ServerEdit
 
 from tasks.ansible import ansible_hosts_runner

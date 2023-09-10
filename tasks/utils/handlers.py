@@ -2,8 +2,8 @@ import re
 import typing as t
 
 from app.db.session import db_session
-from app.db.models.server import Server
-from app.db.models.port_forward import PortForwardRule
+from app.db.models import Server
+from app.db.models import PortForwardRule
 from app.db.crud.port_forward import get_forward_rule
 from app.db.crud.server import get_server
 from tasks.utils.usage import update_traffic
@@ -78,7 +78,7 @@ def iptables_finished_handler(
     def wrapper(runner):
         with db_session() as db:
             server = get_server(db, server_id)
-        facts = runner.get_fact_cache(server.ansible_name)
+        facts = runner.get_fact_cache(server.host)
         if facts:
             if (traffic := facts.get("traffic", "")) and update_traffic_bool:
                 update_traffic(

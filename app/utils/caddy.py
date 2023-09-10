@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from app.db.models.port import Port
+from app.db.models import Port
 
 
 padding = """

@@ -36,7 +36,7 @@ def app_runner(
     with db_session() as db:
         server = get_server_with_ports_usage(db, server_id)
     extravars = {
-        "host": server.ansible_name,
+        "host": server.name,
         "local_port": port_num,
         "remote_ip": remote_ip,
         "app_name": app_name,

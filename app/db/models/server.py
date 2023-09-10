@@ -39,21 +39,20 @@ class ServerUser(Base):
 class Server(Base):
     __tablename__ = "server"
     __table_args__ = (
-        UniqueConstraint("ansible_name", name="_server_ansible_name_uc"),
         UniqueConstraint(
-            "ansible_host",
-            "ansible_port",
-            name="_server_ansible_host_ansible_port_uc",
+            "host",
+            "port",
+            name="_server_host_port_uc",
         ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True, nullable=False)
     address = Column(String, nullable=False)
-    ansible_name = Column(String, nullable=False)
-    ansible_host = Column(String, nullable=True)
-    ansible_port = Column(Integer, nullable=True, default=lambda: 22)
-    ansible_user = Column(String, nullable=True, default=lambda: "root")
+    host = Column(String, nullable=True)
+    port = Column(Integer, nullable=True, default=lambda: 22)
+    user = Column(String, nullable=True, default=lambda: "root")
+    key_file_id = Column(Integer, ForeignKey("file.id"), nullable=True)
     config = Column(
         MutableDict.as_mutable(JSON), nullable=False, default=lambda: {}
     )
@@ -63,7 +62,11 @@ class Server(Base):
 
     ports = relationship("Port", cascade="all,delete", back_populates="server")
     users = relationship(
-        "User", secondary="server_user", back_populates="servers"
+        "User",
+        secondary="server_user",
+        back_populates="servers",
+        viewonly=True,
+        collection_class=set,
     )
     allowed_users = relationship(
         "ServerUser",
@@ -71,3 +74,4 @@ class Server(Base):
         back_populates="server",
         lazy="joined",
     )
+    key_file = relationship("File", back_populates="servers")

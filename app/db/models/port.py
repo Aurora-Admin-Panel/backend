@@ -3,8 +3,6 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy import Boolean, Column, Integer, String, JSON, ForeignKey, UniqueConstraint, BigInteger, Text
 
-from app.db.models.port_forward import PortForwardRule, MethodEnum
-
 
 class Port(Base):
     __tablename__ = "port"
@@ -22,10 +20,10 @@ class Port(Base):
     is_active = Column(Boolean, default=True)
 
     server = relationship("Server", back_populates="ports")
-    users = relationship("User", secondary="port_user", back_populates="ports")
-    allowed_users = relationship("PortUser", cascade="all,delete", back_populates="port", lazy='joined')
-    forward_rule = relationship("PortForwardRule", uselist=False, cascade="all,delete", back_populates="port", lazy='joined')
-    usage = relationship("PortUsage", uselist=False, cascade="all,delete", back_populates="port", lazy='joined')
+    users = relationship("User", secondary="port_user", back_populates="ports", viewonly=True)
+    allowed_users = relationship("PortUser", cascade="all,delete", back_populates="port")
+    forward_rule = relationship("PortForwardRule", uselist=False, cascade="all,delete", back_populates="port")
+    usage = relationship("PortUsage", uselist=False, cascade="all,delete", back_populates="port")
 
 
 class PortUser(Base):

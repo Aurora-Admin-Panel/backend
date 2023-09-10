@@ -6,11 +6,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from app.db.models.base import Base
-from app.db.models.user import User
-from app.db.models.server import Server, ServerUser
-from app.db.models.port import Port, PortUser
-from app.db.models.port_forward import PortForwardRule
+from app.db.models import *
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

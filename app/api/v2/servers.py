@@ -1,51 +1,50 @@
 import typing as t
-from fastapi import (
-    APIRouter,
-    HTTPException,
-    Request,
-    Depends,
-    Response,
-    encoders,
-)
-from fastapi_pagination import pagination_params, Page
-from fastapi_pagination.paginator import paginate
 
-from app.db.session import get_db
+from app.core.auth import (
+    get_current_active_admin,
+    get_current_active_superuser,
+    get_current_active_user,
+)
+from app.db.crud.server import (
+    add_server_user,
+    create_server,
+    delete_server,
+    delete_server_user,
+    edit_server,
+    edit_server_config,
+    edit_server_user,
+    get_server,
+    get_server_users,
+    get_server_users_for_ops,
+    get_servers,
+)
 from app.db.schemas.server import (
-    ServerOut,
-    ServerOpsOut,
+    ServerConfigEdit,
     ServerConnectArg,
     ServerCreate,
     ServerEdit,
-    ServerConfigEdit,
-    ServerUserEdit,
-    ServerUserOut,
-    ServerUserOpsOut,
+    ServerOpsOut,
+    ServerOut,
     ServerUserCreate,
+    ServerUserEdit,
+    ServerUserOpsOut,
+    ServerUserOut,
 )
-from app.db.crud.server import (
-    get_servers,
-    get_server,
-    create_server,
-    edit_server,
-    edit_server_config,
-    delete_server,
-    get_server_users,
-    get_server_users_for_ops,
-    add_server_user,
-    edit_server_user,
-    delete_server_user,
-)
-from app.core.auth import (
-    get_current_active_user,
-    get_current_active_superuser,
-    get_current_active_admin,
-)
+from app.db.session import get_db
 from app.utils.tasks import (
     trigger_ansible_hosts,
-    trigger_server_connect,
     trigger_server_clean,
+    trigger_server_connect,
 )
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    encoders,
+)
+from fastapi_pagination import Page, add_pagination, paginate
 
 servers_v2_router = r = APIRouter()
 
@@ -55,7 +54,6 @@ servers_v2_router = r = APIRouter()
     response_model=Page[ServerOut],
     response_model_exclude_none=False,
     response_model_exclude_unset=False,
-    dependencies=[Depends(pagination_params)],
 )
 async def servers_list(
     response: Response,
@@ -65,7 +63,8 @@ async def servers_list(
     """
     Get all servers
     """
-    return paginate(get_servers(db, user))
+    result = get_servers(db, user)
+    return paginate(result)
 
 
 @r.get(
@@ -122,7 +121,6 @@ async def detailed_server_get(
     "/servers/{server_id}/users",
     response_model=Page[ServerUserOpsOut],
     response_model_exclude_none=True,
-    dependencies=[Depends(pagination_params)],
 )
 async def server_users_get(
     response: Response,
@@ -136,3 +134,6 @@ async def server_users_get(
     if current_user.is_ops:
         return paginate(get_server_users_for_ops(db, server_id))
     return paginate(get_server_users(db, server_id))
+
+
+add_pagination(servers_v2_router)

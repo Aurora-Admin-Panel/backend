@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
-from app.db.models.port import Port
-from app.db.models.port_forward import MethodEnum
+from app.db.models import Port
+from app.db.models import MethodEnum
 from app.utils.ip import is_ipv6
 from tasks.functions.base import AppConfig
 

@@ -1,10 +1,7 @@
 import typing as t
+
+from app.db.models import MethodEnum, Port, PortForwardRule
 from sqlalchemy.orm import Session
-
-from app.db.models.port import Port
-from app.db.models.port_forward import MethodEnum, PortForwardRule
-
-from app.db.models.port_forward import MethodEnum
 from tasks.functions.base import AppConfig
 
 

@@ -131,7 +131,7 @@ class ServerPortOut(BaseModel):
 
 class ServerOut(ServerBase):
     id: int
-    config: ServerConfig
+    config: t.Optional[ServerConfig]
     ports: t.List[ServerPortOut]
 
     class Config:
@@ -140,10 +140,10 @@ class ServerOut(ServerBase):
 
 class ServerOpsOut(ServerOut):
     id: int
-    ansible_name: str
-    ansible_host: t.Optional[str]
-    ansible_port: t.Optional[int]
-    ansible_user: t.Optional[str]
+    name: str
+    host: t.Optional[str]
+    port: t.Optional[int]
+    user: t.Optional[str]
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
     config: ServerConfig
@@ -163,10 +163,9 @@ class ServerOpsOut(ServerOut):
 
 
 class ServerCreate(ServerBase):
-    ansible_name: str
-    ansible_host: t.Optional[str] = None
-    ansible_port: t.Optional[int] = 22
-    ansible_user: t.Optional[str]
+    host: t.Optional[str] = None
+    port: t.Optional[int] = 22
+    user: t.Optional[str] = 'root'
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
 
@@ -177,10 +176,9 @@ class ServerCreate(ServerBase):
 class ServerEdit(BaseModel):
     name: t.Optional[str]
     address: t.Optional[str]
-    ansible_name: t.Optional[str]
-    ansible_host: t.Optional[str]
-    ansible_port: t.Optional[int]
-    ansible_user: t.Optional[str]
+    host: t.Optional[str]
+    port: t.Optional[int]
+    user: t.Optional[str]
     ssh_password: t.Optional[str]
     sudo_password: t.Optional[str]
     is_active: t.Optional[bool]

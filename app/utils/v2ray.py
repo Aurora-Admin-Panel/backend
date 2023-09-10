@@ -1,6 +1,6 @@
 import typing as t
 
-from app.db.models.port_forward import MethodEnum, PortForwardRule
+from app.db.models import MethodEnum, PortForwardRule
 
 
 def generate_v2ray_config(rule: PortForwardRule) -> t.Dict:

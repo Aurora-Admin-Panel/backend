@@ -5,9 +5,9 @@ from urllib.parse import urlencode, urlparse
 
 from app.utils.dns import dns_query
 from app.utils.ip import is_ip
-from app.db.models.port import Port
-from app.db.models.server import Server
-from app.db.models.port_forward import MethodEnum, PortForwardRule
+from app.db.models import Port
+from app.db.models import Server
+from app.db.models import MethodEnum, PortForwardRule
 
 
 def generate_gost_config(rule: PortForwardRule) -> t.Dict:

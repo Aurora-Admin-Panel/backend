@@ -136,3 +136,4 @@ ansible/env/ssh_key
 ansible/inventory/hosts
 ansible/priv_data_dirs/*
 ansible/project/roles/**/files/*
+files/**/*

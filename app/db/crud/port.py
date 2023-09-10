@@ -16,9 +16,7 @@ from app.db.schemas.port import (
     PortUserOut,
     PortUserCreate,
 )
-from app.db.models.server import Server, ServerUser
-from app.db.models.port import Port, PortUser
-from app.db.models.port_forward import PortForwardRule
+from app.db.models import ServerUser, Port, PortUser
 
 
 def get_ports(
