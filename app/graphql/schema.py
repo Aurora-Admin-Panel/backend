@@ -1,15 +1,19 @@
 import asyncio
-from typing import AsyncGenerator, List, Optional
+import async_timeout
+from typing import AsyncGenerator, List, Optional, Dict
 
 import strawberry
-from strawberry.file_uploads import Upload
+import redis.asyncio as redis
+from strawberry.types import Info
+from strawberry.scalars import JSON
 
-from .auth import IsAuthenticated, IsAdmin, IsSuperUser
+from .auth import IsAuthenticated, IsAdmin, IsSuperUser, EnsureUser
 from .file import File
 from .port import Port, PortUser
 from .port_forward import PortForwardRule
 from .server import Server, ServerUser
 from .user import User
+from .subscription import subscribe, task
 from .utils import PaginationWindow
 
 
@@ -47,6 +51,9 @@ class Query:
     )
     servers: List[Server] = strawberry.field(
         resolver=Server.get_servers, permission_classes=[IsAuthenticated]
+    )
+    connect_server: JSON = strawberry.field(
+        resolver=Server.connect_server, permission_classes=[IsAuthenticated]
     )
     paginated_servers: PaginationWindow[Server] = strawberry.field(
         resolver=Server.get_paginated_servers,
@@ -114,7 +121,10 @@ class Mutation:
     )
 
 
-async def count(target: int = 100) -> AsyncGenerator[int, None]:
+async def count(info: Info, target: int = 1) -> AsyncGenerator[int, None]:
+    from tasks.test import test_task
+
+    test_task()
     for i in range(target):
         yield i
         await asyncio.sleep(0.5)
@@ -122,7 +132,15 @@ async def count(target: int = 100) -> AsyncGenerator[int, None]:
 
 @strawberry.type
 class Subscription:
-    count: AsyncGenerator[int, None] = strawberry.subscription(resolver=count)
+    subscribe: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=subscribe, permission_classes=[]
+    )
+    task: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=task, permission_classes=[]
+    )
+    count: AsyncGenerator[int, None] = strawberry.subscription(
+        resolver=count, permission_classes=[]
+    )
 
 
 schema = strawberry.Schema(

@@ -12,7 +12,6 @@ RUN apt-get update && \
 RUN sed -i '/#   StrictHostKeyChecking /c StrictHostKeyChecking no' /etc/ssh/ssh_config && \
     sed -i 's/^#\s\+UserKnownHostsFile.*/UserKnownHostsFile \/dev\/null/' /etc/ssh/ssh_config
 
-
 RUN mkdir /app
 WORKDIR /app
 COPY . ./
@@ -37,3 +36,5 @@ RUN savedAptMark="$(apt-mark showmanual)" && \
     && \
     apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false && \
     rm -rf /var/lib/apt/lists/*
+
+RUN adduser --disabled-password --gecos '' aurora

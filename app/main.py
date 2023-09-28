@@ -29,7 +29,7 @@ from fastapi.security.utils import get_authorization_scheme_param
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 from sqlalchemy.exc import IntegrityError
-from strawberry.types import Info
+from starlette.middleware import Middleware
 from sse_starlette.sse import EventSourceResponse
 from strawberry.fastapi import GraphQLRouter
 from strawberry.subscriptions import (
@@ -42,15 +42,15 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api",
     version=config.BACKEND_VERSION,
-)
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        ),
+    ],
 )
 
 if config.ENABLE_SENTRY:
@@ -78,111 +78,14 @@ async def sentry_exception(request: Request, call_next):
         raise e
 
 
-@app.middleware("http")
-async def user_middleware(request: Request, call_next):
-    request.state.user = None
-    with db_session() as db:
-        try:
-            authorization = request.headers.get("Authorization")
-            scheme, token = get_authorization_scheme_param(authorization)
-            if authorization and scheme.lower() == "bearer":
-                payload = jwt.decode(
-                    token, config.SECRET_KEY, algorithms=[security.ALGORITHM]
-                )
-                email: str = payload.get("sub")
-                if email is not None:
-                    request.state.user = get_user_by_email(db, email)
-        except jwt.PyJWTError:
-            pass
-    return await call_next(request)
-
-
-@app.middleware("http")
-async def db_session_middleware(request: Request, call_next):
-    if request.url.path.startswith("/api/graphql"):
-        async with async_db_session() as async_db:
-            request.state.async_db = async_db
-            return await call_next(request)
-    with db_session() as db:
-        request.state.db = db
-        try:
-            response = await call_next(request)
-            return response
-        except IntegrityError as e:
-            return JSONResponse(
-                status_code=400, content={"detail": str(e.orig)}
-            )
-
-
 @app.get("/api/v1")
 async def root(server_id: int):
-    from tasks.utils.connection import connect
-    from tasks.utils.exception import AuroraException
-    from tasks.server import connect_runner2
-    from app.db.crud.server import get_server
-    from app.db.session import db_session
-
-    with db_session() as db:
-        server = get_server(db, server_id)
-    # return connect_runner2(server_id).get(blocking=True)
-
-    try:
-        with connect(server_id=server_id) as c:
-            c.run("cat /etc/os-release")
-            return {"success": True, "server_id": server_id}
-    except AuroraException as e:
-        return {"error": str(e), "server_id": server_id}
-
-@app.get("/api/stream")
-async def message_stream(request: Request):
-    def new_messages():
-        # Add logic here to check for new messages
-        yield "Hello World"
-
-    async def event_generator():
-        while True:
-            # If client closes connection, stop sending events
-            if await request.is_disconnected():
-                break
-
-            # Checks for new messages and return them to client if any
-            if new_messages():
-                yield {
-                    "event": "new_message",
-                    "id": "message_id",
-                    "retry": 15000,
-                    "data": "message_content",
-                }
-
-            await asyncio.sleep(1)
-
-    return EventSourceResponse(event_generator())
+    pass
 
 
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    token = await websocket.receive_text()
-    payload = jwt.decode(
-        token, config.SECRET_KEY, algorithms=[security.ALGORITHM]
-    )
-    email: str = payload.get("sub")
-    if email is None:
-        websocket.close()
-
-    async with async_db_session() as async_db:
-        user = await User.get_user_by_email(async_db, email)
-    if not user:
-        await websocket.send_json(
-            {
-                "type": "error",
-                "message": "Not authenticated, closing connection",
-            }
-        )
-        websocket.close()
-    await websocket.send_json(
-        {"type": "response", "message": f"Hello, {user.email}!"}
-    )
+    await handler.init(websocket)
     await handler.run_forever(websocket)
 
 
@@ -238,8 +141,8 @@ app.include_router(
 graphql_app = GraphQLRouter(
     schema,
     subscription_protocols=[
-        GRAPHQL_TRANSPORT_WS_PROTOCOL,
         GRAPHQL_WS_PROTOCOL,
+        GRAPHQL_TRANSPORT_WS_PROTOCOL,
     ],
 )
 app.include_router(graphql_app, prefix="/api/graphql")

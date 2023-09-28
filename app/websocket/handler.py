@@ -1,5 +1,6 @@
 import asyncio
 import json
+import jwt
 import threading
 from uuid import uuid4
 from functools import wraps
@@ -8,12 +9,39 @@ from typing import Callable, Dict
 from fastapi import WebSocket
 
 import tasks
+from app.core import config, security
+from app.db.async_session import async_db_session
+from app.graphql.user import User
 from app.utils.thread import run_in_thread
 
 
 class WebSocketMessageHandler:
     def __init__(self):
         self.message_handlers: Dict[str, Callable] = {}
+
+    async def init(self, websocket: WebSocket):
+        await websocket.accept()
+        token = await websocket.receive_text()
+        payload = jwt.decode(
+            token, config.SECRET_KEY, algorithms=[security.ALGORITHM]
+        )
+        email: str = payload.get("sub")
+        if email is None:
+            websocket.close()
+
+        async with async_db_session() as async_db:
+            user = await User.get_user_by_email(async_db, email)
+        if not user:
+            await websocket.send_json(
+                {
+                    "type": "error",
+                    "message": "Not authenticated, closing connection",
+                }
+            )
+            websocket.close()
+        await websocket.send_json(
+            {"type": "response", "message": f"Hello, {user.email}!"}
+        )
 
     def message_handler(self, message_type: str):
         def decorator(func: Callable):

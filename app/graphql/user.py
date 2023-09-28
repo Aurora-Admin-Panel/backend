@@ -9,6 +9,7 @@ from app.db.models import PortUser as DBPortUser
 from app.db.models import Server as DBServer
 from app.db.models import ServerUser as DBServerUser
 from app.db.models import User as DBUser
+from app.db.async_session import async_db_session
 from app.utils.selection import get_selections
 from sqlalchemy import func, insert, inspect, select, update, delete
 from sqlalchemy.orm import Query, joinedload
@@ -100,14 +101,13 @@ class User:
     async def get_users(
         info: Info, order_by: Optional[str] = "email"
     ) -> List["User"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = User.get_stmt_with_options(
             info, select(DBUser).order_by(f"{order_by}")
         )
 
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().all()
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().all()
 
     @staticmethod
     async def get_paginated_users(
@@ -117,8 +117,6 @@ class User:
         limit: int = 10,
         offset: int = 0,
     ) -> PaginationWindow["User"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = User.set_options(
             select(DBUser).order_by(f"{order_by}"),
             get_selections(
@@ -129,11 +127,12 @@ class User:
             stmt = stmt.where(DBUser.email.ilike(f"%{email}%"))
         stmt = stmt.limit(limit).offset(offset)
 
-        result = await async_db.execute(stmt)
-        return PaginationWindow(
-            items=result.scalars().unique().all(),
-            count=await User.get_user_count(info),
-        )
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return PaginationWindow(
+                items=result.scalars().unique().all(),
+                count=await User.get_user_count(info),
+            )
 
     @staticmethod
     async def get_user(
@@ -142,8 +141,6 @@ class User:
         email: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> Optional["User"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = select(DBUser)
         if id:
             stmt = stmt.where(DBUser.id == id)
@@ -153,19 +150,20 @@ class User:
             stmt = stmt.where(DBUser.notes.ilike(f"%{notes}%"))
         stmt = User.get_stmt_with_options(info, stmt)
 
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().first()
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().first()
 
     @staticmethod
     async def get_user_count(info: Info) -> int:
-        async_db = info.context["request"].state.async_db
         user = info.context["request"].state.user
 
         if user.id not in count_cache:
             stmt = select(func.count(DBUser.id))
 
-            result = await async_db.execute(stmt)
-            count_cache[user.id] = result.scalar()
+            async with async_db_session() as async_db:
+                result = await async_db.execute(stmt)
+                count_cache[user.id] = result.scalar()
 
         return count_cache[user.id]
 
@@ -179,29 +177,28 @@ class User:
         is_superuser: Optional[bool] = False,
         notes: Optional[str] = None,
     ) -> "User":
-        async_db = info.context["request"].state.async_db
-
-        _id = (
-            await async_db.execute(
-                insert(DBUser)
-                .values(
-                    email=email,
-                    hashed_password=get_password_hash(password),
-                    is_active=is_active,
-                    is_ops=is_ops,
-                    is_superuser=is_superuser,
-                    notes=notes,
+        async with async_db_session() as async_db:
+            _id = (
+                await async_db.execute(
+                    insert(DBUser)
+                    .values(
+                        email=email,
+                        hashed_password=get_password_hash(password),
+                        is_active=is_active,
+                        is_ops=is_ops,
+                        is_superuser=is_superuser,
+                        notes=notes,
+                    )
+                    .returning(DBUser.id)
                 )
-                .returning(DBUser.id)
-            )
-        ).scalar()
+            ).scalar()
 
-        result = await async_db.execute(
-            User.get_stmt_with_options(
-                info, select(DBUser).where(DBUser.id == _id)
+            result = await async_db.execute(
+                User.get_stmt_with_options(
+                    info, select(DBUser).where(DBUser.id == _id)
+                )
             )
-        )
-        return result.scalars().unique().first()
+            return result.scalars().unique().first()
 
     @staticmethod
     async def update_user(
@@ -214,8 +211,6 @@ class User:
         is_superuser: Optional[bool] = None,
         notes: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = update(DBUser).where(DBUser.id == id)
         if email:
             stmt = stmt.values(email=email)
@@ -230,18 +225,16 @@ class User:
         if notes:
             stmt = stmt.values(notes=notes)
 
-        await async_db.execute(stmt)
-
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
     async def delete_user(info: Info, id: int) -> bool:
-        async_db = info.context["request"].state.async_db
-
-        result = await async_db.execute(
-            delete(DBUser).where(DBUser.id == id)
-        )
-        await async_db.commit()
+        async with async_db_session() as async_db:
+            result = await async_db.execute(
+                delete(DBUser).where(DBUser.id == id)
+            )
+            await async_db.commit()
         return result.rowcount > 0

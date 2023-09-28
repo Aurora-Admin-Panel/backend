@@ -12,6 +12,7 @@ from strawberry.file_uploads import Upload
 # from starlette.datastructures import UploadFile
 from app.db.models import File as DBFile, FileTypeEnum
 from app.core.config import FILE_STORAGE_PATH
+from app.db.async_session import async_db_session
 from sqlalchemy import select, update, delete
 from strawberry.types import Info
 from .utils import PaginationWindow
@@ -39,7 +40,6 @@ class File:
         name: Optional[str] = None,
         type: Optional[FileTypeEnum] = None,
     ) -> int:
-        async_db = info.context["request"].state.async_db
         user = info.context["request"].state.user
 
         if user.id not in count_cache:
@@ -50,7 +50,9 @@ class File:
                 stmt = stmt.where(DBFile.name.ilike(f"%{name}%"))
             if type:
                 stmt = stmt.where(DBFile.type == type)
-            result = await async_db.execute(stmt)
+
+            async with async_db_session() as async_db:
+                result = await async_db.execute(stmt)
             count_cache[(user.id, name, type)] = result.scalar()
         return count_cache[(user.id, name, type)]
 
@@ -60,7 +62,6 @@ class File:
         name: Optional[str] = None,
         type: Optional[FileTypeEnum] = None,
     ) -> List["File"]:
-        async_db = info.context["request"].state.async_db
         user = info.context["request"].state.user
 
         stmt = select(DBFile)
@@ -70,7 +71,9 @@ class File:
             stmt = stmt.where(DBFile.name.ilike(f"%{name}%"))
         if type:
             stmt = stmt.where(DBFile.type == type)
-        result = await async_db.execute(stmt)
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
         return result.scalars().all()
 
     @staticmethod
@@ -82,7 +85,6 @@ class File:
         name: Optional[str] = None,
         type: Optional[FileTypeEnum] = None,
     ) -> PaginationWindow["File"]:
-        async_db = info.context["request"].state.async_db
         user = info.context["request"].state.user
 
         stmt = select(DBFile).order_by(order_by)
@@ -93,7 +95,10 @@ class File:
         if type:
             stmt = stmt.where(DBFile.type == type)
         stmt = stmt.offset(offset).limit(limit)
-        result = await async_db.execute(stmt)
+
+        print(stmt)
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
         return PaginationWindow(
             items=result.scalars().unique().all(),
             count=await File.get_file_count(info, name, type),
@@ -108,7 +113,6 @@ class File:
         version: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> "File":
-        async_db = info.context["request"].state.async_db
 
         storage_path = await store_file(file, type)
         new_file = DBFile(
@@ -119,8 +123,9 @@ class File:
             version=version,
             notes=notes,
         )
-        async_db.add(new_file)
-        await async_db.commit()
+        async with async_db_session() as async_db:
+            async_db.add(new_file)
+            await async_db.commit()
         count_cache.clear()
 
         return new_file
@@ -135,8 +140,6 @@ class File:
         version: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> Optional["File"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = update(DBFile).where(DBFile.id == id)
         if file:
             storage_path = store_file(file, type)
@@ -149,21 +152,23 @@ class File:
             stmt = stmt.values(version=version)
         if notes:
             stmt = stmt.values(notes=notes)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
     async def delete_file(info: Info, id: int) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = (
             delete(DBFile).where(DBFile.id == id).returning(DBFile.storage_path)
         )
-        result = await async_db.execute(stmt)
-        storage_path = result.scalar_one_or_none()
-        if storage_path:
-            Path(storage_path).unlink(missing_ok=True)
-            count_cache.clear()
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            storage_path = result.scalar_one_or_none()
+            if storage_path:
+                Path(storage_path).unlink(missing_ok=True)
+                count_cache.clear()
+            await async_db.commit()
         return storage_path is not None

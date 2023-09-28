@@ -24,3 +24,4 @@ from .iptables import *
 from .server import *
 from .tc import *
 from .traffic import *
+from .test import *

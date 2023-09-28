@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 
 @asynccontextmanager
 async def async_db_session():
-    print(config.SQLALCHEMY_ASYNC_DATABASE_URI)
     engine = create_async_engine(
         config.SQLALCHEMY_ASYNC_DATABASE_URI,
         echo=True,

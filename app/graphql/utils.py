@@ -1,12 +1,12 @@
-import typing
+from typing import List, TypeVar, Dict, Any, Generic
 import strawberry
 
-GenericType = typing.TypeVar("GenericType")
+Item = TypeVar("Item")
 
 
 @strawberry.type
-class PaginationWindow(typing.List[GenericType]):
-    items: typing.List[GenericType] = strawberry.field(
+class PaginationWindow(Generic[Item]):
+    items: List[Item] = strawberry.field(
         description="The list of items in the window."
     )
     count: int = strawberry.field(

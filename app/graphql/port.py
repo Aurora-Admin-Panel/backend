@@ -10,6 +10,7 @@ from app.db.models import (
     PortUser as DBPortUser,
     ServerUser as DBServerUser,
 )
+from app.db.async_session import async_db_session
 from strawberry.scalars import JSON
 from sqlalchemy import select, or_, func, insert, update, delete
 from sqlalchemy.orm import joinedload, Query
@@ -47,21 +48,21 @@ class Port:
 
     @staticmethod
     async def get_rule_options(info: Info, port_id: int) -> List[str]:
-        async_db = info.context["request"].state.async_db
-
         stmt = (
             select(DBPort)
             .where(DBPort.id == port_id)
             .options(joinedload(DBPort.server))
         )
-        result = await async_db.execute(stmt)
-        port = result.scalars().unique().first()
-        return [
-            m.value
-            for m in MethodEnum
-            if not port.server.config.get(f"{m.value}_disabled", False)
-            and not port.config.get(f"{m.value}_disabled", False)
-        ]
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            port = result.scalars().unique().first()
+            return [
+                m.value
+                for m in MethodEnum
+                if not port.server.config.get(f"{m.value}_disabled", False)
+                and not port.config.get(f"{m.value}_disabled", False)
+            ]
 
     @staticmethod
     def set_options(stmt: Query, selections: List[Selection]) -> Query:
@@ -86,13 +87,14 @@ class Port:
 
     @staticmethod
     async def get_ports(info: Info, order_by: str = "num") -> List["Port"]:
-        async_db = info.context["request"].state.async_db
         stmt = Port.set_options(
             select(DBPort).order_by(order_by),
             get_selections(info.selected_fields, info.field_name).selections,
         )
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().all()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().all()
 
     @staticmethod
     async def get_paginated_ports(
@@ -102,9 +104,6 @@ class Port:
         limit: int = 10,
         offset: int = 0,
     ) -> PaginationWindow["Port"]:
-        async_db = info.context["request"].state.async_db
-        # user = info.context["request"].state.user
-
         stmt = Port.set_options(
             select(DBPort)
             .order_by(order_by)
@@ -118,11 +117,12 @@ class Port:
             stmt = stmt.where(DBPort.server_id == server_id)
         stmt = stmt.offset(offset).limit(limit)
 
-        result = await async_db.execute(stmt)
-        return PaginationWindow(
-            items=result.scalars().unique().all(),
-            count=await Port.get_port_count(info, server_id=server_id),
-        )
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return PaginationWindow(
+                items=result.scalars().unique().all(),
+                count=await Port.get_port_count(info, server_id=server_id),
+            )
 
     @staticmethod
     async def get_port(
@@ -131,8 +131,6 @@ class Port:
         server_id: Optional[int] = None,
         num: Optional[int] = None,
     ) -> Optional["Port"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = Port.set_options(
             select(DBPort),
             get_selections(
@@ -147,14 +145,15 @@ class Port:
             stmt = stmt.where(
                 or_(DBPort.num == num, DBPort.external_num == num)
             )
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().first()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().first()
 
     @staticmethod
     async def get_port_count(
         info: Info, server_id: Optional[int] = None
     ) -> int:
-        async_db = info.context["request"].state.async_db
         user = info.context["request"].state.user
 
         if (user.id, server_id) not in count_cache:
@@ -180,8 +179,9 @@ class Port:
                 stmt = stmt.where(DBPort.server_id == server_id)
             stmt = stmt.where(DBPort.is_active == True)
 
-            result = await async_db.execute(stmt)
-            count_cache[(user.id, server_id)] = result.scalar()
+            async with async_db_session() as async_db:
+                result = await async_db.execute(stmt)
+                count_cache[(user.id, server_id)] = result.scalar()
         return count_cache[(user.id, server_id)]
 
     @staticmethod
@@ -193,8 +193,6 @@ class Port:
         config: Optional[JSON] = None,
         notes: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = insert(DBPort).values(
             server_id=server_id,
             num=num,
@@ -202,8 +200,10 @@ class Port:
             config=config,
             notes=notes,
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
@@ -216,8 +216,6 @@ class Port:
         config: Optional[JSON] = None,
         notes: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = update(DBPort).where(DBPort.id == id)
         if server_id:
             stmt = stmt.values(server_id=server_id)
@@ -229,17 +227,19 @@ class Port:
             stmt = stmt.values(config=config)
         if notes:
             stmt = stmt.values(notes=notes)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
     async def delete_port(info: Info, id: int) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = delete(DBPort).where(DBPort.id == id)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
 
@@ -260,24 +260,24 @@ class PortUser:
         user_id: int,
         config: Optional[JSON] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = insert(DBPortUser).values(
             port_id=port_id, user_id=user_id, config=config
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
     async def delete_port_user(info: Info, port_id: int, user_id: int) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = delete(DBPortUser).where(
             DBPortUser.port_id == port_id, DBPortUser.user_id == user_id
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
@@ -287,15 +287,15 @@ class PortUser:
         user_id: int,
         config: Optional[JSON] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = update(DBPortUser).where(
             DBPortUser.port_id == port_id, DBPortUser.user_id == user_id
         )
         if config:
             stmt = stmt.values(config=config)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
 

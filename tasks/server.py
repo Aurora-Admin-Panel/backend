@@ -33,6 +33,7 @@ def finished_handler(server_id: int, md5: str = None):
             server = get_server(db, server_id)
         facts = runner.get_fact_cache(server.host)
         update_facts(server.id, facts, md5=md5)
+
     return wrapper
 
 
@@ -65,14 +66,11 @@ def connect_runner(
 
 
 @huey.task(priority=3)
-def connect_runner2(
-    server_id: int,
-):
+def connect_runner2(server_id: int):
     try:
         with connect(server_id=server_id) as c:
             c.run("cat /etc/os-release")
             return {"success": True}
-
     except AuroraException as e:
         return {"error": str(e)}
     except Exception as e:

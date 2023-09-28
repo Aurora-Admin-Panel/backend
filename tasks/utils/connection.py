@@ -47,6 +47,9 @@ class AuroraConnection(Connection):
 def connect(server_id: int, **kwargs) -> AuroraConnection:
     with db_session() as db:
         server = get_server(db, server_id)
+
+    if not server:
+        raise AuroraException(f"Server with id {server_id} does not exist")
     try:
         connect_kwargs = {}
         if server.ssh_password:

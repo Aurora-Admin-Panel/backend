@@ -1,21 +1,25 @@
 import typing
-from collections import defaultdict
+import asyncio
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
+from strawberry.types.nodes import Selection
+from typing_extensions import Annotated
 
 import strawberry
+from sqlalchemy import func, and_, select, insert, update, delete
+from sqlalchemy.orm import Query, joinedload
+from strawberry.scalars import JSON
+from strawberry.types import Info
+
+import tasks
 from app.db.models import Port as DBPort
 from app.db.models import PortUser as DBPortUser
 from app.db.models import Server as DBServer
 from app.db.models import ServerUser as DBServerUser
 from app.db.models import User as DBUser
+from app.utils.permission import has_permission_of_server
+from app.db.async_session import async_db_session
 from app.utils.selection import get_selections
-from sqlalchemy import func, and_, select, insert, update, delete
-from sqlalchemy.orm import Query, joinedload
-from strawberry.scalars import JSON
-from strawberry.types import Info
-from strawberry.types.nodes import Selection
-from typing_extensions import Annotated
 
 from .utils import PaginationWindow
 
@@ -55,14 +59,15 @@ class ServerUser:
         user_id: int,
         notes: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
         stmt = insert(DBServerUser).values(
             server_id=server_id,
             user_id=user_id,
             notes=notes,
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
@@ -72,15 +77,16 @@ class ServerUser:
         user_id: int,
         notes: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
         stmt = update(DBServerUser).where(
             server_id == server_id, user_id == user_id
         )
 
         if notes:
             stmt = stmt.values(notes=notes)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
@@ -89,12 +95,13 @@ class ServerUser:
         server_id: int,
         user_id: int,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
         stmt = delete(DBServerUser).where(
             server_id == server_id, user_id == user_id
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
 
@@ -171,23 +178,21 @@ class Server:
 
     @staticmethod
     async def get_servers(info: Info, order_by: str = "name") -> List["Server"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = Server.set_options(
             select(DBServer)
             .order_by(order_by)
             .options(joinedload(DBServer.allowed_users)),
             get_selections(info.selected_fields, info.field_name).selections,
         )
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().all()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().all()
 
     @staticmethod
     async def get_paginated_servers(
         info: Info, order_by: str = "name", limit: int = 10, offset: int = 0
     ) -> PaginationWindow["Server"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = Server.set_options(
             select(DBServer)
             .order_by(order_by)
@@ -198,11 +203,13 @@ class Server:
             ).selections,
         )
         stmt = stmt.limit(limit).offset(offset)
-        result = await async_db.execute(stmt)
-        return PaginationWindow(
-            items=result.scalars().unique().all(),
-            count=(await Server.get_server_count(info)),
-        )
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return PaginationWindow(
+                items=result.scalars().unique().all(),
+                count=(await Server.get_server_count(info)),
+            )
 
     @staticmethod
     async def get_server(
@@ -211,8 +218,6 @@ class Server:
         name: Optional[str] = None,
         address: Optional[str] = None,
     ) -> Optional["Server"]:
-        async_db = info.context["request"].state.async_db
-
         stmt = Server.set_options(
             select(DBServer),
             get_selections(info.selected_fields, info.field_name).selections,
@@ -223,12 +228,13 @@ class Server:
             stmt = stmt.where(DBServer.name.ilike(f"%{name}%"))
         if address:
             stmt = stmt.where(DBServer.address.ilike(f"%{address}%"))
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().first()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().first()
 
     @staticmethod
     async def get_server_count(info: Info) -> int:
-        async_db = info.context["request"].state.async_db
         user = info.context["request"].state.user
 
         if user.id not in count_cache:
@@ -239,8 +245,9 @@ class Server:
                 )
             stmt = stmt.where(DBServer.is_active == True)
 
-            result = await async_db.execute(stmt)
-            count_cache[user.id] = result.scalar()
+            async with async_db_session() as async_db:
+                result = await async_db.execute(stmt)
+                count_cache[user.id] = result.scalar()
         return count_cache[user.id]
 
     @staticmethod
@@ -256,9 +263,6 @@ class Server:
         ssh_password: Optional[str] = None,
         sudo_password: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-        # user = info.context["request"].state.user
-
         stmt = insert(DBServer).values(
             name=name,
             address=address,
@@ -270,8 +274,10 @@ class Server:
             ssh_password=ssh_password,
             sudo_password=sudo_password,
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
@@ -288,8 +294,6 @@ class Server:
         ssh_password: Optional[str] = None,
         sudo_password: Optional[str] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = update(DBServer).where(DBServer.id == id)
         if name:
             stmt = stmt.values(name=name)
@@ -309,15 +313,32 @@ class Server:
             stmt = stmt.values(ssh_password=ssh_password)
         if sudo_password:
             stmt = stmt.values(sudo_password=sudo_password)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
     async def delete_server(info: Info, id: int) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = delete(DBServer).where(DBServer.id == id)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
+
+    @staticmethod
+    async def connect_server(info: Info, server_id: int) -> JSON:
+        user = info.context['request'].state.user
+        if not has_permission_of_server(user, server_id):
+            return {'error': "Permission denied"}
+
+        result = tasks.connect_runner2(server_id)
+        while True:
+            res = result.get()
+            if res is not None:
+                break
+            await asyncio.sleep(0.1)
+
+        return res

@@ -7,6 +7,7 @@ from app.db.models import (
     PortForwardRule as DBPortForwardRule,
     Port as DBPort,
 )
+from app.db.async_session import async_db_session
 from sqlalchemy import select, insert, update, delete
 from sqlalchemy.orm import joinedload
 from strawberry.scalars import JSON
@@ -32,25 +33,25 @@ class PortForwardRule:
     async def get_port_forward_rule(
         info: Info, port_id: int
     ) -> "PortForwardRule":
-        async_db = info.context["request"].state.async_db
-
         stmt = select(DBPortForwardRule).where(
             DBPortForwardRule.port_id == port_id
         )
-        result = await async_db.execute(stmt)
-        return result.scalars().unique().first()
+
+        with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().first()
 
     @staticmethod
     async def create_port_forward_rule(
         info: Info, port_id: int, config: JSON, method: MethodEnum
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = insert(DBPortForwardRule).values(
             port_id=port_id, config=config, method=method
         )
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
@@ -61,8 +62,6 @@ class PortForwardRule:
         config: Optional[JSON] = None,
         method: Optional[MethodEnum] = None,
     ) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = update(DBPortForwardRule).where(DBPortForwardRule.id == id)
         if port_id:
             stmt = stmt.values(port_id=port_id)
@@ -70,15 +69,17 @@ class PortForwardRule:
             stmt = stmt.values(config=config)
         if method:
             stmt = stmt.values(method=method)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+        
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
 
     @staticmethod
     async def delete_port_forward_rule(info: Info, id: int) -> bool:
-        async_db = info.context["request"].state.async_db
-
         stmt = delete(DBPortForwardRule).where(DBPortForwardRule.id == id)
-        result = await async_db.execute(stmt)
-        await async_db.commit()
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            await async_db.commit()
         return result.rowcount > 0
