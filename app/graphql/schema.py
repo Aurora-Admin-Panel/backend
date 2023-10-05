@@ -13,7 +13,8 @@ from .port import Port, PortUser
 from .port_forward import PortForwardRule
 from .server import Server, ServerUser
 from .user import User
-from .subscription import subscribe, task
+from .task import task
+from .channel import subscribe
 from .utils import PaginationWindow
 
 
@@ -132,7 +133,7 @@ async def count(info: Info, target: int = 1) -> AsyncGenerator[int, None]:
 
 @strawberry.type
 class Subscription:
-    subscribe: AsyncGenerator[JSON, None] = strawberry.subscription(
+    subscribe_channel: AsyncGenerator[JSON, None] = strawberry.subscription(
         resolver=subscribe, permission_classes=[]
     )
     task: AsyncGenerator[JSON, None] = strawberry.subscription(

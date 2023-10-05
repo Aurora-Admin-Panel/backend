@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from fastapi import Request
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import sessionmaker
 
 from app.core import config
 

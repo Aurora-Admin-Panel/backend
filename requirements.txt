@@ -30,3 +30,4 @@ asyncpg
 sse-starlette==1.3.3
 websockets==10.4
 aiofiles==23.1.0
+loguru==0.7.2

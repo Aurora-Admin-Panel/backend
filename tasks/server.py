@@ -6,6 +6,7 @@ from uuid import uuid4
 from collections import defaultdict
 from distutils.dir_util import copy_tree
 from sqlalchemy.orm import Session
+from huey.api import Task
 
 from app.db.session import db_session
 from app.db.models import Port
@@ -65,10 +66,10 @@ def connect_runner(
     )
 
 
-@huey.task(priority=3)
-def connect_runner2(server_id: int):
+@huey.task(priority=3, context=True)
+def connect_runner2(server_id: int, task: Task):
     try:
-        with connect(server_id=server_id) as c:
+        with connect(server_id=server_id, task=task) as c:
             c.run("cat /etc/os-release")
             return {"success": True}
     except AuroraException as e:

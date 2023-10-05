@@ -24,4 +24,5 @@ from .iptables import *
 from .server import *
 from .tc import *
 from .traffic import *
+from .redis_tasks import *
 from .test import *
