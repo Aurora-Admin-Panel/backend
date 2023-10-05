@@ -27,10 +27,11 @@ class AuroraConnection(Connection):
                 host=config.REDIS_HOST, port=config.REDIS_PORT
             )
         )
+
         if self.task:
             self.redis.zadd(
                 "aurora:task:ids",
-                {self.task.id: int(datetime.utcnow().timestamp() * 1000)},
+                {self.task.id: datetime.utcnow().timestamp()},
             )
         super().__init__(*args, **kwargs)
 
@@ -40,10 +41,10 @@ class AuroraConnection(Connection):
 
     def close(self):
         if self.task:
-            self.redis.publish(
-                f"{config.PUBSUB_PREFIX}:{self.task.id}",
-                config.PUBSUB_STOPWORDS,
-            )
+            # Sleep for a bit so that stopword score is slightly larger
+            time.sleep(0.1)
+            self.publish(config.PUBSUB_STOPWORD)
+        self.redis.close()
         super().close()
 
     def publish(self, text: str):
@@ -51,7 +52,7 @@ class AuroraConnection(Connection):
             self.redis.publish(f"{config.PUBSUB_PREFIX}:{self.task.id}", text)
             self.redis.zadd(
                 f"{config.PUBSUB_PREFIX}:{self.task.id}:history",
-                {text: int(datetime.utcnow().timestamp() * 1000)},
+                {text: datetime.utcnow().timestamp()},
             )
 
     def run(self, *args, **kwargs):
@@ -61,6 +62,8 @@ class AuroraConnection(Connection):
             result = super().sudo(*args, **kwargs)
         else:
             result = super().run(*args, **kwargs)
+        # stdout and stderr should already combined because the
+        # behavior of pty=True
         self.publish(result.stdout)
         return result
 
