@@ -26,15 +26,18 @@ class EnsureUser(BasePermission):
             if authorization is not None:
                 scheme, token = get_authorization_scheme_param(authorization)
                 if authorization and scheme.lower() == "bearer":
-                    payload = jwt.decode(
-                        token,
-                        config.SECRET_KEY,
-                        algorithms=[security.ALGORITHM],
-                    )
-                    email: str = payload.get("sub")
-                    if email is not None:
-                        with db_session() as db:
-                            request.state.user = get_user_by_email(db, email)
+                    try:
+                        payload = jwt.decode(
+                            token,
+                            config.SECRET_KEY,
+                            algorithms=[security.ALGORITHM],
+                        )
+                        email: str = payload.get("sub")
+                        if email is not None:
+                            with db_session() as db:
+                                request.state.user = get_user_by_email(db, email)
+                    except jwt.PyJWTError:
+                        return False
         return request.state.user is not None
 
 

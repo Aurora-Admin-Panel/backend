@@ -25,4 +25,5 @@ def db_session():
 
 
 def get_db(request: Request):
-    return request.state.db
+    with db_session() as db:
+        return db
