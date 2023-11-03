@@ -36,14 +36,6 @@ def traffic_runner():
 def traffic_server_runner2(server_id: int):
     with db_session() as db:
         server = get_server_with_ports_usage(db, server_id)
-    config = {}
-    if server.sudo_password:
-        config["sudo"] = {"password": server.sudo_password}
-    connect_kwargs = {}
-    if server.ssh_password:
-        connect_kwargs["password"] = server.ssh_password
-    else:
-        connect_kwargs["key_filename"] = "/app/ansible/env/ssh_key"
 
     with connect(server_id=server_id) as c:
         result = c.put("/app/ansible/project/files/iptables.sh")
