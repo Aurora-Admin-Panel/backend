@@ -13,7 +13,10 @@ import redis
 from loguru import logger
 from fabric import Config, Connection, Result
 from fabric.exceptions import GroupException
-from paramiko.rsakey import RSAKey
+from paramiko.ssh_exception import (
+    SSHException,
+    NoValidConnectionsError,
+)
 
 from app.core import config
 from app.db.crud.server import get_server
@@ -200,11 +203,13 @@ def connect(server_id: int, **kwargs) -> ContextManager[AuroraConnection]:
         yield conn
         conn.close()
     except GroupException as e:
-        logger.error(traceback.format_exc())
         raise AuroraException(f"Failed to connect to host: {e}")
     except socket.timeout:
-        logger.error(traceback.format_exc())
         raise AuroraException("Connection timed out")
+    except SSHException as e:
+        raise AuroraException(f"SSH error: {e}")
+    except NoValidConnectionsError as e:
+        raise AuroraException(f"No valid connection: {e}")
     except Exception as e:
         logger.error(traceback.format_exc())
         raise AuroraException(f"Failed to connect to host: {e}")
