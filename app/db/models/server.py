@@ -11,7 +11,9 @@ from sqlalchemy import (
     ForeignKey,
     UniqueConstraint,
     Text,
+    Numeric,
 )
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 
 class ServerUser(Base):
@@ -34,6 +36,19 @@ class ServerUser(Base):
 
     user = relationship("User", back_populates="allowed_servers")
     server = relationship("Server", back_populates="allowed_users")
+
+
+class ServerUsage(Base):
+    __tablename__ = "server_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
+    timestamp = Column(TIMESTAMP, nullable=False)
+    cpu = Column(Numeric(10, 2), nullable=False)
+    memory = Column(Numeric(10, 2), nullable=False)
+    disk = Column(Numeric(10, 2), nullable=False)
+
+    server = relationship("Server", back_populates="usages")
 
 
 class Server(Base):
@@ -75,3 +90,4 @@ class Server(Base):
         lazy="joined",
     )
     key_file = relationship("File", back_populates="servers")
+    usages = relationship("ServerUsage", back_populates="server")

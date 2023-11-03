@@ -1,7 +1,8 @@
 import typing
 import asyncio
+from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, AsyncGenerator
 from strawberry.types.nodes import Selection
 from typing_extensions import Annotated
 
@@ -12,9 +13,10 @@ from strawberry.scalars import JSON
 from strawberry.types import Info
 
 import tasks
+from app.core import config
 from app.db.models import Port as DBPort
 from app.db.models import PortUser as DBPortUser
-from app.db.models import Server as DBServer
+from app.db.models import Server as DBServer, ServerUsage as DBServerUsage
 from app.db.models import ServerUser as DBServerUser
 from app.db.models import User as DBUser
 from app.utils.permission import has_permission_of_server
@@ -38,6 +40,16 @@ async def get_server_port_total(root: "Server") -> int:
 
 async def get_server_port_used(root: "Server") -> int:
     return sum([1 for port in root.ports if port.forward_rule is not None])
+
+
+@strawberry.type
+class ServerUsage:
+    id: int
+    server_id: int
+    timestamp: datetime
+    cpu: int = strawberry.field(resolver=lambda root: round(root.cpu))
+    memory: int = strawberry.field(resolver=lambda root: round(root.memory))
+    disk: int = strawberry.field(resolver=lambda root: round(root.disk))
 
 
 @strawberry.type
@@ -77,9 +89,7 @@ class ServerUser:
         user_id: int,
         notes: Optional[str] = None,
     ) -> bool:
-        stmt = update(DBServerUser).where(
-            server_id == server_id, user_id == user_id
-        )
+        stmt = update(DBServerUser).where(server_id == server_id, user_id == user_id)
 
         if notes:
             stmt = stmt.values(notes=notes)
@@ -95,9 +105,7 @@ class ServerUser:
         server_id: int,
         user_id: int,
     ) -> bool:
-        stmt = delete(DBServerUser).where(
-            server_id == server_id, user_id == user_id
-        )
+        stmt = delete(DBServerUser).where(server_id == server_id, user_id == user_id)
 
         async with async_db_session() as async_db:
             result = await async_db.execute(stmt)
@@ -116,9 +124,13 @@ class Server:
     key_file_id: Optional[int]
     config: JSON
     ssh_password: Optional[str]
-    ssh_password_set: bool = strawberry.field(resolver=lambda root: root.ssh_password is not None)
+    ssh_password_set: bool = strawberry.field(
+        resolver=lambda root: root.ssh_password is not None
+    )
     sudo_password: Optional[str]
-    sudo_password_set: bool = strawberry.field(resolver=lambda root: root.sudo_password is not None)
+    sudo_password_set: bool = strawberry.field(
+        resolver=lambda root: root.sudo_password is not None
+    )
     is_active: bool
 
     port_used: int = strawberry.field(
@@ -136,9 +148,7 @@ class Server:
 
     ports: typing.List[Annotated["Port", strawberry.lazy(".port")]]
     users: typing.List[Annotated["User", strawberry.lazy(".user")]]
-    allowed_users: typing.List[
-        Annotated["ServerUser", strawberry.lazy(".server")]
-    ]
+    allowed_users: typing.List[Annotated["ServerUser", strawberry.lazy(".server")]]
     key_file: Annotated["File", strawberry.lazy(".file")]
 
     @staticmethod
@@ -151,8 +161,7 @@ class Server:
             options = joinedload(DBServer.ports)
             sub_options = []
             if (
-                selection
-                and get_selections(selection.selections, "forwardRule")
+                selection and get_selections(selection.selections, "forwardRule")
             ) or get_selections(selections, "portUsed"):
                 sub_options.append(joinedload(DBPort.forward_rule))
             if selection and get_selections(selection.selections, "usage"):
@@ -198,9 +207,7 @@ class Server:
             .order_by(order_by)
             .options(joinedload(DBServer.allowed_users))
             .where(DBServer.is_active == True),
-            get_selections(
-                info.selected_fields, f"{info.field_name}.items"
-            ).selections,
+            get_selections(info.selected_fields, f"{info.field_name}.items").selections,
         )
         stmt = stmt.limit(limit).offset(offset)
 
@@ -330,9 +337,9 @@ class Server:
 
     @staticmethod
     async def connect_server(info: Info, server_id: int) -> JSON:
-        user = info.context['request'].state.user
+        user = info.context["request"].state.user
         if not has_permission_of_server(user, server_id):
-            return {'error': "Permission denied"}
+            return {"error": "Permission denied"}
 
         result = tasks.connect_runner2(server_id)
         while True:
@@ -340,5 +347,34 @@ class Server:
             if res is not None:
                 break
             await asyncio.sleep(0.1)
-
         return res
+
+    @staticmethod
+    async def get_usage(
+        info: Info, server_id: int
+    ) -> AsyncGenerator[ServerUsage, None]:
+        user = info.context["request"].state.user
+        if not has_permission_of_server(user, server_id):
+            yield {"error": "Permission denied"}
+            return
+
+        failed_count = 0
+        while True:
+            async with async_db_session() as async_db:
+                stmt = (
+                    select(DBServerUsage)
+                    .where(DBServerUsage.server_id == server_id)
+                    .order_by(DBServerUsage.timestamp.desc())
+                    .limit(1)
+                )
+                result = await async_db.execute(stmt)
+                data = result.scalars().unique().first()
+                if data and data.timestamp > datetime.now() - timedelta(
+                    seconds=config.SERVER_USAGE_INTERVAL_SECONDS * 10
+                ):
+                    yield data
+                elif failed_count > 10:
+                    break
+                else:
+                    failed_count += 1
+            await asyncio.sleep(config.SERVER_USAGE_INTERVAL_SECONDS)

@@ -3,16 +3,21 @@ import re
 import typing as t
 import ansible_runner
 from uuid import uuid4
+from datetime import datetime, timedelta
 from collections import defaultdict
 from distutils.dir_util import copy_tree
 from sqlalchemy.orm import Session
+from sqlalchemy import insert, select, delete
+from huey import crontab
 from huey.api import Task
+from loguru import logger
 
+from app.core.config import SERVER_USAGE_INTERVAL_SECONDS
 from app.db.session import db_session
 from app.db.models import Port
 from app.db.models import User
 from app.db.models import File
-from app.db.models import Server
+from app.db.models import Server, ServerUsage
 from app.db.models import PortForwardRule
 from app.db.crud.port import get_port_with_num
 from app.db.crud.server import get_server, get_servers
@@ -20,6 +25,7 @@ from app.db.crud.port_usage import create_port_usage, edit_port_usage
 from app.db.schemas.port_usage import PortUsageCreate, PortUsageEdit
 
 from .config import huey
+from tasks.utils.interval import should_schedule_seconds
 from tasks.utils.runner import run_async, run
 from tasks.utils.server import prepare_priv_dir
 from tasks.utils.files import get_md5_for_file
@@ -70,7 +76,7 @@ def connect_runner(
 def connect_runner2(server_id: int, task: Task):
     try:
         with connect(server_id=server_id, task=task) as c:
-            c.run("cat /etc/os-release")
+            c.get_os_release()
             return {"success": True}
     except AuroraException as e:
         return {"error": str(e)}
@@ -87,3 +93,43 @@ def servers_runner(**kwargs):
     for server in servers:
         if "init" not in server.config or server.config["init"] != init_md5:
             server_runner(server.id, **kwargs)
+
+
+@huey.task(priority=10, context=True)
+def server_usage_runner(server_id: int, task: Task):
+    try:
+        with connect(server_id=server_id, task=task) as c:
+            usages = c.get_combined_usage()
+            with db_session() as db:
+                stmt = insert(ServerUsage).values(
+                    server_id=server_id,
+                    timestamp=datetime.utcnow(),
+                    cpu=usages[0],
+                    memory=usages[1],
+                    disk=usages[2],
+                )
+                db.execute(stmt)
+                db.commit()
+    except AuroraException as e:
+        logger.error(str(e))
+    except Exception as e:
+        # TODO: handle exception
+        logger.error(str(e))
+
+@huey.periodic_task(crontab(minute="*"))
+def servers_usage_runner():
+    with db_session() as db:
+        stmt = select(Server).where(Server.is_active == True)
+        servers = db.execute(stmt).scalars().unique().all()
+        for seconds in should_schedule_seconds(SERVER_USAGE_INTERVAL_SECONDS):
+            for server in servers:
+                server_usage_runner.schedule(args=(server.id,), delay=seconds)
+
+@huey.periodic_task(crontab(day="*"))
+def server_usage_cleaner():
+    with db_session() as db:
+        stmt = delete(ServerUsage).where(
+            ServerUsage.timestamp < datetime.utcnow() - timedelta(days=30)
+        )
+        db.execute(stmt)
+        db.commit()

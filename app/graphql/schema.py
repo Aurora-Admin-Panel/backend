@@ -11,7 +11,7 @@ from .auth import IsAuthenticated, IsAdmin, IsSuperUser, EnsureUser
 from .file import File
 from .port import Port, PortUser
 from .port_forward import PortForwardRule
-from .server import Server, ServerUser
+from .server import Server, ServerUser, ServerUsage
 from .user import User
 from .task import task
 from .channel import subscribe
@@ -141,6 +141,9 @@ class Subscription:
     )
     count: AsyncGenerator[int, None] = strawberry.subscription(
         resolver=count, permission_classes=[]
+    )
+    server_usage: AsyncGenerator[ServerUsage, None] = strawberry.subscription(
+        resolver=Server.get_usage, permission_classes=[IsAuthenticated]
     )
 
 
