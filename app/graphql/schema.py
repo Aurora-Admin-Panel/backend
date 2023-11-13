@@ -142,7 +142,7 @@ class Subscription:
     count: AsyncGenerator[int, None] = strawberry.subscription(
         resolver=count, permission_classes=[]
     )
-    server_usage: AsyncGenerator[ServerUsage, None] = strawberry.subscription(
+    server_usage: AsyncGenerator[ServerUsage | None, None] = strawberry.subscription(
         resolver=Server.get_usage, permission_classes=[IsAuthenticated]
     )
 

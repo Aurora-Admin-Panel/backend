@@ -11,6 +11,7 @@ from contextlib import contextmanager
 
 import redis
 from loguru import logger
+from sqlalchemy import update
 from fabric import Config, Connection, Result
 from fabric.exceptions import GroupException
 from paramiko.ssh_exception import (
@@ -19,6 +20,7 @@ from paramiko.ssh_exception import (
 )
 
 from app.core import config
+from app.db.models import Server
 from app.db.crud.server import get_server
 from app.db.session import db_session
 from tasks.utils.exception import AuroraException
@@ -201,6 +203,12 @@ def connect(server_id: int, **kwargs) -> ContextManager[AuroraConnection]:
             **kwargs,
         )
         yield conn
+        with db_session() as db:
+            stmt = update(Server).where(Server.id == server_id).values(
+                last_connect=datetime.utcnow()
+            )
+            db.execute(stmt)
+            db.commit()
         conn.close()
     except GroupException as e:
         raise AuroraException(f"Failed to connect to host: {e}")

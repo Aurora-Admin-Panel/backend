@@ -74,6 +74,7 @@ class Server(Base):
     ssh_password = Column(String, nullable=True)
     sudo_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+    last_connect = Column(TIMESTAMP, nullable=True)
 
     ports = relationship("Port", cascade="all,delete", back_populates="server")
     users = relationship(

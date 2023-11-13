@@ -355,10 +355,8 @@ class Server:
     ) -> AsyncGenerator[ServerUsage, None]:
         user = info.context["request"].state.user
         if not await has_permission_of_server(user, server_id):
-            yield {"error": "Permission denied"}
             return
 
-        failed_count = 0
         while True:
             async with async_db_session() as async_db:
                 stmt = (
@@ -373,8 +371,6 @@ class Server:
                     seconds=config.SERVER_USAGE_INTERVAL_SECONDS * 10
                 ):
                     yield data
-                elif failed_count > 10:
-                    break
                 else:
-                    failed_count += 1
+                    yield None
             await asyncio.sleep(config.SERVER_USAGE_INTERVAL_SECONDS)
