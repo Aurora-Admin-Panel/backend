@@ -336,10 +336,11 @@ class Server:
         return result.rowcount > 0
 
     @staticmethod
-    async def connect_server(info: Info, server_id: int) -> JSON:
+    async def connect_server(info: Info, server_id: int) -> AsyncGenerator[JSON, None]:
         user = info.context["request"].state.user
         if not has_permission_of_server(user, server_id):
-            return {"error": "Permission denied"}
+            yield {"error": "Permission denied"}
+            return
 
         result = tasks.connect_runner2(server_id)
         while True:
@@ -347,7 +348,7 @@ class Server:
             if res is not None:
                 break
             await asyncio.sleep(0.1)
-        return res
+        yield res
 
     @staticmethod
     async def get_usage(

@@ -53,9 +53,6 @@ class Query:
     servers: List[Server] = strawberry.field(
         resolver=Server.get_servers, permission_classes=[IsAuthenticated]
     )
-    connect_server: JSON = strawberry.field(
-        resolver=Server.connect_server, permission_classes=[IsAuthenticated]
-    )
     paginated_servers: PaginationWindow[Server] = strawberry.field(
         resolver=Server.get_paginated_servers,
         permission_classes=[IsAuthenticated],
@@ -144,6 +141,9 @@ class Subscription:
     )
     server_usage: AsyncGenerator[ServerUsage | None, None] = strawberry.subscription(
         resolver=Server.get_usage, permission_classes=[IsAuthenticated]
+    )
+    connect_server: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=Server.connect_server, permission_classes=[IsAuthenticated]
     )
 
 
