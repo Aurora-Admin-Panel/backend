@@ -13,7 +13,6 @@ class EnsureUser(BasePermission):
         request = info.context["request"]
 
         if not hasattr(request.state, "user"):
-            print(request.state)
             authorization = None
             if request.scope["type"] == "websocket":
                 authorization = info.context["connection_params"].get(
@@ -35,7 +34,9 @@ class EnsureUser(BasePermission):
                         email: str = payload.get("sub")
                         if email is not None:
                             with db_session() as db:
-                                request.state.user = get_user_by_email(db, email)
+                                request.state.user = get_user_by_email(
+                                    db, email
+                                )
                     except jwt.PyJWTError:
                         return False
         return request.state.user is not None
@@ -58,7 +59,10 @@ class IsAdmin(EnsureUser):
         return (
             super().has_permission(source, info, **kwargs)
             and info.context["request"].state.user.is_active
-            and info.context["request"].state.user.is_ops
+            and (
+                info.context["request"].state.user.is_ops
+                or info.context["request"].state.user.is_superuser
+            )
         )
 
 
