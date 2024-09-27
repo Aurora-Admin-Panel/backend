@@ -1,24 +1,13 @@
 ---
-- name: Exec app script
+- name: Get and monitor port {{ local_port }} traffic for app
   when: update_status is defined and update_status
   block:
-    - name: Exec iptables script locally
-      shell: /usr/local/bin/iptables.sh monitor {{ local_port }} {{ remote_ip }}
+    - name: Exec iptables script remotely to get and monitor app traffic
+      script: files/iptables.sh monitor {{ local_port }} {{ remote_ip }}
+      args:
+        executable: bash
       register: traffic
-  rescue:
-    - name: Sync iptables.sh
-      copy:
-        src: files/iptables.sh
-        dest: /usr/local/bin/iptables.sh
-        owner: root
-        group: root
-        mode: '0755'
-    - name: Exec iptables script locally again
-      shell: /usr/local/bin/iptables.sh monitor {{ local_port }} {{ remote_ip }}
-      register: traffic
-
-- name: Set traffic result
-  when: update_status is defined and update_status
-  set_fact:
-    traffic: "{{ traffic.stdout }}"
-    cacheable: yes
+    - name: Set traffic result
+      set_fact:
+        traffic: "{{ traffic.stdout }}"
+        cacheable: yes
