@@ -4,7 +4,7 @@ from typing import Optional, Annotated
 import jwt
 import sentry_sdk
 import uvicorn
-from app.api.v1.auth import auth_router
+from app.api.auth import auth_router
 from app.api.v1.forward_rule import forward_rule_router
 from app.api.v1.ports import ports_router
 from app.api.v1.servers import servers_router

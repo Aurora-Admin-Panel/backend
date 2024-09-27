@@ -120,9 +120,6 @@ class Mutation:
 
 
 async def count(info: Info, target: int = 1) -> AsyncGenerator[int, None]:
-    from tasks.test import test_task
-
-    test_task()
     for i in range(target):
         yield i
         await asyncio.sleep(0.5)

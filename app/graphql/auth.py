@@ -70,6 +70,7 @@ class IsSuperUser(EnsureUser):
     message = "User is not a superuser"
 
     def has_permission(self, source: Any, info: Info, **kwargs) -> bool:
+        print(info.context["request"].state)
         return (
             super().has_permission(source, info, **kwargs)
             and info.context["request"].state.user.is_active
