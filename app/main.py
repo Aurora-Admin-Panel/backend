@@ -6,10 +6,6 @@ from fastapi import FastAPI, Depends, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 
-import sentry_sdk
-from sentry_sdk.integrations.redis import RedisIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-
 from app.api.v1.auth import auth_router
 from app.api.v1.users import users_router
 from app.api.v1.servers import servers_router
@@ -40,16 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-sentry_sdk.init(
-    release=f"{config.BACKEND_VERSION}",
-    environment=f"{config.ENVIRONMENT}",
-    dsn="https://c1a19cfeb74045f8912e5cb449c1071d@sentry.leishi.io/2",
-    integrations=[SqlalchemyIntegration(), RedisIntegration()],
-    traces_sample_rate=1.0,
-)
-sentry_sdk.set_tag('panel.ip', get_external_ip())
-
 
 @app.middleware("http")
 async def sentry_exception(request: Request, call_next):
