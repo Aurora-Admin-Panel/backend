@@ -35,7 +35,7 @@ class SocatConfig(AppConfig):
         if relay_type in ("ALL", "UDP"):
             args.append(f"socat -T 120 UDP6-LISTEN:{port.num},fork,reuseaddr UDP:{remote_address}:{remote_port}")
         args = " & ".join(args)
-        return f'/bin/sh -c \\"{args}\\"'
+        return f'/bin/sh -c \"{args}\"'
 
     @property
     def playbook(self):
