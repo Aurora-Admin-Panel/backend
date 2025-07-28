@@ -1,8 +1,10 @@
 import os
 import hashlib
 import tempfile
+from pathlib import Path
 from typing import Optional, Dict, Any, Union, TYPE_CHECKING
 from tasks.utils.base import SystemResource, OperationResult, StateResult
+from tasks.utils.helper import q
 
 if TYPE_CHECKING:
     from .connection import AuroraConnection
@@ -17,12 +19,36 @@ def get_md5_for_file(path: str) -> str:
 
 
 class FileResource(SystemResource):
-    """Ensure remote file exists with correct content and permissions"""
+    """Idempotently ensure that a *remote* file exists with the desired
+    content, permissions and ownership.
+
+    Parameters
+    ----------
+    path : str | pathlib.Path
+        Remote absolute path to the target file.
+    src : str, optional
+        Local source file that will be uploaded when the remote file is
+        absent or its checksum differs.
+    content : str, optional
+        Literal content to write to the remote file.  Mutually exclusive with
+        *src*.
+    create_parents : bool, default True
+        When *path*'s parent directory does not exist, create it first using
+        ``mkdir -p``.
+    backup : bool, default False
+        If *True* and the remote file already exists, create a timestamped
+        ``.backup`` copy **before** applying changes.
+    force : bool, default False
+        Re‑upload the file even when the checksum matches.  Useful when you
+        want to overwrite attributes (mode/owner) without an additional
+        ``chmod``/``chown`` call.
+    """
 
     def __init__(
         self,
-        path: str,
+        path: Union[str, Path],
         connection: "AuroraConnection",
+        *,
         src: Optional[str] = None,
         content: Optional[str] = None,
         mode: Optional[str] = None,
@@ -30,10 +56,12 @@ class FileResource(SystemResource):
         group: Optional[str] = None,
         backup: bool = False,
         force: bool = False,
+        create_parents: bool = True,
         **kwargs,
-    ):
-        super().__init__(path, connection, **kwargs)
-        self.path = path
+    ) -> None:
+        super().__init__(str(path), connection, **kwargs)
+
+        self.path = Path(path)
         self.src = src
         self.content = content
         self.mode = mode
@@ -41,15 +69,27 @@ class FileResource(SystemResource):
         self.group = group
         self.backup = backup
         self.force = force
+        self.create_parents = create_parents
 
         if not (src or content):
             raise ValueError("Either 'src' or 'content' must be specified")
         if src and content:
             raise ValueError("Cannot specify both 'src' and 'content'")
 
-    def check_current_state(self) -> Dict[str, Any]:
-        """Check current file state"""
-        state = {
+    # ---------------------------------------------------------------------
+    # Helpers
+    # ---------------------------------------------------------------------
+    def _desired_checksum(self) -> str:
+        if self.content is not None:
+            return hashlib.md5(self.content.encode()).hexdigest()
+        return get_md5_for_file(self.src) if self.src else ""
+
+    def _remote_stats(self, *, refresh: bool = False) -> Dict[str, Any]:
+        cache_key = "remote_file_stats"
+        if not refresh and cache_key in self._facts_cache:
+            return self._facts_cache[cache_key]
+
+        state: Dict[str, Any] = {
             "exists": self.connection.file_exists(self.path),
             "checksum": None,
             "mode": None,
@@ -58,39 +98,38 @@ class FileResource(SystemResource):
         }
 
         if state["exists"]:
-            # Get file details
-            parts = self.connection.run(
-                f"stat -c '%a %U %G' '{self.path}' 2>/dev/null", publish=False
-            )
-            if len(parts) >= 3:
-                state["mode"] = parts[0]
-                state["owner"] = parts[1]
-                state["group"] = parts[2]
+            gnu_cmd = f"stat -c '%a %U %G' {q(self.path)}"
+            res = self.connection.execute(gnu_cmd)
+            if not res.ok:
+                # Try BSD/macOS format string
+                bsd_cmd = f"stat -f '%Lp %Su %Sg' {q(self.path)}"
+                res = self.connection.execute(bsd_cmd)
 
-            state["checksum"] = self.connection.get_file_md5sum(self.path)
+            if res.ok:
+                parts = self.connection.strip_stdout(res).split()
+                if len(parts) >= 3:
+                    state["mode"], state["owner"], state["group"] = parts[:3]
+            state["checksum"] = self.connection.get_file_md5sum(str(self.path))
 
+        # store even if not exists so we avoid rechecking inside same ensure()
+        self._facts_cache[cache_key] = state
         return state
 
-    def _get_desired_checksum(self) -> str:
-        """Get checksum of desired content"""
-        if self.content:
-            return hashlib.md5(self.content.encode()).hexdigest()
-        elif self.src:
-            return get_md5_for_file(self.src)
-        return ""
+    # ------------------------------------------------------------------
+    # Abstract method implementations
+    # ------------------------------------------------------------------
+    def check_current_state(self) -> Dict[str, Any]:
+        return self._remote_stats()
 
     def desired_state_matches(self, current_state: Dict[str, Any]) -> bool:
-        """Check if current state matches desired state"""
         if not current_state["exists"]:
             return False
 
-        # Check content
-        desired_checksum = self._get_desired_checksum()
-        if desired_checksum != current_state["checksum"]:
-            return False
+        if not self.force:
+            if self._desired_checksum() != current_state["checksum"]:
+                return False
 
-        # Check permissions
-        if self.mode and current_state["mode"] != self.mode:
+        if self.mode and current_state["mode"] != self.mode.lstrip("0"):
             return False
 
         if self.owner and current_state["owner"] != self.owner:
@@ -102,116 +141,148 @@ class FileResource(SystemResource):
         return True
 
     def apply_changes(self) -> OperationResult:
-        """Apply changes to reach desired state"""
-        results = []
+        changes: list[str] = []
 
-        # Backup existing file if requested
+        # Ensure parent directory exists -----------------------------------
+        parent_dir = self.path.parent
+        if self.create_parents and not self.connection.directory_exists(parent_dir):
+            mkdir_result = self.connection.execute(f"mkdir -p {q(parent_dir)}")
+            if not mkdir_result.ok:
+                return OperationResult(
+                    state=StateResult.FAILED,
+                    message=f"Failed to create parent directory {parent_dir}",
+                    stderr=mkdir_result.stderr,
+                )
+            changes.append("parent_dir_created")
+            # Refresh cache after structural change
+            self._remote_stats(refresh=True)
+
+        # Backup existing file if requested --------------------------------
         if self.backup and self.connection.file_exists(self.path):
-            backup_result = self.connection.execute(
-                f"cp '{self.path}' '{self.path}.backup.$(date +%Y%m%d_%H%M%S)'"
-            )
-            if backup_result.failed:
+            backup_name = f"{self.path}.backup.$(date +%Y%m%d_%H%M%S)"
+            cp_res = self.connection.execute(f"cp {q(self.path)} {q(backup_name)}")
+            if cp_res.failed:
                 return OperationResult(
                     state=StateResult.FAILED,
-                    message=f"Failed to backup file {self.path}",
-                    stderr=backup_result.stdout,
+                    message=f"Failed to create backup of {self.path}",
+                    stderr=cp_res.stderr,
                 )
+            changes.append("backup_created")
 
-        # Transfer or create file
-        if self.src:
-            # Transfer file from local source
-            try:
-                self.connection.put(self.src, self.path)
-            except Exception as e:
-                return OperationResult(
-                    state=StateResult.FAILED,
-                    message=f"Failed to transfer file {self.src}",
-                    stderr=str(e),
-                )
-            results.append("transferred")
+        # Determine if upload needed ---------------------------------------
+        curr_state = self._remote_stats()
+        upload_needed = self.force or (
+            not curr_state["exists"]
+            or self._desired_checksum() != curr_state["checksum"]
+        )
 
-        elif self.content:
-            tmp_path = None
-            try:
-                # Create file with specified content
-                with tempfile.NamedTemporaryFile(mode="w", delete=False) as tmp_file:
-                    tmp_file.write(self.content)
-                    tmp_path = tmp_file.name
+        if upload_needed:
+            if self.src is not None:
+                try:
+                    self.connection.put(self.src, str(self.path))
+                except Exception as exc:
+                    return OperationResult(
+                        state=StateResult.FAILED,
+                        message=f"Failed to upload {self.src}",
+                        stderr=str(exc),
+                    )
+            else:
+                tmp_local: Optional[str] = None
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, mode="w") as tmp:
+                        tmp.write(self.content)
+                        tmp_local = tmp.name
+                    self.connection.put(tmp_local, str(self.path))
+                except Exception as exc:
+                    return OperationResult(
+                        state=StateResult.FAILED,
+                        message="Failed to transfer inline content",
+                        stderr=str(exc),
+                    )
+                finally:
+                    if tmp_local and os.path.exists(tmp_local):
+                        os.unlink(tmp_local)
+            changes.append("content_uploaded")
+            self._remote_stats(refresh=True)
 
-                self.connection.put(tmp_path, self.path)
-            except Exception as e:
-                return OperationResult(
-                    state=StateResult.FAILED,
-                    message=f"Failed to create file {self.content}",
-                    stderr=str(e),
-                )
-            finally:
-                if tmp_path is not None:
-                    os.unlink(tmp_path)
-            results.append("created")
-
-        # Set permissions
-        if self.mode:
-            chmod_result = self.connection.execute(f"chmod {self.mode} '{self.path}'")
-            if chmod_result.failed:
+        # Permissions -------------------------------------------------------
+        curr_state = self._remote_stats()
+        if self.mode and (upload_needed or curr_state["mode"] != self.mode):
+            chmod_res = self.connection.execute(f"chmod {self.mode} {q(self.path)}")
+            if chmod_res.failed:
                 return OperationResult(
                     state=StateResult.FAILED,
                     message=f"Failed to set mode {self.mode} on {self.path}",
-                    stderr=chmod_result.stdout,
+                    stderr=chmod_res.stderr,
                 )
-            results.append(f"mode={self.mode}")
+            changes.append(f"mode={self.mode}")
 
-        # Set ownership
-        if self.owner or self.group:
-            chown_target = ""
-            if self.owner and self.group:
-                chown_target = f"{self.owner}:{self.group}"
-            elif self.owner:
-                chown_target = self.owner
-            elif self.group:
-                chown_target = f":{self.group}"
+        # Ownership ---------------------------------------------------------
+        if any([self.owner, self.group]):
+            desired_target = f"{self.owner or ''}:{self.group or ''}".strip(":")
+            if (
+                upload_needed
+                or curr_state["owner"] != self.owner
+                or curr_state["group"] != self.group
+            ):
+                chown_res = self.connection.execute(
+                    f"chown {desired_target} {q(self.path)}"
+                )
+                if chown_res.failed:
+                    return OperationResult(
+                        state=StateResult.FAILED,
+                        message=(
+                            f"Failed to set ownership {desired_target} on {self.path}"
+                        ),
+                        stderr=chown_res.stderr,
+                    )
+                changes.append(f"owner={desired_target}")
 
-            chown_result = self.connection.execute(
-                f"chown {chown_target} '{self.path}'"
+        if not changes:
+            return OperationResult(
+                state=StateResult.SUCCESS,
+                message=f"File {self.path} already in desired state",
+                changed=False,
             )
-            if chown_result.failed:
-                return OperationResult(
-                    state=StateResult.FAILED,
-                    message=f"Failed to set ownership {chown_target} on {self.path}",
-                    stderr=chown_result.stdout,
-                )
-            results.append(f"owner={chown_target}")
 
         return OperationResult(
             state=StateResult.CHANGED,
-            message=f"File {self.path} updated: {', '.join(results)}",
+            message=f"File {self.path} updated: {', '.join(changes)}",
             changed=True,
+            details={"changes": changes},
         )
 
 
-# TODO
 class DirectoryResource(SystemResource):
-    """Ensure directory exists with correct permissions"""
+    """Idempotently ensure that a remote directory exists with the desired
+    permissions and ownership.
+    """
 
     def __init__(
         self,
-        path: str,
+        path: Union[str, Path],
         connection: "AuroraConnection",
+        *,
         mode: Optional[str] = None,
         owner: Optional[str] = None,
         group: Optional[str] = None,
         recursive: bool = True,
         **kwargs,
-    ):
-        super().__init__(path, connection, **kwargs)
-        self.path = path
+    ) -> None:
+        super().__init__(str(path), connection, **kwargs)
+
+        self.path = Path(path)
         self.mode = mode
         self.owner = owner
         self.group = group
         self.recursive = recursive
 
-    def check_current_state(self) -> Dict[str, Any]:
-        """Check current directory state"""
+    def _remote_stats(self, *, refresh: bool = False) -> Dict[str, Any]:
+        """Return cached remote directory state."""
+        cache_key = "remote_dir_stats"
+        if not refresh and cache_key in self._facts_cache:
+            return self._facts_cache[cache_key]
+
         state = {
             "exists": self.connection.directory_exists(self.path),
             "mode": None,
@@ -220,82 +291,96 @@ class DirectoryResource(SystemResource):
         }
 
         if state["exists"]:
-            result = self.connection.execute(
-                f"stat -c '%a %U %G' '{self.path}' 2>/dev/null"
-            )
-            if result.success and result.stdout.strip():
-                parts = result.stdout.strip().split()
-                if len(parts) >= 3:
-                    state["mode"] = parts[0]
-                    state["owner"] = parts[1]
-                    state["group"] = parts[2]
+            cmd = f"stat -c '%a %U %G' {q(self.path)}"
+            output = self.connection.run(cmd, publish=False)
+            parts = output.strip().split()
+            if len(parts) >= 3:
+                state["mode"], state["owner"], state["group"] = parts[:3]
 
+        self._facts_cache[cache_key] = state
         return state
 
+    # ------------------------------------------------------------------
+    # Abstract method implementations
+    # ------------------------------------------------------------------
+    def check_current_state(self) -> Dict[str, Any]:
+        return self._remote_stats()
+
     def desired_state_matches(self, current_state: Dict[str, Any]) -> bool:
-        """Check if current state matches desired state"""
         if not current_state["exists"]:
             return False
 
-        if self.mode and current_state["mode"] != self.mode:
+        if self.mode and current_state["mode"] != self.mode.lstrip("0"):
             return False
-
         if self.owner and current_state["owner"] != self.owner:
             return False
-
         if self.group and current_state["group"] != self.group:
             return False
-
         return True
 
     def apply_changes(self) -> OperationResult:
-        """Apply changes to reach desired state"""
-        results = []
+        changes: list[str] = []
+        curr_state = self.check_current_state()
 
-        # Create directory
-        mkdir_cmd = f"mkdir {'--parents' if self.recursive else ''} '{self.path}'"
-        mkdir_result = self.connection.execute(mkdir_cmd)
-        if not mkdir_result.success:
-            return OperationResult(
-                state=StateResult.FAILED,
-                message=f"Failed to create directory {self.path}",
-                stderr=mkdir_result.stderr,
+        # 1. Create directory if needed ------------------------------------
+        if not curr_state["exists"]:
+            mkdir_res = self.connection.execute(f"mkdir -p {q(self.path)}")
+            if mkdir_res.failed:
+                return OperationResult(
+                    state=StateResult.FAILED,
+                    message=f"Failed to create directory {self.path}",
+                    stderr=mkdir_res.stderr,
+                )
+            changes.append("created")
+
+        # 2. Permissions ----------------------------------------------------
+        if self.mode and (not curr_state["mode"] or curr_state["mode"] != self.mode):
+            chmod_flags = "-R" if self.recursive else ""
+            chmod_res = self.connection.execute(
+                f"chmod {chmod_flags} {self.mode} {q(self.path)}".strip()
             )
-        results.append("created")
-
-        # Set permissions and ownership (similar to FileResource)
-        if self.mode:
-            chmod_result = self.connection.execute(f"chmod {self.mode} '{self.path}'")
-            if not chmod_result.success:
+            if chmod_res.failed:
                 return OperationResult(
                     state=StateResult.FAILED,
                     message=f"Failed to set mode {self.mode} on {self.path}",
-                    stderr=chmod_result.stderr,
+                    stderr=chmod_res.stderr,
                 )
-            results.append(f"mode={self.mode}")
+            changes.append(f"mode={self.mode}")
 
-        if self.owner or self.group:
-            chown_target = ""
-            if self.owner and self.group:
-                chown_target = f"{self.owner}:{self.group}"
-            elif self.owner:
-                chown_target = self.owner
-            elif self.group:
-                chown_target = f":{self.group}"
+        # 3. Ownership ------------------------------------------------------
+        if any([self.owner, self.group]):
+            chown_target = f"{self.owner or ''}:{self.group or ''}".strip(":")
+            if (
+                not curr_state["owner"]
+                or not curr_state["group"]
+                or curr_state["owner"] != self.owner
+                or curr_state["group"] != self.group
+            ):
+                chown_flags = "-R" if self.recursive else ""
+                chown_res = self.connection.execute(
+                    f"chown {chown_flags} {chown_target} {q(self.path)}".strip()
+                )
+                if chown_res.failed:
+                    return OperationResult(
+                        state=StateResult.FAILED,
+                        message=(
+                            f"Failed to set ownership {chown_target} on {self.path}"
+                        ),
+                        stderr=chown_res.stderr,
+                    )
+                changes.append(f"owner={chown_target}")
 
-            chown_result = self.connection.execute(
-                f"chown {chown_target} '{self.path}'"
+        # ------------------------------------------------------------------
+        if not changes:
+            return OperationResult(
+                state=StateResult.SUCCESS,
+                message=f"Directory {self.path} already in desired state",
+                changed=False,
             )
-            if not chown_result.success:
-                return OperationResult(
-                    state=StateResult.FAILED,
-                    message=f"Failed to set ownership {chown_target} on {self.path}",
-                    stderr=chown_result.stderr,
-                )
-            results.append(f"owner={chown_target}")
 
         return OperationResult(
             state=StateResult.CHANGED,
-            message=f"Directory {self.path} updated: {', '.join(results)}",
+            message=f"Directory {self.path} updated: {', '.join(changes)}",
             changed=True,
+            details={"changes": changes},
         )

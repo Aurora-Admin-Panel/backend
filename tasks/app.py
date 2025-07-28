@@ -3,7 +3,7 @@ import typing as t
 from uuid import uuid4
 from datetime import datetime, timedelta
 
-from app.db.session import db_session
+# from app.db.session import db_session
 from app.db.crud.server import get_server_with_ports_usage
 from app.db.crud.port import get_port_by_id
 from app.db.crud.port_forward import get_forward_rule_by_id

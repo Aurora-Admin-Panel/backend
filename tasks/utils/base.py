@@ -5,6 +5,8 @@ from typing import Dict, Any, List, Optional, Union, Callable, TYPE_CHECKING
 
 from loguru import logger
 
+from tasks.utils.exception import AuroraException
+
 if TYPE_CHECKING:
     from .connection import AuroraConnection
 
@@ -28,7 +30,11 @@ class OperationResult:
 
     @property
     def success(self) -> bool:
-        return self.state in (StateResult.SUCCESS, StateResult.CHANGED)
+        return self.state in (
+            StateResult.SUCCESS,
+            StateResult.CHANGED,
+            StateResult.SKIPPED,
+        )
 
     @property
     def failed(self) -> bool:
@@ -96,8 +102,8 @@ class SystemResource(ABC):
             if self.desired_state_matches(current_state):
                 return OperationResult(
                     # TODO: Maybe SKIPPED?
-                    state=StateResult.SUCCESS,
-                    messgae=f"{self.__class__.__name__} '{self.name}' already in desired state",
+                    state=StateResult.SKIPPED,
+                    message=f"{self.__class__.__name__} '{self.name}' already in desired state",
                     changed=False,
                 )
 
@@ -109,6 +115,15 @@ class SystemResource(ABC):
                 )
             return self.apply_changes()
 
+        except AuroraException as e:
+            logger.exception(
+                f"AuroraException in {self.__class__.__name__} '{self.name}': {e}"
+            )
+            return OperationResult(
+                state=StateResult.FAILED,
+                message=f"AuroraException in {self.__class__.__name__} '{self.name}': {e}",
+                stderr=str(e),
+            )
         except Exception as e:
             logger.exception(f"Error ensuring {self.__class__.__name__} '{self.name}'")
             return OperationResult(
