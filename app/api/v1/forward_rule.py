@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 
 from app.db.session import get_db
 from app.utils.ip import is_ip
-from app.utils.tasks import trigger_forward_rule, trigger_port_clean
+# from app.utils.tasks import trigger_forward_rule, trigger_port_clean
 from app.db.models import Port, MethodEnum
 from app.db.schemas.port_forward import (
     PortForwardRuleCreate,

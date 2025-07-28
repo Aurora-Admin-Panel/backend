@@ -1,6 +1,6 @@
 import json
 import asyncio
-import async_timeout
+from asyncio import timeout
 from typing import AsyncGenerator
 
 import redis.asyncio as redis
@@ -28,7 +28,7 @@ async def subscribe(channel_id: str) -> AsyncGenerator[JSON, None]:
         while True:
             try:
                 # It seems the timeout only works for redis connection
-                async with async_timeout.timeout(config.PUBSUB_TIMEOUT_SECONDS):
+                async with timeout(config.PUBSUB_TIMEOUT_SECONDS):
                     message = await pubsub.get_message(
                         ignore_subscribe_messages=True,
                     )

@@ -1,18 +1,10 @@
 import asyncio
 from typing import Optional, Annotated
+from contextlib import asynccontextmanager
 
 import jwt
-import sentry_sdk
 import uvicorn
 from app.api.auth import auth_router
-from app.api.v1.forward_rule import forward_rule_router
-from app.api.v1.ports import ports_router
-from app.api.v1.servers import servers_router
-from app.api.v1.users import users_router
-from app.api.v2.ports import ports_v2_router
-from app.api.v2.servers import servers_v2_router
-from app.api.v2.users import users_v2_router
-from app.api.v3.users import users_v3_router
 from app.core import config, security
 from app.core.auth import get_current_active_user
 from app.db.async_session import async_db_session
@@ -37,8 +29,16 @@ from strawberry.subscriptions import (
     GRAPHQL_WS_PROTOCOL,
 )
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Starting lifespan")
+    from tasks import servers_usage_runner
+    servers_usage_runner.schedule(delay=0)
+    yield
+
 app = FastAPI(
     title=config.PROJECT_NAME,
+    lifespan=lifespan,
     docs_url="/api/docs",
     openapi_url="/api",
     version=config.BACKEND_VERSION,
@@ -53,30 +53,6 @@ app = FastAPI(
     ],
 )
 
-if config.ENABLE_SENTRY:
-    sentry_sdk.init(
-        release=f"{config.BACKEND_VERSION}",
-        environment=f"{config.ENVIRONMENT}",
-        dsn="https://5622016b92cf4a039cbab7cba10d64f2@sentry.leishi.io/2",
-        integrations=[SqlalchemyIntegration(), RedisIntegration()],
-        traces_sample_rate=1.0,
-    )
-    sentry_sdk.set_tag("panel.ip", get_external_ip())
-
-
-@app.middleware("http")
-async def sentry_exception(request: Request, call_next):
-    try:
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        if config.ENABLE_SENTRY:
-            with sentry_sdk.push_scope() as scope:
-                scope.set_context("request", request)
-                scope.user = {"ip_address": request.client.host}
-                sentry_sdk.capture_exception(e)
-        raise e
-
 
 @app.get("/api/v1")
 async def root(server_id: int):
@@ -89,55 +65,6 @@ async def websocket_endpoint(websocket: WebSocket):
     await handler.run_forever(websocket)
 
 
-# Routers
-app.include_router(
-    users_router,
-    prefix="/api/v1",
-    tags=["v1", "users"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    users_v2_router,
-    prefix="/api/v2",
-    tags=["v2", "users"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    servers_router,
-    prefix="/api/v1",
-    tags=["v1", "servers"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    servers_v2_router,
-    prefix="/api/v2",
-    tags=["v2", "servers"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    ports_router,
-    prefix="/api/v1",
-    tags=["v1", "ports"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    ports_v2_router,
-    prefix="/api/v2",
-    tags=["v2", "ports"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    forward_rule_router,
-    prefix="/api/v1",
-    tags=["v1", "port_rule"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    users_v3_router,
-    prefix="/api/v3",
-    tags=["v3", "users"],
-    dependencies=[Depends(get_current_active_user)],
-)
 graphql_app = GraphQLRouter(
     schema,
     subscription_protocols=[

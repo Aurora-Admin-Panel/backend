@@ -22,13 +22,10 @@ async def async_main() -> None:
     )
 
     async with AsyncSessionMaker() as session:
-        stmt = (
-            delete(DBfile).where(DBfile.id == 4).returning(DBfile.storage_path)
-        )
-
-        result = await session.execute(stmt)
-        print(result)
-        print(result.scalars().one_or_none())
+        stmt = select(DBServer).where(DBServer.is_active == True)
+        servers = (await session.execute(stmt)).scalars().unique().all()
+        from datetime import datetime
+        print(isinstance(servers[0].last_connect, datetime))
         await session.commit()
 
     # for AsyncEngine created in function scope, close and

@@ -6,7 +6,7 @@ from app.db.models import Server
 from app.db.models import PortForwardRule
 from app.db.crud.port_forward import get_forward_rule
 from app.db.crud.server import get_server
-from tasks.utils.usage import update_traffic
+# from tasks.utils.usage import update_traffic
 from tasks.utils.rule import correct_running_services
 
 

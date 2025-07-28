@@ -3,26 +3,26 @@ import time
 import socket
 import pathlib
 import traceback
+from pathlib import Path
 from uuid import uuid4
 from decimal import Decimal
-from typing import ContextManager, Tuple
+from typing import Tuple
 from datetime import datetime
 from contextlib import contextmanager
+from collections.abc import Iterator
 
 import redis
 from loguru import logger
 from sqlalchemy import update
 from fabric import Config, Connection, Result
 from fabric.exceptions import GroupException
-from paramiko.ssh_exception import (
-    SSHException,
-    NoValidConnectionsError,
-)
+from paramiko.ssh_exception import SSHException, NoValidConnectionsError
 
 from app.core import config
 from app.db.models import Server
 from app.db.crud.server import get_server
 from app.db.session import db_session
+
 from tasks.utils.exception import AuroraException
 from tasks.utils.files import get_md5_for_file
 
@@ -31,9 +31,7 @@ class AuroraConnection(Connection):
     def __init__(self, *args, **kwargs):
         self._set(task=kwargs.pop("task", None))
         self._set(
-            redis=redis.StrictRedis(
-                host=config.REDIS_HOST, port=config.REDIS_PORT
-            )
+            redis=redis.StrictRedis(host=config.REDIS_HOST, port=config.REDIS_PORT)
         )
 
         if self.task:
@@ -43,13 +41,51 @@ class AuroraConnection(Connection):
             )
         super().__init__(*args, **kwargs)
 
-    @property
-    def sudo(self):
-        return self.user != "root"
+    def __enter__(self):
+        context = super().__enter__()
+        self.check_sudo()
+        return context
 
-    def exists(self, path: str) -> bool:
+    @property
+    def is_root(self):
+        return self.user == "root"
+
+    def check_sudo(self):
+        if not self.is_root:
+            groups = super().run("groups", pty=True, hide=True).stdout.strip()
+            if "sudo" not in groups:
+                raise AuroraException("User is not in sudo group")
+
+    def _root_run(self, *args, **kwargs) -> Result:
+        if self.is_root:
+            return super().run(*args, pty=True, **kwargs)
+        else:
+            return super().sudo(*args, pty=True, **kwargs)
+
+    def run(self, *args, publish: bool = True, **kwargs) -> str:
+        # logger.debug(f"Running {args} on {self.host}")
+        result = self._root_run(*args, hide=True, **kwargs)
+        # stdout and stderr should already combined because the
+        # behavior of pty=True
+        stdout = result.stdout.strip("[sudo] password:").strip()
+        if publish:
+            self.publish(stdout)
+        return stdout
+
+    def execute(self, cmd: str) -> Result:
+        return self._root_run(cmd, hide=True, warn=True)
+
+    def exists(self, path: str | Path) -> bool:
         cmd = 'test -e "$(echo {})"'.format(path)
-        return self._root_run(cmd, hide=True, warn=True).ok
+        return self.execute(cmd).ok
+
+    def file_exists(self, path: str | Path) -> bool:
+        cmd = 'test -f "$(echo {})"'.format(path)
+        return self.execute(cmd).ok
+
+    def directory_exists(self, path: str | Path) -> bool:
+        cmd = 'test -d "$(echo {})"'.format(path)
+        return self.execute(cmd).ok
 
     def get_os_release(self):
         return self.run(
@@ -66,6 +102,11 @@ class AuroraConnection(Connection):
 
     def get_disk_usage(self):
         return self.run("df --output=pcent / | tail -1").strip("%")
+
+    def get_file_md5sum(self, path: str) -> str:
+        return self.execute(
+            f"md5sum '{path}' 2>/dev/null | cut -d' ' -f1"
+        ).stdout.strip()
 
     def get_combined_usage(self) -> Tuple[Decimal, Decimal, Decimal]:
         result = list(
@@ -103,40 +144,33 @@ class AuroraConnection(Connection):
                 {text: datetime.utcnow().timestamp()},
             )
 
-    def _root_run(self, *args, **kwargs) -> Result:
-        # Hacky and maybe buggy
-        # when we actually want to use 'sudo' specific args
-        if self.sudo:
-            return super().sudo(*args, pty=True, **kwargs)
-        else:
-            return super().run(*args, pty=True, **kwargs)
-
-    def run(self, *args, publish: bool = True, **kwargs) -> str:
-        result = self._root_run(*args, hide=True, **kwargs)
-        # stdout and stderr should already combined because the
-        # behavior of pty=True
-        stdout = result.stdout.strip("[sudo] password:").strip()
-        if publish:
-            self.publish(stdout)
-        return stdout
-
     def mktemp(self) -> str:
         return super().run("mktemp", hide=True).stdout.strip()
 
-    def ensure_folder(self, path: str) -> Result:
-        # TODO: might need to check if path exists first
-        self._root_run(f"mkdir -p {path}")
+    def ensure_folder(
+        self, path: str | Path, owner: str = None, mode: str = None
+    ) -> Result:
+        if not self.directory_exists(path):
+            self._root_run(f"mkdir -p {path}")
 
-    def put_file(
+        if owner:
+            self._root_run(f"chown {owner} {path}")
+        elif owner is None:
+            self._root_run(f"chown {self.user}:{self.user} {path}")
+
+        if mode:
+            self._root_run(f"chmod {mode} {path}")
+
+    def ensure_file(
         self, local_path: str, remote_path: str, ensure_same: bool = True
     ) -> None:
         if not pathlib.Path(local_path).exists():
             raise AuroraException(f"{local_path} does not exist")
 
-        if self.exists(remote_path):
+        if self.file_exists(remote_path):
             if ensure_same:
                 local_md5 = get_md5_for_file(local_path)
-                remote_md5 = self.run(f"md5sum {remote_path}", publish=False)
+                remote_md5 = self.get_file_md5sum(remote_path)
                 if remote_md5 == local_md5:
                     return
         self.put(local_path, "/tmp")
@@ -145,7 +179,7 @@ class AuroraConnection(Connection):
             f"mv /tmp/{os.path.basename(local_path)} {remote_path}", hide=True
         )
 
-    def put_content(
+    def ensure_content(
         self,
         content: str,
         remote_path: str,
@@ -168,7 +202,7 @@ class AuroraConnection(Connection):
 
 
 @contextmanager
-def connect(server_id: int, **kwargs) -> ContextManager[AuroraConnection]:
+def connect(server_id: int, **kwargs) -> Iterator[AuroraConnection]:
     with db_session() as db:
         server = get_server(db, server_id)
 
@@ -180,7 +214,7 @@ def connect(server_id: int, **kwargs) -> ContextManager[AuroraConnection]:
             connect_kwargs["password"] = server.ssh_password
         if server.key_file:
             connect_kwargs["key_filename"] = server.key_file.storage_path
-        if (
+        elif (
             not server.ssh_password
             and not server.key_file
             and pathlib.Path("/app/ansible/env/ssh_key").is_file()
@@ -202,14 +236,20 @@ def connect(server_id: int, **kwargs) -> ContextManager[AuroraConnection]:
             task=kwargs.pop("task", None),
             **kwargs,
         )
+
         yield conn
+
         with db_session() as db:
-            stmt = update(Server).where(Server.id == server_id).values(
-                last_connect=datetime.utcnow()
+            stmt = (
+                update(Server)
+                .where(Server.id == server_id)
+                .values(last_connect=datetime.utcnow())
             )
             db.execute(stmt)
             db.commit()
+
         conn.close()
+
     except GroupException as e:
         raise AuroraException(f"Failed to connect to host: {e}")
     except socket.timeout:

@@ -1,7 +1,10 @@
-from huey import PriorityRedisHuey
+from huey import PriorityRedisHuey, PriorityRedisExpireHuey
 
 from app.core import config
 
-huey = PriorityRedisHuey(
-    "aurora", host=config.REDIS_HOST, port=config.REDIS_PORT
+huey = PriorityRedisExpireHuey(
+    "aurora",
+    host=config.REDIS_HOST,
+    port=config.REDIS_PORT,
+    expire_time=config.TASK_RESULTS_STORAGE_SECONDS,
 )

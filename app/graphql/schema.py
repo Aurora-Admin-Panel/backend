@@ -1,5 +1,4 @@
 import asyncio
-import async_timeout
 from typing import AsyncGenerator, List, Optional, Dict
 
 import strawberry
