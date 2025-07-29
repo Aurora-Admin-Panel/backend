@@ -75,7 +75,7 @@ class SystemdServiceResource(SystemResource):
             "--property=ActiveState,SubState --no-pager"
         )
         if res.ok:
-            for line in res.stdout.splitlines():
+            for line in self.connection.strip_stdout(res).splitlines():
                 if line.startswith("ActiveState="):
                     stats["active"] = line.split("=", 1)[1] == "active"
                 elif line.startswith("SubState="):
@@ -86,12 +86,12 @@ class SystemdServiceResource(SystemResource):
             f"systemctl is-enabled {q(self.service_name)}"
         )
         if res_enabled.ok:
-            out = res_enabled.stdout.strip()
+            out = self.connection.strip_stdout(res_enabled)
             stats["enabled"] = out == "enabled"
             stats["masked"] = out == "masked"
         else:
             # 'static', 'indirect', etc. count as not-enabled / not-masked
-            out = res_enabled.stdout.strip()
+            out = self.connection.strip_stdout(res_enabled)
             stats["masked"] = out == "masked"
             stats["enabled"] = False
 
@@ -185,11 +185,11 @@ class SystemdServiceResource(SystemResource):
                 )
             executed.append(cmd)
             # refresh stats cache after each successful op that can change state
-            self._remote_stats(refresh=True)
+            # self._remote_stats(refresh=True)
 
         if not executed:
             return OperationResult(
-                StateResult.SUCCESS,
+                StateResult.SKIPPED,
                 f"Service {self.service_name} already in desired state",
                 changed=False,
             )

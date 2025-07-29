@@ -101,7 +101,6 @@ class SystemResource(ABC):
 
             if self.desired_state_matches(current_state):
                 return OperationResult(
-                    # TODO: Maybe SKIPPED?
                     state=StateResult.SKIPPED,
                     message=f"{self.__class__.__name__} '{self.name}' already in desired state",
                     changed=False,

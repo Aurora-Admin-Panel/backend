@@ -1,7 +1,7 @@
 import os
 import hashlib
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Optional, Dict, Any, Union, TYPE_CHECKING
 from tasks.utils.base import SystemResource, OperationResult, StateResult
 from tasks.utils.helper import q
@@ -61,7 +61,7 @@ class FileResource(SystemResource):
     ) -> None:
         super().__init__(str(path), connection, **kwargs)
 
-        self.path = Path(path)
+        self.path = path.as_posix() if isinstance(path, Path) else PurePosixPath(path)
         self.src = src
         self.content = content
         self.mode = mode
@@ -324,7 +324,9 @@ class DirectoryResource(SystemResource):
 
         # 1. Create directory if needed ------------------------------------
         if not curr_state["exists"]:
-            mkdir_res = self.connection.execute(f"mkdir -p {q(self.path)}")
+            mkdir_res = self.connection.execute(
+                f"mkdir {'-p' if self.recursive else ''} {q(self.path)}"
+            )
             if mkdir_res.failed:
                 return OperationResult(
                     state=StateResult.FAILED,

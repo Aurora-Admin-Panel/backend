@@ -44,10 +44,10 @@ class PackageResource(SystemResource):
             return self._facts_cache["pkg_manager"]
 
         managers = [
-            ("apt", "command -v apt-get"),
-            ("yum", "command -v yum"),
-            ("dnf", "command -v dnf"),
-            ("pacman", "command -v pacman"),
+            ("apt", "bash -c 'command -v apt-get'"),
+            ("yum", "bash -c 'command -v yum'"),
+            ("dnf", "bash -c 'command -v dnf'"),
+            ("pacman", "bash -c 'command -v pacman'"),
         ]
         for mgr, probe in managers:
             if self.connection.execute(probe).ok:
@@ -76,24 +76,22 @@ class PackageResource(SystemResource):
 
         if self.package_manager == "apt":
             res = self.connection.execute(
-                f"dpkg-query -W -f='${{Status}} ${{Version}}' {q(self.package_name)} 2>/dev/null"
+                f"dpkg-query -W -f='${{Status}} ${{Version}}' {q(self.package_name)}"
             )
             if res.ok and "install ok installed" in res.stdout:
                 state["installed"] = True
-                tokens = res.stdout.strip().split()
+                tokens = self.connection.strip_stdout(res).split()
                 if len(tokens) >= 4:
                     state["version"] = tokens[3]
 
         elif self.package_manager in {"yum", "dnf"}:
             res = self.connection.execute(
-                f"{self.package_manager} -q list installed {q(self.package_name)} 2>/dev/null"
+                f"{self.package_manager} -q list installed {q(self.package_name)}"
             )
             state["installed"] = res.ok and self.package_name in res.stdout
 
         elif self.package_manager == "pacman":
-            res = self.connection.execute(
-                f"pacman -Q {q(self.package_name)} 2>/dev/null"
-            )
+            res = self.connection.execute(f"pacman -Q {q(self.package_name)}")
             if res.ok:
                 state["installed"] = True
                 tokens = res.stdout.strip().split()
@@ -171,7 +169,7 @@ class PackageResource(SystemResource):
                 return OperationResult(
                     state=StateResult.FAILED,
                     message=f"Command failed: {cmd}",
-                    stderr=res.stderr or res.stdout,
+                    stderr=self.connection.strip_stdout(res),
                     details={"executed": executed},
                 )
             executed.append(cmd)
