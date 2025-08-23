@@ -73,11 +73,6 @@ def remove_tc(server_id: int, port_num: int):
     tc_runner(**kwargs)
 
 
-def trigger_ansible_hosts():
-    print("Sending ansible_hosts_runner task")
-    ansible_hosts_runner()
-
-
 def trigger_iptables_reset(port: Port):
     kwargs = {"server_id": port.server.id, "port_num": port.num}
     print("Sending iptables.iptables_reset_runner task")

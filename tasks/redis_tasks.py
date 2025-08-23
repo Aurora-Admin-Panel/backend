@@ -1,5 +1,5 @@
 import redis
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from huey import crontab
 from loguru import logger
@@ -12,7 +12,7 @@ from app.core import config
 def clean_pubsub_history():
     ts = int(
         (
-            datetime.utcnow() - timedelta(days=config.TASK_OUTPUT_STORAGE_DAYS)
+            datetime.now(timezone.utc) - timedelta(days=config.TASK_OUTPUT_STORAGE_DAYS)
         ).timestamp()
         * 1000
     )

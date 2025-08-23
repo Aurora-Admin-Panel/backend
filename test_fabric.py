@@ -34,9 +34,9 @@ def main() -> None:
         orch.ensure_service(
             "test_ensure_service",
             "aurora@11344",
-            runtime=ServiceRuntimeState.STARTED,
-            enable=ServiceEnableState.ENABLED,
-            daemon_reload=True,
+            runtime=ServiceRuntimeState.STOPPED,
+            enable=ServiceEnableState.DISABLED,
+            daemon_reload=False,
         ).execute()
     )
     print(res)

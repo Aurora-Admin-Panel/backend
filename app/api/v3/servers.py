@@ -44,7 +44,6 @@ from app.core.auth import (
     get_current_active_admin,
 )
 from app.utils.tasks import (
-    trigger_ansible_hosts,
     trigger_server_connect,
     trigger_server_clean,
 )

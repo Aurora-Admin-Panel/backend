@@ -32,7 +32,6 @@ from app.db.schemas.server import (
 )
 from app.db.session import get_db
 from app.utils.tasks import (
-    trigger_ansible_hosts,
     trigger_server_clean,
     trigger_server_connect,
 )
