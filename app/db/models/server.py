@@ -30,25 +30,10 @@ class ServerUser(Base):
     download = Column(BigInteger, nullable=False, default=lambda: 0)
     upload = Column(BigInteger, nullable=False, default=lambda: 0)
     notes = Column(Text, nullable=True)
-    config = Column(
-        MutableDict.as_mutable(JSON), nullable=False, default=lambda: {}
-    )
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
 
     user = relationship("User", back_populates="allowed_servers")
     server = relationship("Server", back_populates="allowed_users")
-
-
-class ServerUsage(Base):
-    __tablename__ = "server_usage"
-
-    id = Column(Integer, primary_key=True, index=True)
-    server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
-    timestamp = Column(TIMESTAMP, nullable=False)
-    cpu = Column(Numeric(10, 2), nullable=False)
-    memory = Column(Numeric(10, 2), nullable=False)
-    disk = Column(Numeric(10, 2), nullable=False)
-
-    server = relationship("Server", back_populates="usages")
 
 
 class Server(Base):
@@ -68,13 +53,18 @@ class Server(Base):
     port = Column(Integer, nullable=True, default=lambda: 22)
     user = Column(String, nullable=True, default=lambda: "root")
     key_file_id = Column(Integer, ForeignKey("file.id"), nullable=True)
-    config = Column(
-        MutableDict.as_mutable(JSON), nullable=False, default=lambda: {}
-    )
+    config = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     ssh_password = Column(String, nullable=True)
     sudo_password = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
-    last_connect = Column(TIMESTAMP, nullable=True)
+
+    # --- system facts ---
+    os_release = Column(String, nullable=True)
+    probe_version = Column(String, nullable=True)
+    mem_total = Column(BigInteger, nullable=True)
+    swap_total = Column(BigInteger, nullable=True)
+    root_total = Column(BigInteger, nullable=True)
+    last_seen = Column(TIMESTAMP(timezone=True), nullable=True)
 
     ports = relationship("Port", cascade="all,delete", back_populates="server")
     users = relationship(
@@ -91,4 +81,3 @@ class Server(Base):
         lazy="joined",
     )
     key_file = relationship("File", back_populates="servers")
-    usages = relationship("ServerUsage", back_populates="server")
