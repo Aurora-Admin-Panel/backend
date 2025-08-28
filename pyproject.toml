@@ -35,4 +35,9 @@ dependencies = [
     "strawberry-graphql[fastapi]>=0.219.1",
     "uvicorn[standard]>=0.34.0",
     "websockets==10.4",
+    "orjson>=3.10,<4",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,7 +1,7 @@
 import jwt
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from .config import SECRET_KEY
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
@@ -22,7 +22,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_access_token(*, data: dict, expires_delta: timedelta = timedelta(days=7)):
     to_encode = data.copy()
-    expire = datetime.utcnow() + expires_delta
+    expire = datetime.now(UTC) + expires_delta
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

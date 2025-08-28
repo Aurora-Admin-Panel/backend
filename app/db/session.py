@@ -6,9 +6,10 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core import config
 
-engine = create_engine(
-    config.SQLALCHEMY_DATABASE_URI, pool_size=20, max_overflow=5
-)
+if config.SQLALCHEMY_DATABASE_URI is not None:
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URI, pool_size=20, max_overflow=5)
+else:
+    engine = create_engine("sqlite:///./test.db")
 
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()

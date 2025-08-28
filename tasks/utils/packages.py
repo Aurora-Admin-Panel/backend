@@ -118,6 +118,7 @@ class PackageResource(SystemResource):
     def apply_changes(self) -> OperationResult:
         if self.package_manager == "unknown":
             return OperationResult(
+                name=self.name,
                 state=StateResult.FAILED,
                 message="Unsupported/undetected package manager",
                 changed=False,
@@ -167,6 +168,7 @@ class PackageResource(SystemResource):
             res = self.connection.execute(cmd)
             if not res.ok:
                 return OperationResult(
+                    name=self.name,
                     state=StateResult.FAILED,
                     message=f"Command failed: {cmd}",
                     stderr=self.connection.strip_stdout(res),
@@ -175,6 +177,7 @@ class PackageResource(SystemResource):
             executed.append(cmd)
 
         return OperationResult(
+            name=self.name,
             state=StateResult.CHANGED if executed else StateResult.SUCCESS,
             message=f"Package '{self.package_name}' actions: {', '.join(executed)}",
             changed=bool(executed),

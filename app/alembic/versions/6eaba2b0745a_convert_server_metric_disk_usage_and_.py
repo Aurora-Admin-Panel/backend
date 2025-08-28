@@ -1,8 +1,8 @@
 """Convert server_metric, disk_usage and network_counter to hypertable
 
-Revision ID: eb5d8cdadeee
-Revises: 82e1de08b245
-Create Date: 2025-08-26 23:26:09.733220
+Revision ID: 6eaba2b0745a
+Revises: 492e2ac71b0a
+Create Date: 2025-08-28 13:43:25.532935
 
 """
 
@@ -11,9 +11,10 @@ import sqlalchemy as sa
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
 
+
 # revision identifiers, used by Alembic.
-revision = "eb5d8cdadeee"
-down_revision = "82e1de08b245"
+revision = "6eaba2b0745a"
+down_revision = "492e2ac71b0a"
 branch_labels = None
 depends_on = None
 
@@ -29,11 +30,13 @@ def upgrade():
                 if_not_exists => TRUE,
                 migrate_data => TRUE
             );
+            CREATE INDEX IF NOT EXISTS server_metric_sid_time_desc ON server_metric (server_id, time DESC);
             ALTER TABLE server_metric SET (
                 timescaledb.compress,
                 timescaledb.compress_orderby = 'time DESC',
                 timescaledb.compress_segmentby = 'server_id'
             );
+            SELECT add_reorder_policy('server_metric', 'server_metric_sid_time_desc');
             SELECT add_compression_policy('server_metric', INTERVAL '7 days');
             SELECT add_retention_policy('server_metric', INTERVAL '120 days');
         """)
@@ -47,11 +50,13 @@ def upgrade():
                 if_not_exists => TRUE,
                 migrate_data => TRUE
             );
+            CREATE INDEX IF NOT EXISTS disk_usage_sid_time_desc ON disk_usage (server_id, time DESC);
             ALTER TABLE disk_usage SET (
                 timescaledb.compress,
                 timescaledb.compress_orderby = 'time DESC',
-                timescaledb.compress_segmentby = 'server_id'
+                timescaledb.compress_segmentby = 'server_id, mount'
             );
+            SELECT add_reorder_policy('disk_usage', 'disk_usage_sid_time_desc');
             SELECT add_compression_policy('disk_usage', INTERVAL '7 days');
             SELECT add_retention_policy('disk_usage', INTERVAL '120 days');
             """)
@@ -65,11 +70,14 @@ def upgrade():
                 if_not_exists => TRUE,
                 migrate_data => TRUE
             );
+            CREATE INDEX IF NOT EXISTS network_counter_sid_time_desc ON network_counter (server_id, time DESC);
+            CREATE INDEX IF NOT EXISTS network_counter_sid_iface_time_desc ON network_counter (server_id, iface, time DESC);
             ALTER TABLE network_counter SET (
                 timescaledb.compress,
                 timescaledb.compress_orderby = 'time DESC',
-                timescaledb.compress_segmentby = 'server_id'
+                timescaledb.compress_segmentby = 'server_id, iface'
             );
+            SELECT add_reorder_policy('network_counter', 'network_counter_sid_iface_time_desc');
             SELECT add_compression_policy('network_counter', INTERVAL '7 days');
             SELECT add_retention_policy('network_counter', INTERVAL '120 days');
             """)
@@ -86,6 +94,10 @@ def downgrade():
             SELECT remove_compression_policy('disk_usage', if_exists => true);
             SELECT remove_retention_policy('network_counter', if_exists => true);
             SELECT remove_compression_policy('network_counter', if_exists => true);
+            DROP INDEX IF EXISTS server_metric_sid_time_desc;
+            DROP INDEX IF EXISTS disk_usage_sid_time_desc;
+            DROP INDEX IF EXISTS network_counter_sid_time_desc;
+            DROP INDEX IF EXISTS network_counter_sid_iface_time_desc;
             DROP TABLE server_metric CASCADE;
             DROP TABLE disk_usage CASCADE;
             DROP TABLE network_counter CASCADE;
@@ -99,16 +111,8 @@ def downgrade():
         sa.Column("mount", sa.String(), nullable=False),
         sa.Column("used_bytes", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["server_id"], ["server.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("server_id", "time"),
+        sa.PrimaryKeyConstraint("server_id", "mount", "time"),
     )
-    with op.batch_alter_table("disk_usage", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_disk_usage_mount"), ["mount"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_disk_usage_server_id"), ["server_id"], unique=False
-        )
-        batch_op.create_index(batch_op.f("ix_disk_usage_time"), ["time"], unique=False)
 
     op.create_table(
         "network_counter",
@@ -118,18 +122,8 @@ def downgrade():
         sa.Column("rx_bytes_total", sa.BigInteger(), nullable=False),
         sa.Column("tx_bytes_total", sa.BigInteger(), nullable=False),
         sa.ForeignKeyConstraint(["server_id"], ["server.id"], ondelete="CASCADE"),
-        sa.PrimaryKeyConstraint("server_id", "time", "iface"),
+        sa.PrimaryKeyConstraint("server_id", "iface", "time"),
     )
-    with op.batch_alter_table("network_counter", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_network_counter_iface"), ["iface"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_network_counter_server_id"), ["server_id"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_network_counter_time"), ["time"], unique=False
-        )
 
     op.create_table(
         "server_metric",
@@ -148,10 +142,3 @@ def downgrade():
         sa.ForeignKeyConstraint(["server_id"], ["server.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("server_id", "time"),
     )
-    with op.batch_alter_table("server_metric", schema=None) as batch_op:
-        batch_op.create_index(
-            batch_op.f("ix_server_metric_server_id"), ["server_id"], unique=False
-        )
-        batch_op.create_index(
-            batch_op.f("ix_server_metric_time"), ["time"], unique=False
-        )

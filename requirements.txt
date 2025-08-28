@@ -10,7 +10,6 @@ authlib==0.14.3
 bcrypt==3.2.0
 certifi==2024.12.14
 cffi==1.17.1
-charset-normalizer==3.4.1
 click==8.1.8
 cryptography==44.0.0
 decorator==5.1.1
@@ -74,3 +73,4 @@ uvloop==0.21.0
 watchfiles==1.0.4
 websockets==10.4
 wrapt==1.17.2
+orjson==3.9.15

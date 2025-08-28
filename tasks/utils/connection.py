@@ -1,32 +1,39 @@
-import os
+import re
+import io
 import time
+import asyncio
 import pathlib
 from pathlib import Path
 from decimal import Decimal
 from typing import Tuple, Union
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
+from loguru import logger
 import redis
+from redis import Redis
+from huey.api import Task
 from fabric import Connection, Result
 
-from app.core import config
+from app.core import config, codec
+from app.core.redis_keyspace import Keys
 
+from tasks.utils.redis_client import get_redis
 from tasks.utils.exception import AuroraException
 from tasks.utils.helper import q
-from tasks.utils.files import get_md5_for_file
 
 
 class AuroraConnection(Connection):
+    task: Task = None
+    redis: Redis = None
+
     def __init__(self, *args, **kwargs):
         self._set(task=kwargs.pop("task", None))
-        self._set(
-            redis=redis.StrictRedis(host=config.REDIS_HOST, port=config.REDIS_PORT)
-        )
+        self._set(redis=get_redis())
 
         if self.task:
             self.redis.zadd(
-                "aurora:task:ids",
-                {self.task.id: datetime.utcnow().timestamp()},
+                Keys.task_ids(),
+                {self.task.id: int(time.time_ns())},
             )
         super().__init__(*args, **kwargs)
 
@@ -40,19 +47,24 @@ class AuroraConnection(Connection):
         return self.user == "root"
 
     def check_sudo(self):
+        if not self.is_connected:
+            self.open()
         if not self.is_root:
             groups = super().run("groups", pty=True, hide=True).stdout.strip()
             if "sudo" not in groups:
                 raise AuroraException("User is not in sudo group")
 
-    def _root_run(self, *args, pty: bool = True, **kwargs):
+    def _root_run(self, *args, **kwargs):
         if self.is_root:
-            return super().run(*args, pty=pty, **kwargs)
+            return super().run(*args, **kwargs)
         else:
-            return super().sudo(*args, pty=pty, **kwargs)
+            kwargs.pop("pty", None)
+            return super().sudo(*args, pty=True, **kwargs)
 
     def strip_stdout(self, result: Result) -> str:
-        return result.stdout.strip("[sudo] password:").strip()
+        out = result.stdout
+        out = re.sub(r"^\[sudo\]\s+password:\s*", "", out, count=1)
+        return out.strip()
 
     def run(self, *args, publish: bool = True, **kwargs) -> str:
         # logger.debug(f"Running {args} on {self.host}")
@@ -64,12 +76,12 @@ class AuroraConnection(Connection):
             self.publish(stdout)
         return stdout
 
-    def execute(self, cmd: str, *, pty: bool = True) -> Result:
-        return self._root_run(cmd, hide=True, warn=True, pty=pty)
+    def execute(self, cmd: str) -> Result:
+        return self._root_run(cmd, hide=True, warn=True)
 
     def _test(self, flag: str, path: Union[str, Path]) -> bool:
         cmd = f"test {flag} {q(str(path))}"
-        return self.execute(cmd, pty=False).ok
+        return self.execute(cmd).ok
 
     # public shortcuts
     def exists(self, path: Union[str, Path]) -> bool:
@@ -122,72 +134,35 @@ class AuroraConnection(Connection):
 
     def close(self):
         if self.task:
-            # Sleep for a bit so that stopword score is slightly larger
-            time.sleep(0.1)
             self.publish(config.PUBSUB_STOPWORD)
         self.redis.close()
         super().close()
 
     def publish(self, text: str):
-        if self.task:
-            self.redis.publish(f"{config.PUBSUB_PREFIX}:{self.task.id}", text)
-            self.redis.zadd(
-                f"{config.PUBSUB_PREFIX}:{self.task.id}:history",
-                {text: datetime.utcnow().timestamp()},
-            )
+        if not self.task:
+            return
+
+        now_ns = time.time_ns()
+        payload = codec.dumps(
+            {
+                "text": text,
+                "task_id": self.task.id,
+                "ts_ns": now_ns,
+            }
+        )
+        pipe = self.redis.pipeline(transaction=False)
+        pipe.xadd(
+            Keys.task_stream(self.task.id),
+            {"payload": payload},
+            maxlen=config.PUBSUB_STREAM_MAXLEN,
+            approximate=True,
+        )
+        pipe.zadd(Keys.task_ids(), {self.task.id: now_ns // 1000})
+        pipe.expire(
+            Keys.task_stream(self.task.id),
+            timedelta(days=int(config.TASK_OUTPUT_STORAGE_DAYS)),
+        )
+        pipe.execute()
 
     def mktemp(self) -> str:
         return super().run("mktemp", hide=True).stdout.strip()
-
-    def ensure_folder(
-        self, path: str | Path, owner: str = None, mode: str = None
-    ) -> Result:
-        if not self.directory_exists(path):
-            self._root_run(f"mkdir -p {path}")
-
-        if owner:
-            self._root_run(f"chown {owner} {path}")
-        elif owner is None:
-            self._root_run(f"chown {self.user}:{self.user} {path}")
-
-        if mode:
-            self._root_run(f"chmod {mode} {path}")
-
-    def ensure_file(
-        self, local_path: str, remote_path: str, ensure_same: bool = True
-    ) -> None:
-        if not pathlib.Path(local_path).exists():
-            raise AuroraException(f"{local_path} does not exist")
-
-        if self.file_exists(remote_path):
-            if ensure_same:
-                local_md5 = get_md5_for_file(local_path)
-                remote_md5 = self.get_file_md5sum(remote_path)
-                if remote_md5 == local_md5:
-                    return
-        self.put(local_path, "/tmp")
-        self.ensure_folder(os.path.dirname(remote_path))
-        self._root_run(
-            f"mv /tmp/{os.path.basename(local_path)} {remote_path}", hide=True
-        )
-
-    def ensure_content(
-        self,
-        content: str,
-        remote_path: str,
-        owner: str = None,
-        mode: str = None,
-    ) -> None:
-        # TODO: not working for win
-        self.ensure_folder(os.path.dirname(remote_path))
-
-        temp_path = self.mktemp()
-        with self.sftp() as sftp:
-            with sftp.file(temp_path, "w") as temp_file:
-                temp_file.write(content)
-
-        self._root_run(f"mv {temp_path} {remote_path}", hide=True)
-        if owner:
-            self._root_run(f"chown {owner} {remote_path}", hide=True)
-        if mode:
-            self._root_run(f"chmod {mode} {remote_path}", hide=True)

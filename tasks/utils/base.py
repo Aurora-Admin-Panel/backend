@@ -3,6 +3,7 @@ from enum import Enum
 from dataclasses import dataclass, field
 from typing import Dict, Any, List, Optional, Union, Callable, TYPE_CHECKING
 
+from click import Option
 from loguru import logger
 
 from tasks.utils.exception import AuroraException
@@ -21,6 +22,7 @@ class StateResult(Enum):
 @dataclass
 class OperationResult:
     state: StateResult
+    name: Optional[str] = None
     message: str = ""
     changed: bool = False
     stdout: str = ""
@@ -101,6 +103,7 @@ class SystemResource(ABC):
 
             if self.desired_state_matches(current_state):
                 return OperationResult(
+                    name=self.name,
                     state=StateResult.SKIPPED,
                     message=f"{self.__class__.__name__} '{self.name}' already in desired state",
                     changed=False,
@@ -108,6 +111,7 @@ class SystemResource(ABC):
 
             if self.check_mode:
                 return OperationResult(
+                    name=self.name,
                     state=StateResult.CHANGED,
                     message=f"{self.__class__.__name__} '{self.name}' would be in desired state",
                     changed=True,
@@ -119,6 +123,7 @@ class SystemResource(ABC):
                 f"AuroraException in {self.__class__.__name__} '{self.name}': {e}"
             )
             return OperationResult(
+                name=self.name,
                 state=StateResult.FAILED,
                 message=f"AuroraException in {self.__class__.__name__} '{self.name}': {e}",
                 stderr=str(e),
@@ -126,6 +131,7 @@ class SystemResource(ABC):
         except Exception as e:
             logger.exception(f"Error ensuring {self.__class__.__name__} '{self.name}'")
             return OperationResult(
+                name=self.name,
                 state=StateResult.FAILED,
                 message=f"Failed to ensure {self.__class__.__name__} '{self.name}'",
                 stderr=str(e),

@@ -16,7 +16,7 @@ import tasks
 from app.core import config
 from app.db.models import Port as DBPort
 from app.db.models import PortUser as DBPortUser
-from app.db.models import Server as DBServer, ServerUsage as DBServerUsage
+from app.db.models import Server as DBServer
 from app.db.models import ServerUser as DBServerUser
 from app.db.models import User as DBUser
 from app.utils.permission import has_permission_of_server
@@ -360,18 +360,19 @@ class Server:
 
         while True:
             async with async_db_session() as async_db:
-                stmt = (
-                    select(DBServerUsage)
-                    .where(DBServerUsage.server_id == server_id)
-                    .order_by(DBServerUsage.timestamp.desc())
-                    .limit(1)
-                )
-                result = await async_db.execute(stmt)
-                data = result.scalars().unique().first()
-                if data and data.timestamp > datetime.now() - timedelta(
-                    seconds=config.SERVER_USAGE_INTERVAL_SECONDS * 10
-                ):
-                    yield data
-                else:
-                    yield None
+                yield None
+                # stmt = (
+                #     select(DBServerUsage)
+                #     .where(DBServerUsage.server_id == server_id)
+                #     .order_by(DBServerUsage.timestamp.desc())
+                #     .limit(1)
+                # )
+                # result = await async_db.execute(stmt)
+                # data = result.scalars().unique().first()
+                # if data and data.timestamp > datetime.now() - timedelta(
+                #     seconds=config.SERVER_USAGE_INTERVAL_SECONDS * 10
+                # ):
+                #     yield data
+                # else:
+                #     yield None
             await asyncio.sleep(config.SERVER_USAGE_INTERVAL_SECONDS)

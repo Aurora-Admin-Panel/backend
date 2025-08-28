@@ -1,40 +1,30 @@
-import asyncio
-from typing import Optional, Annotated
 from contextlib import asynccontextmanager
 
-import jwt
 import uvicorn
-from app.api.auth import auth_router
-from app.core import config, security
-from app.core.auth import get_current_active_user
-from app.db.async_session import async_db_session
-from app.graphql.schema import schema
-from app.graphql.user import User
-from app.db.session import db_session
-from app.utils.ip import get_external_ip
-from app.db.crud.user import get_user_by_email
-from app.websocket.handler import handler
-from fastapi import Depends, FastAPI, Request, WebSocket
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.security.utils import get_authorization_scheme_param
-from sentry_sdk.integrations.redis import RedisIntegration
-from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
-from sqlalchemy.exc import IntegrityError
 from starlette.middleware import Middleware
-from sse_starlette.sse import EventSourceResponse
 from strawberry.fastapi import GraphQLRouter
 from strawberry.subscriptions import (
     GRAPHQL_TRANSPORT_WS_PROTOCOL,
     GRAPHQL_WS_PROTOCOL,
 )
+from loguru import logger
+
+from app.api.auth import auth_router
+from app.core import config
+from app.graphql.schema import schema
+from app.websocket.handler import handler
+from tasks.server import servers_usage_runner
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting lifespan")
-    from tasks import servers_usage_runner
+    logger.info("Starting lifespan")
+    logger.info("Starting servers usage runner")
     servers_usage_runner.schedule(delay=0)
     yield
+
 
 app = FastAPI(
     title=config.PROJECT_NAME,

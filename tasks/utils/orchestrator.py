@@ -7,7 +7,8 @@ from tasks.utils.base import (
     StateResult,
     SystemResource,
 )
-from tasks.utils.files import FileResource, DirectoryResource
+from tasks.utils.system import SystemInfoResource
+from tasks.utils.files import FileResource, DirectoryResource, TempFileResource
 from tasks.utils.systemd import (
     SystemdServiceResource,
     ServiceRuntimeState,
@@ -67,6 +68,11 @@ class SystemOrchestrator:
     # ------------------------------------------------------------------#
     # resource convenience builders
     # ------------------------------------------------------------------#
+    def system_info(self, name: str = "system_info") -> "SystemOrchestrator":
+        """Add a system info gathering task (monitoring only, no thresholds)."""
+        res = SystemInfoResource(name, self.connection)
+        return self._add_task(name, res)
+
     def ensure_file(
         self,
         name: str,
@@ -176,6 +182,7 @@ class SystemOrchestrator:
                 res = task.ensure()
             except Exception as exc:  # pragma: no cover
                 res = OperationResult(
+                    name=task.name,
                     state=StateResult.FAILED,
                     message=f"Unhandled exception in '{task.name}': {exc}",
                     stderr=str(exc),
@@ -200,3 +207,22 @@ class SystemOrchestrator:
             results=results,
             failed_tasks=failed,
         )
+
+    # ------------------------------------------------------------------#
+    # helper methods for accessing created resources
+    # ------------------------------------------------------------------#
+    def get_temp_path(self, task_name: str) -> Optional[str]:
+        """Get the temporary path created by a temp file/dir task."""
+        for task in self._tasks:
+            if task.name == task_name and isinstance(task, TempFileResource):
+                return task.temp_path
+        return None
+
+    def cleanup_temp_resources(self) -> List[OperationResult]:
+        """Clean up all temporary resources created by this orchestrator."""
+        cleanup_results = []
+        for task in self._tasks:
+            if isinstance(task, TempFileResource) and task.temp_path:
+                result = task.cleanup()
+                cleanup_results.append(result)
+        return cleanup_results

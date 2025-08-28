@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import TYPE_CHECKING
 from sqlalchemy.orm import relationship
 from sqlalchemy import (
@@ -33,12 +33,12 @@ class File(Base):
     storage_path = Column(String, nullable=False)
     version = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.utcnow,
+        default=datetime.now(UTC),
         nullable=False,
-        onupdate=datetime.utcnow,
+        onupdate=datetime.now(UTC),
     )
 
     servers = relationship("Server", back_populates="key_file")

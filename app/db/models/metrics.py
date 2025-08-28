@@ -42,6 +42,7 @@ class ServerMetric(Base):
     # optional deriveds
     mem_used_pct = Column(Float, nullable=True)
     fs_root_used_pct = Column(Float, nullable=True)
+    swap_used_pct = Column(Float, nullable=True)
 
     server = relationship("Server", lazy="joined")
 
@@ -59,7 +60,7 @@ class DiskUsage(Base):
         primary_key=True,
         index=True,
     )
-    mount = Column(String, nullable=False, index=True)
+    mount = Column(String, nullable=False, primary_key=True, index=True)
     used_bytes = Column(BigInteger, nullable=False)
 
     server = relationship("Server", lazy="joined")

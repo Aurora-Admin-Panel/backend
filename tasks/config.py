@@ -1,4 +1,4 @@
-from huey import PriorityRedisHuey, PriorityRedisExpireHuey
+from huey import PriorityRedisExpireHuey
 
 from app.core import config
 

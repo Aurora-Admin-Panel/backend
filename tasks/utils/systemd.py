@@ -179,6 +179,7 @@ class SystemdServiceResource(SystemResource):
             if not res.ok:
                 return OperationResult(
                     StateResult.FAILED,
+                    self.name,
                     f"Command failed: {cmd}",
                     stderr=res.stderr or res.stdout,
                     details={"executed": executed},
@@ -190,12 +191,14 @@ class SystemdServiceResource(SystemResource):
         if not executed:
             return OperationResult(
                 StateResult.SKIPPED,
+                self.name,
                 f"Service {self.service_name} already in desired state",
                 changed=False,
             )
 
         return OperationResult(
             StateResult.CHANGED,
+            self.name,
             f"Service {self.service_name}: {'; '.join(executed)}",
             changed=True,
             details={"executed": executed},
@@ -263,11 +266,13 @@ class SystemdUnitFileResource(SystemResource):
             if not res.ok:
                 return OperationResult(
                     StateResult.FAILED,
+                    self.name,
                     f"Failed to daemon-reload after updating {self.unit_filename}",
                     stderr=res.stderr or res.stdout,
                 )
             return OperationResult(
                 StateResult.CHANGED,
+                self.name,
                 f"Unit {self.unit_filename} updated and daemon reloaded",
                 changed=True,
                 details={"file_changes": file_result.details.get("changes", [])},
@@ -275,6 +280,7 @@ class SystemdUnitFileResource(SystemResource):
 
         return OperationResult(
             StateResult.SUCCESS,
+            self.name,
             f"Unit {self.unit_filename} already in desired state",
             changed=False,
         )

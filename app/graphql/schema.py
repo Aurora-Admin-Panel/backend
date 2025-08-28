@@ -1,6 +1,7 @@
 import asyncio
 from typing import AsyncGenerator, List, Optional, Dict
 
+from invoke.util import task_name_sort_key
 import strawberry
 import redis.asyncio as redis
 from strawberry.types import Info
@@ -10,10 +11,9 @@ from .auth import IsAuthenticated, IsAdmin, IsSuperUser, EnsureUser
 from .file import File
 from .port import Port, PortUser
 from .port_forward import PortForwardRule
-from .server import Server, ServerUser, ServerUsage
+from .server import Server, ServerUser
 from .user import User
-from .task import task
-from .channel import subscribe
+from .task import task, task_stream
 from .utils import PaginationWindow
 
 
@@ -126,8 +126,8 @@ async def count(info: Info, target: int = 1) -> AsyncGenerator[int, None]:
 
 @strawberry.type
 class Subscription:
-    subscribe_channel: AsyncGenerator[JSON, None] = strawberry.subscription(
-        resolver=subscribe, permission_classes=[]
+    task_stream: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=task_stream, permission_classes=[]
     )
     task: AsyncGenerator[JSON, None] = strawberry.subscription(
         resolver=task, permission_classes=[]
@@ -135,7 +135,7 @@ class Subscription:
     count: AsyncGenerator[int, None] = strawberry.subscription(
         resolver=count, permission_classes=[]
     )
-    server_usage: AsyncGenerator[ServerUsage | None, None] = strawberry.subscription(
+    server_usage: AsyncGenerator[JSON | None, None] = strawberry.subscription(
         resolver=Server.get_usage, permission_classes=[IsAuthenticated]
     )
     connect_server: AsyncGenerator[JSON, None] = strawberry.subscription(
@@ -143,6 +143,4 @@ class Subscription:
     )
 
 
-schema = strawberry.Schema(
-    query=Query, mutation=Mutation, subscription=Subscription
-)
+schema = strawberry.Schema(query=Query, mutation=Mutation, subscription=Subscription)
