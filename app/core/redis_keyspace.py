@@ -26,4 +26,8 @@ class Keys:
 
     @staticmethod
     def server_usage_task(server_id: int) -> str:
-        return rkey("server", "usage", server_id)
+        return rkey("server", "usage", "task", server_id)
+
+    @staticmethod
+    def server_metric_snapshot(server_id) -> str:
+        return rkey("server", "metric", "snapshot", server_id)

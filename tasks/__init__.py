@@ -14,4 +14,4 @@ from .config import huey
 # from .redis_tasks import *
 # from .test import *
 
-from tasks.server import server_usage_runner, servers_usage_runner
+from tasks.server import server_usage_runner, servers_usage_runner, connect_runner2

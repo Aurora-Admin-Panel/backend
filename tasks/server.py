@@ -70,8 +70,7 @@ def finished_handler(server_id: int, md5: str = None):
 @huey.task(priority=3, context=True)
 def connect_runner2(server_id: int, task: Task):
     try:
-        with connect(server_id=server_id, task=task) as c:
-            c.get_os_release()
+        with connect(server_id=server_id, task=task):
             return {"success": True}
     except AuroraException as e:
         return {"error": str(e)}
@@ -134,9 +133,7 @@ def server_usage_runner(server_id: int, task: Task):
         logger.debug(
             f"Scheduling server_usage_runner for server {server.name} with delay {delay} seconds"
         )
-        res: Result = server_usage_runner.schedule(
-            args=(server_id,), delay=jitter(delay, "10%")
-        )
+        res: Result = server_usage_runner.schedule(args=(server_id,), delay=delay)
         with get_redis() as r:
             if existing_task_id := r.get(Keys.server_usage_task(server.id)):
                 huey.revoke_by_id(existing_task_id)
@@ -148,16 +145,17 @@ def servers_usage_runner():
     with db_session() as db:
         servers = db.query(Server).filter(Server.is_active.is_(True)).all()
         for server in servers:
-            logger.debug(
-                f"Starting server_usage_runner for server {server.name} in "
-                f"{SERVER_USAGE_INTERVAL_SECONDS} seconds"
-            )
-            delay = jitter(SERVER_USAGE_INTERVAL_SECONDS, "20%")
-            res: Result = server_usage_runner.schedule(args=(server.id,), delay=delay)
             with get_redis() as r:
-                if existing_task_id := r.get(Keys.server_usage_task(server.id)):
-                    huey.revoke_by_id(existing_task_id)
-                r.set(Keys.server_usage_task(server.id), res.id)
+                if not r.get(Keys.server_usage_task(server.id)):
+                    logger.debug(
+                        f"Starting server_usage_runner for server {server.name} in "
+                        f"{SERVER_USAGE_INTERVAL_SECONDS} seconds"
+                    )
+                    delay = jitter(SERVER_USAGE_INTERVAL_SECONDS, "30%")
+                    res: Result = server_usage_runner.schedule(
+                        args=(server.id,), delay=delay
+                    )
+                    r.set(Keys.server_usage_task(server.id), res.id)
 
 
 SCRIPT = """

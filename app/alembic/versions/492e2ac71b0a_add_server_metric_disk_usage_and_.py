@@ -55,6 +55,8 @@ def upgrade():
         sa.Column("mem_used_pct", sa.Float(), nullable=True),
         sa.Column("fs_root_used_pct", sa.Float(), nullable=True),
         sa.Column("swap_used_pct", sa.Float(), nullable=True),
+        sa.Column("net_rx_bps", sa.Float(), nullable=True),
+        sa.Column("net_tx_bps", sa.Float(), nullable=True),
         sa.ForeignKeyConstraint(["server_id"], ["server.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("server_id", "time"),
     )

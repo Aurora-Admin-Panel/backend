@@ -43,6 +43,8 @@ class ServerMetric(Base):
     mem_used_pct = Column(Float, nullable=True)
     fs_root_used_pct = Column(Float, nullable=True)
     swap_used_pct = Column(Float, nullable=True)
+    net_rx_bps = Column(Float, nullable=True)
+    net_tx_bps = Column(Float, nullable=True)
 
     server = relationship("Server", lazy="joined")
 

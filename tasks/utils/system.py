@@ -1,11 +1,17 @@
 import re
 import time
+from datetime import datetime, timedelta, UTC
 from pathlib import Path, PurePosixPath
 from decimal import Decimal
-from typing import Dict, Any, List, Tuple, TYPE_CHECKING
+from typing import Dict, Any, List, Tuple, Optional, TYPE_CHECKING
 
+from dateutil import parser
 from invoke.exceptions import UnexpectedExit
 
+from app.utils.size import get_readable_size
+from app.core import config, codec
+from app.core.redis_keyspace import Keys
+from tasks.utils.redis_client import get_redis
 from tasks.utils.base import SystemResource, OperationResult, StateResult
 from tasks.utils.helper import q  # your existing shell-quote helper
 from tasks.utils.files import FileResource
@@ -63,7 +69,9 @@ class SystemInfoResource(SystemResource):
     def check_current_state(self) -> Dict[str, Any]:
         cache_key = "system_info_snapshot"
         cached = self._facts_cache.get(cache_key)
-        if cached and (time.time() - cached.get("ts", 0)) < self.snapshot_ttl_sec:
+        if cached and (
+            datetime.now(UTC) - cached.get("dt", datetime.min.replace(tzinfo=UTC))
+        ) < timedelta(seconds=self.snapshot_ttl_sec):
             return cached
 
         self._ensure_probe_installed()
@@ -75,13 +83,25 @@ class SystemInfoResource(SystemResource):
             env += f"IFACE_INCLUDE={q(self.iface_include)} "
         if self.iface_exclude:
             env += f"IFACE_EXCLUDE={q(self.iface_exclude)} "
+
         try:
             out = self.connection.run(f"{env}{q(self.probe_path)}", publish=False)
-            snapshot = self._parse_probe_output(out)
+
+            last_snapshot = None
+            with get_redis() as r:
+                if last_snapshot := r.get(Keys.server_metric_snapshot(self.name)):
+                    last_snapshot = codec.loads(last_snapshot)
+                    if dt := last_snapshot.get("dt"):
+                        dt = parser.isoparse(dt)
+                        last_snapshot["dt"] = dt
+                    else:
+                        last_snapshot = None
+
+            snapshot = self._parse_probe_output(out, last_snapshot=last_snapshot)
             self._facts_cache[cache_key] = snapshot
             return snapshot
         except Exception as e:
-            return {"ts": int(time.time()), "error": str(e)}
+            return {"dt": datetime.now(UTC), "error": str(e)}
 
     def desired_state_matches(self, current_state: Dict[str, Any]) -> bool:
         return False
@@ -101,7 +121,18 @@ class SystemInfoResource(SystemResource):
             f"Load {current_state['load1']:.2f}/{current_state['load5']:.2f}/{current_state['load15']:.2f} | "
             f"Mem {pct(current_state['mem_used'], current_state['mem_total']):.1f}% | "
             f"Disk {pct(current_state['root_used'], current_state['root_total']):.1f}%"
+        ) + (
+            f" | Net ↓ {get_readable_size(current_state['extra']['net_rx_bps'])}/s / ↑ {get_readable_size(current_state['extra']['net_tx_bps'])}/s"
+            if current_state["extra"].get("net_rx_bps")
+            and current_state["extra"].get("net_tx_bps")
+            else ""
         )
+        with get_redis() as r:
+            r.set(
+                Keys.server_metric_snapshot(self.name),
+                codec.dumps(current_state),
+                ex=config.SERVER_USAGE_INTERVAL_SECONDS * 2,
+            )
         return OperationResult(
             name=self.name,
             state=StateResult.SUCCESS,
@@ -124,14 +155,18 @@ class SystemInfoResource(SystemResource):
         if res.failed:
             raise RuntimeError(f"Failed to install probe: {res.message}")
 
-    def _parse_probe_output(self, out: str) -> Dict[str, Any]:
+    def _parse_probe_output(
+        self, out: str, last_snapshot: Optional[Dict] = None
+    ) -> Dict[str, Any]:
+        if last_snapshot is None:
+            last_snapshot = {}
         os_release = None
         load1 = load5 = load15 = None
         uptime_s = None
         cpu_pct = None
         mem_total = mem_used = swap_total = swap_used = None
         disks: List[Dict[str, Any]] = []
-        nics: Dict[str, Tuple[int, int]] = {}
+        ifaces: List[Dict[str, Any]] = []
 
         for raw_line in out.splitlines():
             line = raw_line.strip()
@@ -159,28 +194,32 @@ class SystemInfoResource(SystemResource):
                 )
             elif tag == "NIC" and len(rest) >= 3:
                 iface, rx, tx = rest[:3]
-                nics[iface] = (int(rx), int(tx))
-        now = time.time()
+                ifaces.append(
+                    {
+                        "iface": iface,
+                        "rx_bytes": int(rx),
+                        "tx_bytes": int(tx),
+                    }
+                )
+        now = datetime.now(UTC)
         root_total, root_used = self._root_bytes(disks)
-        ifaces, sum_rx_bps, sum_tx_bps = self._compute_net_rates(now, nics)
+        sum_rx_bps, sum_tx_bps = self._compute_net_rates(now, ifaces, last_snapshot)
         ifaces.sort(key=lambda x: x["iface"])  # stable order
 
         return {
-            "ts": int(now),
+            "dt": now,
             "is_online": True,
             "os_release": os_release,
-            "cpu_pct": Decimal(str(cpu_pct or 0)),
-            "load1": Decimal(str(load1 or 0)),
-            "load5": Decimal(str(load5 or 0)),
-            "load15": Decimal(str(load15 or 0)),
+            "cpu_pct": float(str(cpu_pct or 0)),
+            "load1": float(str(load1 or 0)),
+            "load5": float(str(load5 or 0)),
+            "load15": float(str(load15 or 0)),
             "mem_total": int(mem_total or 0),
             "mem_used": int(mem_used or 0),
             "swap_total": int(swap_total or 0),
             "swap_used": int(swap_used or 0),
             "root_total": int(root_total),
             "root_used": int(root_used),
-            "net_rx_bps": int(sum_rx_bps),
-            "net_tx_bps": int(sum_tx_bps),
             "disks": disks,
             "ifaces": ifaces,
             "extra": {
@@ -189,6 +228,9 @@ class SystemInfoResource(SystemResource):
                 "probe_path": self.probe_path.as_posix(),
                 "mem_used_pct": pct(int(mem_used or 0), int(mem_total or 0)),
                 "root_used_pct": pct(int(root_used or 0), int(root_total or 0)),
+                "swap_used_pct": pct(int(swap_used or 0), int(swap_total or 0)),
+                "net_rx_bps": sum_rx_bps,
+                "net_tx_bps": sum_tx_bps,
             },
         }
 
@@ -203,41 +245,25 @@ class SystemInfoResource(SystemResource):
         return 0, 0
 
     def _compute_net_rates(
-        self, now_ts: float, nics: Dict[str, Tuple[int, int]]
-    ) -> Tuple[List[Dict[str, Any]], int, int]:
-        prev = self._facts_cache.get(
-            "net_prev"
-        )  # {"ts": float, "nics": {iface: (rx,tx)}}
-        ifaces: List[Dict[str, Any]] = []
-        sum_rx_bps = sum_tx_bps = 0
+        self, now: datetime, ifaces: List[Dict[str, Any]], last_snapshot: Dict[str, Any]
+    ) -> Tuple[Optional[float], Optional[float]]:
+        if (last_dt := last_snapshot.get("dt")) is None:
+            return None, None
+        elif (dt := (now - last_dt).total_seconds()) > int(
+            config.SERVER_USAGE_INTERVAL_SECONDS * 2
+        ):
+            return None, None
+        if (last_ifaces := last_snapshot.get("ifaces")) is None:
+            return None, None
 
-        dt = None
-        if prev and "ts" in prev:
-            dt = max(0.001, now_ts - float(prev["ts"]))
-
-        for iface, (rx_bytes, tx_bytes) in nics.items():
-            rx_bps = tx_bps = 0
-            if dt and prev and iface in prev.get("nics", {}):
-                prx, ptx = prev["nics"][iface]
-                drx = rx_bytes - int(prx)
-                dtx = tx_bytes - int(ptx)
-                if drx < 0:
-                    drx = 0
-                if dtx < 0:
-                    dtx = 0
-                rx_bps = int(drx / dt)
-                tx_bps = int(dtx / dt)
-                sum_rx_bps += rx_bps
-                sum_tx_bps += tx_bps
-            ifaces.append(
-                {
-                    "iface": iface,
-                    "rx_bytes": int(rx_bytes),
-                    "tx_bytes": int(tx_bytes),
-                    "rx_bps": int(rx_bps),
-                    "tx_bps": int(tx_bps),
-                }
-            )
-
-        self._facts_cache["net_prev"] = {"ts": now_ts, "nics": nics}
-        return ifaces, sum_rx_bps, sum_tx_bps
+        last_sum_rx_bytes = last_sum_tx_bytes = 0
+        for iface in last_ifaces:
+            last_sum_rx_bytes += iface["rx_bytes"]
+            last_sum_tx_bytes += iface["tx_bytes"]
+        now_sum_rx_bytes = now_sum_tx_bytes = 0
+        for iface in ifaces:
+            now_sum_rx_bytes += iface["rx_bytes"]
+            now_sum_tx_bytes += iface["tx_bytes"]
+        sum_rx_bps = (now_sum_rx_bytes - last_sum_rx_bytes) / dt
+        sum_tx_bps = (now_sum_tx_bytes - last_sum_tx_bytes) / dt
+        return sum_rx_bps, sum_tx_bps

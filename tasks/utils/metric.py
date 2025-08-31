@@ -43,14 +43,14 @@ def build_metric_models(details: dict, server_id: int) -> ServerSnapshot:
       - NetworkCounter (one row per iface)
     """
     # Convert epoch seconds to timezone-aware UTC timestamp
-    ts = details.get("ts")
-    dt = datetime.fromtimestamp(int(ts), tz=UTC) if ts else datetime.now(UTC)
+    dt = details.get("dt")
 
     # Raw values
     mem_used = _to_int(details.get("mem_used"))
     mem_total = _to_int(details.get("mem_total"))
     root_used = _to_int(details.get("root_used"))
     root_total = _to_int(details.get("root_total"))
+    swap_used = _to_int(details.get("swap_used"))
     swap_total = _to_int(details.get("swap_total"))
 
     # Derived percentages (fall back to computed even if provided in extra)
@@ -58,15 +58,19 @@ def build_metric_models(details: dict, server_id: int) -> ServerSnapshot:
         mem_used_pct = _to_float(mem_used_pct)
     else:
         mem_used_pct = 100.0 * mem_used / mem_total if mem_total > 0 else None
+
     if root_used_pct := details.get("extra", {}).get("root_used_pct"):
         root_used_pct = _to_float(root_used_pct)
     else:
         root_used_pct = 100.0 * root_used / root_total if root_total > 0 else None
-    swap_used_pct = (
-        100.0 * _to_int(details.get("swap_used")) / swap_total
-        if swap_total > 0
-        else None
-    )
+
+    if swap_used_pct := details.get("extra", {}).get("swap_used_pct"):
+        swap_used_pct = _to_float(swap_used_pct)
+    else:
+        swap_used_pct = 100.0 * swap_used / swap_total if swap_total > 0 else None
+
+    net_rx_bps = _to_float(details.get("extra", {}).get("net_rx_bps"), None)
+    net_tx_bps = _to_float(details.get("extra", {}).get("net_tx_bps"), None)
 
     server_metric = ServerMetric(
         time=dt,
@@ -77,11 +81,13 @@ def build_metric_models(details: dict, server_id: int) -> ServerSnapshot:
         load_5m=_to_float(details.get("load5")),
         load_15m=_to_float(details.get("load15")),
         mem_used_bytes=mem_used,
-        swap_used_bytes=_to_int(details.get("swap_used")),
+        swap_used_bytes=swap_used,
         fs_root_used_bytes=root_used,
         mem_used_pct=mem_used_pct,
         fs_root_used_pct=root_used_pct,
         swap_used_pct=swap_used_pct,
+        net_rx_bps=net_rx_bps,
+        net_tx_bps=net_tx_bps,
     )
 
     # One row per disk

@@ -4,7 +4,7 @@ from .port import Port, PortUser, PortUsage
 from .port_forward import PortForwardRule, TypeEnum, MethodEnum
 from .user import User
 from .file import File, FileTypeEnum
-from .metrics import ServerMetric, DiskUsage, NetworkCounter
+from .metric import ServerMetric, DiskUsage, NetworkCounter
 
 __all__ = [
     "Base",
