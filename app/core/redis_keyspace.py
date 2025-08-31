@@ -25,8 +25,12 @@ class Keys:
         return rkey(config.PUBSUB_PREFIX, task_id, "stream")
 
     @staticmethod
-    def server_usage_task(server_id: int) -> str:
-        return rkey("server", "usage", "task", server_id)
+    def server_metric_pubsub() -> str:
+        return rkey("server", "metric", "pubsub")
+
+    @staticmethod
+    def server_metric_task(server_id: int) -> str:
+        return rkey("server", "metric", "task", server_id)
 
     @staticmethod
     def server_metric_snapshot(server_id) -> str:

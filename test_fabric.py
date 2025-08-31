@@ -12,7 +12,7 @@ from tasks.utils.connect import connect
 
 
 def main() -> None:
-    with connect(server_id=204) as c:
+    with connect(server_id=203) as c:
         # c.sudo("whoami", hide="stderr")
         # print(c.execute("stat -c '%a %U %G' /tmp/test_file.txt"))
         orch = SystemOrchestrator(c)

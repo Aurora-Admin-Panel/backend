@@ -11,8 +11,10 @@ from huey.api import Result, Task
 from loguru import logger
 from websockets.connection import SERVER
 
+from app.core import codec
 from app.core.redis_keyspace import Keys
 from app.core.config import SERVER_USAGE_INTERVAL_SECONDS
+from app.utils.model import to_json
 from app.db.session import db_session
 from app.db.models import Server
 from app.db.crud.server import get_server, get_servers
@@ -105,9 +107,14 @@ def server_usage_runner(server_id: int, task: Task):
                 ),
                 None,
             ):
+                snapshot = build_metric_models(info.details, server_id)
+                with get_redis() as r:
+                    r.publish(
+                        Keys.server_metric_pubsub(),
+                        codec.dumps(to_json(snapshot.metric)),
+                    )
                 with db_session() as db:
                     server = get_server(db, server_id)
-                    snapshot = build_metric_models(info.details, server_id)
                     update_facts(db, server, snapshot.facts)
                     db.add(snapshot.metric)
                     db.add_all(snapshot.disks)
@@ -129,15 +136,20 @@ def server_usage_runner(server_id: int, task: Task):
             if not server:
                 return
             last_seen = server.last_seen
-        delay = compute_exponential_backoff(last_seen, SERVER_USAGE_INTERVAL_SECONDS)
+        delay = jitter(
+            float(
+                compute_exponential_backoff(last_seen, SERVER_USAGE_INTERVAL_SECONDS)
+            ),
+            0.1,
+        )
         logger.debug(
             f"Scheduling server_usage_runner for server {server.name} with delay {delay} seconds"
         )
         res: Result = server_usage_runner.schedule(args=(server_id,), delay=delay)
         with get_redis() as r:
-            if existing_task_id := r.get(Keys.server_usage_task(server.id)):
+            if existing_task_id := r.get(Keys.server_metric_task(server.id)):
                 huey.revoke_by_id(existing_task_id)
-            r.set(Keys.server_usage_task(server.id), res.id)
+            r.set(Keys.server_metric_task(server.id), res.id)
 
 
 @huey.task(priority=1)
@@ -146,16 +158,14 @@ def servers_usage_runner():
         servers = db.query(Server).filter(Server.is_active.is_(True)).all()
         for server in servers:
             with get_redis() as r:
-                if not r.get(Keys.server_usage_task(server.id)):
-                    logger.debug(
-                        f"Starting server_usage_runner for server {server.name} in "
-                        f"{SERVER_USAGE_INTERVAL_SECONDS} seconds"
-                    )
-                    delay = jitter(SERVER_USAGE_INTERVAL_SECONDS, "30%")
-                    res: Result = server_usage_runner.schedule(
-                        args=(server.id,), delay=delay
-                    )
-                    r.set(Keys.server_usage_task(server.id), res.id)
+                if last_task_id := r.get(Keys.server_metric_task(server.id)):
+                    huey.revoke_by_id(last_task_id)
+                logger.debug(
+                    f"Starting server_usage_runner for server {server.name} in "
+                    f"{SERVER_USAGE_INTERVAL_SECONDS} seconds"
+                )
+                res: Result = server_usage_runner.schedule(args=(server.id,), delay=0)
+                r.set(Keys.server_metric_task(server.id), res.id)
 
 
 SCRIPT = """

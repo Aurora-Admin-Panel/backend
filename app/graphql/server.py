@@ -12,8 +12,11 @@ from sqlalchemy.orm import Query, joinedload
 from strawberry.scalars import JSON
 from strawberry.types import Info
 
+from app.graphql.metric import ServerMetricSnapshot
 import tasks
-from app.core import config
+from app.core import config, codec
+from app.core.redis_client import new_redis
+from app.core.redis_keyspace import Keys
 from app.db.models import Port as DBPort
 from app.db.models import PortUser as DBPortUser
 from app.db.models import Server as DBServer
@@ -351,28 +354,19 @@ class Server:
         yield res
 
     @staticmethod
-    async def get_usage(
-        info: Info, server_id: int
-    ) -> AsyncGenerator[ServerUsage, None]:
-        user = info.context["request"].state.user
-        if not await has_permission_of_server(user, server_id):
-            return
-
-        while True:
-            async with async_db_session() as async_db:
-                yield None
-                # stmt = (
-                #     select(DBServerUsage)
-                #     .where(DBServerUsage.server_id == server_id)
-                #     .order_by(DBServerUsage.timestamp.desc())
-                #     .limit(1)
-                # )
-                # result = await async_db.execute(stmt)
-                # data = result.scalars().unique().first()
-                # if data and data.timestamp > datetime.now() - timedelta(
-                #     seconds=config.SERVER_USAGE_INTERVAL_SECONDS * 10
-                # ):
-                #     yield data
-                # else:
-                #     yield None
-            await asyncio.sleep(config.SERVER_USAGE_INTERVAL_SECONDS)
+    async def subscribe_metrics(
+        info: Info,
+    ) -> AsyncGenerator[ServerMetricSnapshot, None]:
+        r = new_redis()
+        pubsub = r.pubsub()
+        chan = Keys.server_metric_pubsub()
+        await pubsub.subscribe(chan)
+        try:
+            async for message in pubsub.listen():
+                if message.get("type") != "message":
+                    continue
+                data = codec.loads(message["data"])
+                yield ServerMetricSnapshot.from_dict(data)
+        finally:
+            await pubsub.unsubscribe(chan)
+            await pubsub.close()

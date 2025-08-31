@@ -13,6 +13,7 @@ from .port import Port, PortUser
 from .port_forward import PortForwardRule
 from .server import Server, ServerUser
 from .user import User
+from .metric import ServerMetricSnapshot
 from .task import task, task_stream
 from .utils import PaginationWindow
 
@@ -135,8 +136,10 @@ class Subscription:
     count: AsyncGenerator[int, None] = strawberry.subscription(
         resolver=count, permission_classes=[]
     )
-    server_usage: AsyncGenerator[JSON | None, None] = strawberry.subscription(
-        resolver=Server.get_usage, permission_classes=[IsAuthenticated]
+    server_metric: AsyncGenerator[ServerMetricSnapshot | None, None] = (
+        strawberry.subscription(
+            resolver=Server.subscribe_metrics, permission_classes=[]
+        )
     )
     connect_server: AsyncGenerator[JSON, None] = strawberry.subscription(
         resolver=Server.connect_server, permission_classes=[IsAuthenticated]
