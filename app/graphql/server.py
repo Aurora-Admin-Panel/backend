@@ -11,6 +11,7 @@ from sqlalchemy import func, and_, select, insert, update, delete
 from sqlalchemy.orm import Query, joinedload
 from strawberry.scalars import JSON
 from strawberry.types import Info
+from sqlalchemy.sql import text
 
 from app.graphql.metric import ServerMetricSnapshot
 import tasks
@@ -22,6 +23,7 @@ from app.db.models import PortUser as DBPortUser
 from app.db.models import Server as DBServer
 from app.db.models import ServerUser as DBServerUser
 from app.db.models import User as DBUser
+from app.graphql.metric import ServerMetricPoint, TimeRangeInput, DEFAULT_INTERVAL
 from app.utils.permission import has_permission_of_server
 from app.db.async_session import async_db_session
 from app.utils.selection import get_selections
@@ -125,6 +127,12 @@ class Server:
     port: Optional[int]
     user: Optional[str]
     key_file_id: Optional[int]
+    os_release: Optional[str]
+    probe_version: Optional[str]
+    mem_total: Optional[int]
+    swap_total: Optional[int]
+    root_total: Optional[int]
+    last_seen: Optional[datetime]
     config: JSON
     ssh_password: Optional[str]
     ssh_password_set: bool = strawberry.field(

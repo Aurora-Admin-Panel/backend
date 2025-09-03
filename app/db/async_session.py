@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from collections.abc import Iterator
 
 from fastapi import Request
 from app.core import config
@@ -13,13 +14,15 @@ AsyncSessionMaker = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False
 )
 
+
 @asynccontextmanager
-async def async_db_session():
+async def async_db_session() -> AsyncSession:
     async with AsyncSessionMaker() as session:
         try:
             yield session
         finally:
             await session.close()
+
 
 async def dispose_engine():
     await engine.dispose()

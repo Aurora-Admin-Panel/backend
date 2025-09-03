@@ -15,9 +15,7 @@ class EnsureUser(BasePermission):
         if not hasattr(request.state, "user"):
             authorization = None
             if request.scope["type"] == "websocket":
-                authorization = info.context["connection_params"].get(
-                    "Authorization"
-                )
+                authorization = info.context["connection_params"].get("Authorization")
             elif request.scope["type"] == "http":
                 authorization = request.headers.get("Authorization")
 
@@ -34,9 +32,7 @@ class EnsureUser(BasePermission):
                         email: str = payload.get("sub")
                         if email is not None:
                             with db_session() as db:
-                                request.state.user = get_user_by_email(
-                                    db, email
-                                )
+                                request.state.user = get_user_by_email(db, email)
                     except jwt.PyJWTError:
                         return False
         return request.state.user is not None

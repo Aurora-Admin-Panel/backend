@@ -13,7 +13,13 @@ from .port import Port, PortUser
 from .port_forward import PortForwardRule
 from .server import Server, ServerUser
 from .user import User
-from .metric import ServerMetricSnapshot
+from .metric import (
+    DiskSeries,
+    IfaceSeries,
+    PairPoint,
+    ServerMetricSnapshot,
+    ServerMetricPoint,
+)
 from .task import task, task_stream
 from .utils import PaginationWindow
 
@@ -56,6 +62,18 @@ class Query:
     paginated_servers: PaginationWindow[Server] = strawberry.field(
         resolver=Server.get_paginated_servers,
         permission_classes=[IsAuthenticated],
+    )
+    server_metric_series: List[ServerMetricPoint] = strawberry.field(
+        resolver=ServerMetricPoint.get_server_metric_series,
+        permission_classes=[],
+    )
+    disk_usage_series: List[DiskSeries] = strawberry.field(
+        resolver=DiskSeries.disk_usage_series,
+        permission_classes=[],
+    )
+    network_speed_series: List[IfaceSeries] = strawberry.field(
+        resolver=IfaceSeries.network_speed_series,
+        permission_classes=[],
     )
     port_forward_rule: Optional[PortForwardRule] = strawberry.field(
         resolver=PortForwardRule.get_port_forward_rule,
