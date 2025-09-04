@@ -12,6 +12,7 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
 )
+from sqlalchemy.dialects.postgresql import TIMESTAMP
 from .base import Base
 
 
@@ -33,9 +34,11 @@ class File(Base):
     storage_path = Column(String, nullable=False)
     version = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(UTC), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), default=datetime.now(UTC), nullable=False
+    )
     updated_at = Column(
-        DateTime,
+        TIMESTAMP(timezone=True),
         default=datetime.now(UTC),
         nullable=False,
         onupdate=datetime.now(UTC),

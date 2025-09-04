@@ -8,6 +8,7 @@ import aiofiles
 from sqlalchemy import func
 import strawberry
 from strawberry.file_uploads import Upload
+from urllib.parse import quote
 
 # from starlette.datastructures import UploadFile
 from app.db.models import File as DBFile, FileTypeEnum
@@ -33,6 +34,20 @@ class File:
     notes: Optional[str]
     created_at: datetime
     updated_at: datetime
+
+    # Public URL path derived from storage_path
+    @strawberry.field
+    def path(self) -> str:
+        storage = Path(self.storage_path)
+        base = Path(FILE_STORAGE_PATH)
+        try:
+            rel = storage.relative_to(base)
+            rel_str = rel.as_posix()
+        except Exception:
+            # Fallback to filename if not under base path
+            rel_str = storage.name
+        # URL-encode to ensure safe URLs (keep path separators)
+        return f"/api/files/{quote(rel_str, safe='/')}"
 
     @staticmethod
     async def get_file_count(
@@ -108,12 +123,11 @@ class File:
     async def upload_file(
         info: Info,
         type: FileTypeEnum,
-        file: Upload,
+        file: "Upload",
         name: Optional[str] = None,
         version: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> "File":
-
         storage_path = await store_file(file, type)
         new_file = DBFile(
             name=name if name else file.filename,
@@ -160,9 +174,7 @@ class File:
 
     @staticmethod
     async def delete_file(info: Info, id: int) -> bool:
-        stmt = (
-            delete(DBFile).where(DBFile.id == id).returning(DBFile.storage_path)
-        )
+        stmt = delete(DBFile).where(DBFile.id == id).returning(DBFile.storage_path)
 
         async with async_db_session() as async_db:
             result = await async_db.execute(stmt)

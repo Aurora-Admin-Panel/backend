@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from uuid import uuid4
 
@@ -10,7 +10,7 @@ from app.db.models import FileTypeEnum
 
 
 async def store_file(file: Upload, type: FileTypeEnum) -> Path:
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     storage_path = Path(FILE_STORAGE_PATH).joinpath(
         str(now.year),
         str(now.month),

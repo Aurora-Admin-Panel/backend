@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, WebSocket
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
 from strawberry.fastapi import GraphQLRouter
@@ -47,6 +48,13 @@ app = FastAPI(
 @app.get("/api/v1")
 async def root(server_id: int):
     pass
+
+
+app.mount(
+    "/api/files",
+    StaticFiles(directory=config.FILE_STORAGE_PATH, check_dir=False),
+    name="files",
+)
 
 
 @app.websocket("/api/ws")
