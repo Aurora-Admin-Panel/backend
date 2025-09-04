@@ -5,7 +5,7 @@ from uuid import uuid4
 from typing import TYPE_CHECKING, List, Optional, Dict
 
 import aiofiles
-from sqlalchemy import func
+from sqlalchemy import func, or_
 import strawberry
 from strawberry.file_uploads import Upload
 from urllib.parse import quote
@@ -54,28 +54,40 @@ class File:
         info: Info,
         name: Optional[str] = None,
         type: Optional[FileTypeEnum] = None,
+        q: Optional[str] = None,
     ) -> int:
         user = info.context["request"].state.user
 
-        if user.id not in count_cache:
+        key = (user.id, name, type, q)
+        if key not in count_cache:
             stmt = select(func.count(DBFile.id))
             if not user.is_superuser:
                 stmt = stmt.where(DBFile.type != FileTypeEnum.SECRET)
             if name:
                 stmt = stmt.where(DBFile.name.ilike(f"%{name}%"))
+            if q:
+                s = f"%{q}%"
+                stmt = stmt.where(
+                    or_(
+                        DBFile.name.ilike(s),
+                        DBFile.version.ilike(s),
+                        DBFile.notes.ilike(s),
+                    )
+                )
             if type:
                 stmt = stmt.where(DBFile.type == type)
 
             async with async_db_session() as async_db:
                 result = await async_db.execute(stmt)
-            count_cache[(user.id, name, type)] = result.scalar()
-        return count_cache[(user.id, name, type)]
+            count_cache[key] = result.scalar()
+        return count_cache[key]
 
     @staticmethod
     async def get_files(
         info: Info,
         name: Optional[str] = None,
         type: Optional[FileTypeEnum] = None,
+        q: Optional[str] = None,
     ) -> List["File"]:
         user = info.context["request"].state.user
 
@@ -84,6 +96,15 @@ class File:
             stmt = stmt.where(DBFile.type != FileTypeEnum.SECRET)
         if name:
             stmt = stmt.where(DBFile.name.ilike(f"%{name}%"))
+        if q:
+            s = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    DBFile.name.ilike(s),
+                    DBFile.version.ilike(s),
+                    DBFile.notes.ilike(s),
+                )
+            )
         if type:
             stmt = stmt.where(DBFile.type == type)
 
@@ -99,6 +120,7 @@ class File:
         offset: int = 0,
         name: Optional[str] = None,
         type: Optional[FileTypeEnum] = None,
+        q: Optional[str] = None,
     ) -> PaginationWindow["File"]:
         user = info.context["request"].state.user
 
@@ -107,6 +129,15 @@ class File:
             stmt = stmt.where(DBFile.type != FileTypeEnum.SECRET)
         if name:
             stmt = stmt.where(DBFile.name.ilike(f"%{name}%"))
+        if q:
+            s = f"%{q}%"
+            stmt = stmt.where(
+                or_(
+                    DBFile.name.ilike(s),
+                    DBFile.version.ilike(s),
+                    DBFile.notes.ilike(s),
+                )
+            )
         if type:
             stmt = stmt.where(DBFile.type == type)
         stmt = stmt.offset(offset).limit(limit)
@@ -116,7 +147,7 @@ class File:
             result = await async_db.execute(stmt)
         return PaginationWindow(
             items=result.scalars().unique().all(),
-            count=await File.get_file_count(info, name, type),
+            count=await File.get_file_count(info, name, type, q),
         )
 
     @staticmethod
