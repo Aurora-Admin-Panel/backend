@@ -92,6 +92,17 @@ def servers_runner(**kwargs):
             # server_runner(server.id, **kwargs)
 
 
+@huey.task(priority=3)
+def server_cleanup(server_id: int):
+    """Clean up scheduled tasks and Redis keys for a deleted server."""
+    with get_redis() as r:
+        if task_id := r.get(Keys.server_metric_task(server_id)):
+            huey.revoke_by_id(task_id)
+        r.delete(Keys.server_metric_task(server_id))
+        r.delete(Keys.server_metric_snapshot(server_id))
+    logger.info(f"Cleaned up server {server_id}")
+
+
 @huey.task(priority=10, context=True)
 def server_usage_runner(server_id: int, task: Task):
     try:

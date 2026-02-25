@@ -291,12 +291,15 @@ class Server:
             config=config if config else {},
             ssh_password=ssh_password,
             sudo_password=sudo_password,
-        )
+        ).returning(DBServer.id)
 
         async with async_db_session() as async_db:
             result = await async_db.execute(stmt)
+            server_id = result.scalar_one()
             await async_db.commit()
-        return result.rowcount > 0
+
+        tasks.server_usage_runner.schedule(args=(server_id,), delay=0)
+        return True
 
     @staticmethod
     async def update_server(
@@ -344,6 +347,9 @@ class Server:
         async with async_db_session() as async_db:
             result = await async_db.execute(stmt)
             await async_db.commit()
+
+        if result.rowcount > 0:
+            tasks.server_cleanup(id)
         return result.rowcount > 0
 
     @staticmethod
