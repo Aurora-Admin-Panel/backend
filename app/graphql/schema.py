@@ -22,6 +22,11 @@ from .metric import (
 )
 from .task import task, task_stream
 from .utils import PaginationWindow
+from .executable_contract import (
+    ExecutableContract,
+    compile_executable_contract_preview_resolver,
+    compile_executable_contract_preview_by_id_resolver,
+)
 
 
 @strawberry.type
@@ -79,6 +84,18 @@ class Query:
         resolver=PortForwardRule.get_port_forward_rule,
         permission_classes=[IsAuthenticated],
     )
+    executable_contract: Optional[ExecutableContract] = strawberry.field(
+        resolver=ExecutableContract.get_executable_contract,
+        permission_classes=[IsAdmin],
+    )
+    executable_contracts: List[ExecutableContract] = strawberry.field(
+        resolver=ExecutableContract.get_executable_contracts,
+        permission_classes=[IsAdmin],
+    )
+    paginated_executable_contracts: PaginationWindow[ExecutableContract] = strawberry.field(
+        resolver=ExecutableContract.get_paginated_executable_contracts,
+        permission_classes=[IsAdmin],
+    )
 
 
 @strawberry.type
@@ -134,6 +151,26 @@ class Mutation:
     )
     delete_port_user: bool = strawberry.field(
         resolver=PortUser.delete_port_user, permission_classes=[IsAdmin]
+    )
+    compile_executable_contract_preview: JSON = strawberry.field(
+        resolver=compile_executable_contract_preview_resolver,
+        permission_classes=[IsAdmin],
+    )
+    compile_executable_contract_preview_by_id: JSON = strawberry.field(
+        resolver=compile_executable_contract_preview_by_id_resolver,
+        permission_classes=[IsAdmin],
+    )
+    create_executable_contract: ExecutableContract = strawberry.field(
+        resolver=ExecutableContract.create_executable_contract,
+        permission_classes=[IsAdmin],
+    )
+    update_executable_contract: bool = strawberry.field(
+        resolver=ExecutableContract.update_executable_contract,
+        permission_classes=[IsAdmin],
+    )
+    delete_executable_contract: bool = strawberry.field(
+        resolver=ExecutableContract.delete_executable_contract,
+        permission_classes=[IsAdmin],
     )
 
 

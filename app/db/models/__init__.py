@@ -5,6 +5,7 @@ from .port_forward import PortForwardRule, TypeEnum, MethodEnum
 from .user import User
 from .file import File, FileTypeEnum
 from .metric import ServerMetric, DiskUsage, NetworkCounter
+from .executable_contract import ExecutableContract
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "User",
     "File",
     "FileTypeEnum",
+    "ExecutableContract",
 ]

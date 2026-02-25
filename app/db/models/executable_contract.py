@@ -1,0 +1,36 @@
+from datetime import datetime, UTC
+
+from sqlalchemy import Boolean, Column, Integer, String, Text, JSON, UniqueConstraint
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.dialects.postgresql import TIMESTAMP
+
+from .base import Base
+
+
+class ExecutableContract(Base):
+    __tablename__ = "executable_contract"
+    __table_args__ = (
+        UniqueConstraint(
+            "contract_key",
+            "version",
+            name="_executable_contract_contract_key_version_uc",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    contract_key = Column(String, nullable=False, index=True)
+    version = Column(Integer, nullable=False, default=lambda: 1)
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    schema_json = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True), default=datetime.now(UTC), nullable=False
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        default=datetime.now(UTC),
+        nullable=False,
+        onupdate=datetime.now(UTC),
+    )
+
