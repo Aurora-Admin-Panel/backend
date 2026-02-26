@@ -3,7 +3,7 @@ from app.utils.executable_contract import compile_executable_contract_preview
 
 def test_compile_preview_builds_argv_env_and_redacts_secret():
     contract = {
-        "schemaVersion": "exec-authoring/v1",
+        "schemaVersion": "aurora-exec/v1",
         "contractKey": "demo_contract",
         "version": 1,
         "title": "Demo",
@@ -55,7 +55,7 @@ def test_compile_preview_builds_argv_env_and_redacts_secret():
 
 def test_compile_preview_supports_file_and_stdin_emit():
     contract = {
-        "schemaVersion": "exec-authoring/v1",
+        "schemaVersion": "aurora-exec/v1",
         "contractKey": "demo_io",
         "version": 1,
         "title": "Demo IO",
@@ -104,7 +104,7 @@ def test_compile_preview_supports_file_and_stdin_emit():
 
 def test_compile_preview_rejects_unknown_param():
     contract = {
-        "schemaVersion": "exec-authoring/v1",
+        "schemaVersion": "aurora-exec/v1",
         "contractKey": "demo_contract",
         "version": 1,
         "title": "Demo",

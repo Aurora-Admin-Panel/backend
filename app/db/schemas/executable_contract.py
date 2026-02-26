@@ -4,7 +4,7 @@ import typing as t
 from pydantic import BaseModel, Field, validator, root_validator
 
 
-SCHEMA_VERSION = "exec-authoring/v1"
+SCHEMA_VERSION = "aurora-exec/v1"
 PARAM_KEY_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 PATH_TEMPLATE_VAR_RE = re.compile(r"{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}")
 ALLOWED_TEMPLATE_VARS = {"jobId", "contractKey", "paramKey"}
