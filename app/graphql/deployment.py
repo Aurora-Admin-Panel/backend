@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from typing import List, Optional
+from typing_extensions import Annotated
 
 import strawberry
 from sqlalchemy import delete, select, update, insert, func
@@ -67,6 +68,15 @@ class ServerDeployment:
         stmt = select(DBServiceBinding).where(
             DBServiceBinding.id == self.service_binding_id
         )
+        async with async_db_session() as db:
+            result = await db.execute(stmt)
+        return result.scalars().first()
+
+    @strawberry.field
+    async def port(self) -> Optional[Annotated["Port", strawberry.lazy(".port")]]:
+        if not self.port_id:
+            return None
+        stmt = select(DBPort).where(DBPort.id == self.port_id)
         async with async_db_session() as db:
             result = await db.execute(stmt)
         return result.scalars().first()
