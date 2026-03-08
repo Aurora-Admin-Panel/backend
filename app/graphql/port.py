@@ -185,6 +185,58 @@ class Port:
         return count_cache[(user.id, server_id)]
 
     @staticmethod
+    async def get_available_ports_for_deployment(
+        info: Info,
+        server_id: int,
+    ) -> List["Port"]:
+        """Return ports on this server the current user can access
+        with no active deployment."""
+        from app.db.models import ServerDeployment as DBServerDeployment
+
+        user = info.context["request"].state.user
+
+        # Subquery: port_ids that already have an active deployment
+        active_port_ids = (
+            select(DBServerDeployment.port_id)
+            .where(
+                DBServerDeployment.is_active == True,
+                DBServerDeployment.port_id.isnot(None),
+            )
+            .scalar_subquery()
+        )
+
+        stmt = select(DBPort).where(
+            DBPort.server_id == server_id,
+            DBPort.is_active == True,
+            DBPort.id.notin_(active_port_ids),
+        ).order_by(DBPort.num)
+
+        # Access control
+        if not user.is_superuser:
+            if user.is_ops:
+                admin_server_ids = select(DBServerUser.server_id).where(
+                    DBServerUser.user_id == user.id
+                )
+                stmt = stmt.where(
+                    or_(
+                        DBPort.server_id.in_(admin_server_ids),
+                        DBPort.id.in_(
+                            select(DBPortUser.port_id).where(DBPortUser.user_id == user.id)
+                        ),
+                    )
+                )
+            else:
+                stmt = stmt.where(
+                    DBPort.id.in_(
+                        select(DBPortUser.port_id).where(DBPortUser.user_id == user.id)
+                    )
+                )
+
+        async with async_db_session() as async_db:
+            result = await async_db.execute(stmt)
+            return result.scalars().unique().all()
+
+    @staticmethod
     async def add_port(
         info: Info,
         server_id: int,

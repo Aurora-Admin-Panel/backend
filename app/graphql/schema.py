@@ -119,6 +119,10 @@ class Query:
         resolver=ServerDeployment.get_paginated_server_deployments,
         permission_classes=[IsAdmin],
     )
+    available_ports_for_deployment: List[Port] = strawberry.field(
+        resolver=Port.get_available_ports_for_deployment,
+        permission_classes=[IsAuthenticated],
+    )
 
 
 @strawberry.type
