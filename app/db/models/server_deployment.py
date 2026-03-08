@@ -54,6 +54,7 @@ class ServerDeployment(Base):
         Integer, ForeignKey("service_definition.id"), nullable=True
     )
     server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
+    port_id = Column(Integer, ForeignKey("port.id"), nullable=True)
     values_json = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     status = Column(
         Enum(DeploymentStatusEnum, values_callable=lambda e: [x.value for x in e]),
@@ -74,6 +75,7 @@ class ServerDeployment(Base):
     service_binding = relationship("ServiceBinding", back_populates="deployments")
     service = relationship("ServiceDefinition", back_populates="deployments")
     server = relationship("Server", back_populates="deployments")
+    port = relationship("Port", backref="deployment")
     logs = relationship(
         "DeploymentLog",
         cascade="all,delete",
