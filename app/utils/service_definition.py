@@ -187,11 +187,15 @@ def _coerce_value(param: ExecutableParam, raw: t.Any) -> t.Any:
 
 
 def _normalize_path_context(contract: ServiceDefinitionAuthoringV1, context: dict, param_key: str):
-    return {
-        "jobId": str((context or {}).get("jobId", "preview")),
+    ctx = context or {}
+    vars_ = {
+        "jobId": str(ctx.get("jobId", "preview")),
         "contractKey": contract.contractKey,
         "paramKey": param_key,
     }
+    if "port" in ctx:
+        vars_["port"] = str(ctx["port"])
+    return vars_
 
 
 def _render_path_template(template: str, vars_: dict) -> str:
@@ -200,6 +204,24 @@ def _render_path_template(template: str, vars_: dict) -> str:
         return str(vars_.get(key, ""))
 
     return PATH_TEMPLATE_VAR_RE.sub(repl, template)
+
+
+def _substitute_context_vars(value: t.Any, context: dict) -> t.Any:
+    """Recursively substitute ``{{var}}`` placeholders in strings, lists, and dicts
+    using the provided *context* dict.  Non-string leaves are returned unchanged."""
+    if isinstance(value, str):
+        def repl(match):
+            key = match.group(1)
+            if key in context:
+                return str(context[key])
+            return match.group(0)  # leave unknown vars untouched
+
+        return PATH_TEMPLATE_VAR_RE.sub(repl, value)
+    if isinstance(value, list):
+        return [_substitute_context_vars(item, context) for item in value]
+    if isinstance(value, dict):
+        return {k: _substitute_context_vars(v, context) for k, v in value.items()}
+    return value
 
 
 def _serialize_for_emit(value: t.Any, fmt: str) -> str:
@@ -382,6 +404,18 @@ def compile_service_preview(
         return {"ok": False, "error": "values must be an object"}
     if context_payload is not None and not isinstance(context_payload, dict):
         return {"ok": False, "error": "context must be an object"}
+
+    # -- requiresPort gate --
+    if contract.requiresPort and "port" not in (context_payload or {}):
+        return {"ok": False, "error": "This service requires a port selection"}
+
+    # -- Substitute context template vars in baseArgs and param defaults --
+    ctx = context_payload or {}
+    if ctx:
+        contract.exec.baseArgs = _substitute_context_vars(contract.exec.baseArgs, ctx)
+        for param in contract.params:
+            if param.default is not None:
+                param.default = _substitute_context_vars(param.default, ctx)
 
     try:
         prepared_values = _validate_and_prepare_values(contract.params, values_payload)
