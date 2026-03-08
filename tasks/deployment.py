@@ -111,14 +111,13 @@ def deploy_executable_task(deployment_id: int, log_id: int, task: Task):
         file_storage_path = file_obj.storage_path if file_obj else None
         file_name = file_obj.name if file_obj else None
         source_config = config_json.get("exec", {}).get("source") if config_json else None
+        port_num = deployment.port.num if deployment.port_id and deployment.port else None
 
     try:
         # Build compilation context
         compile_context = {"jobId": str(deployment_id)}
-        with db_session() as db:
-            dep = db.get(ServerDeployment, deployment_id)
-            if dep and dep.port_id and dep.port:
-                compile_context["port"] = dep.port.num
+        if port_num is not None:
+            compile_context["port"] = port_num
 
         # Compile the service definition
         result = compile_service_preview(

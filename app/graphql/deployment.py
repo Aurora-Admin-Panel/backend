@@ -5,6 +5,7 @@ from typing_extensions import Annotated
 
 import strawberry
 from sqlalchemy import delete, select, update, insert, func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload
 from strawberry.scalars import JSON
 from strawberry.types import Info
@@ -217,6 +218,44 @@ class ServiceBindingType:
 
 
 # ---------------------------------------------------------------------------
+# Port validation helpers
+# ---------------------------------------------------------------------------
+
+def _parse_requires_port(config_json) -> bool:
+    """Extract requiresPort from a service definition's config_json."""
+    config = json.loads(config_json) if isinstance(config_json, str) else config_json
+    return config.get("requiresPort", True)
+
+
+async def _validate_port_for_deployment(db, port_id: Optional[int], server_ids: List[int], requires_port: bool):
+    """Validate port_id against requiresPort and check availability.
+
+    Raises ValueError on validation failure.
+    """
+    if requires_port and port_id is None:
+        raise ValueError("This service requires a port selection")
+    if not requires_port and port_id is not None:
+        raise ValueError("This service does not accept a port")
+
+    if port_id is not None:
+        port = (await db.execute(
+            select(DBPort).where(DBPort.id == port_id)
+        )).scalars().first()
+        if not port:
+            raise ValueError(f"Port {port_id} not found")
+        if port.server_id not in server_ids:
+            raise ValueError("Port does not belong to any of the target servers")
+        active_on_port = (await db.execute(
+            select(DBServerDeployment).where(
+                DBServerDeployment.port_id == port_id,
+                DBServerDeployment.is_active == True,
+            )
+        )).scalars().first()
+        if active_on_port:
+            raise ValueError("Port already has an active deployment")
+
+
+# ---------------------------------------------------------------------------
 # Deployment lifecycle mutations
 # ---------------------------------------------------------------------------
 
@@ -234,40 +273,19 @@ async def deploy_executable_resolver(
     pending_tasks = []
 
     async with async_db_session() as db:
-        # Validate port
-        port = None
-        if port_id is not None:
-            port = (await db.execute(
-                select(DBPort).where(DBPort.id == port_id)
-            )).scalars().first()
-            if not port:
-                raise ValueError(f"Port {port_id} not found")
-            if port.server_id not in server_ids:
-                raise ValueError(f"Port does not belong to any of the target servers")
-            active_on_port = (await db.execute(
-                select(DBServerDeployment).where(
-                    DBServerDeployment.port_id == port_id,
-                    DBServerDeployment.is_active == True,
-                )
-            )).scalars().first()
-            if active_on_port:
-                raise ValueError(f"Port already has an active deployment")
-
-        # Check requiresPort via binding -> service definition
+        # Resolve requiresPort via binding -> service definition
         binding = (await db.execute(
             select(DBServiceBinding).where(DBServiceBinding.id == service_binding_id)
         )).scalars().first()
-        if binding:
-            service_def = (await db.execute(
-                select(DBServiceDefinition).where(DBServiceDefinition.id == binding.service_id)
-            )).scalars().first()
-            if service_def:
-                config = json.loads(service_def.config_json) if isinstance(service_def.config_json, str) else service_def.config_json
-                requires_port = config.get("requiresPort", True)
-                if requires_port and port_id is None:
-                    raise ValueError("This service requires a port selection")
-                if not requires_port and port_id is not None:
-                    raise ValueError("This service does not accept a port")
+        if not binding:
+            raise ValueError(f"Service binding {service_binding_id} not found")
+        service_def = (await db.execute(
+            select(DBServiceDefinition).where(DBServiceDefinition.id == binding.service_id)
+        )).scalars().first()
+        if not service_def:
+            raise ValueError(f"Service definition for binding {service_binding_id} not found")
+        requires_port = _parse_requires_port(service_def.config_json)
+        await _validate_port_for_deployment(db, port_id, server_ids, requires_port)
 
         for server_id in server_ids:
             # Upsert ServerDeployment
@@ -307,7 +325,10 @@ async def deploy_executable_resolver(
             pending_tasks.append((deployment.id, log.id, log))
             results.append(deployment)
 
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            raise ValueError("Port is already in use by another deployment")
 
         # Dispatch Huey tasks after commit so workers can see the data
         for dep_id, log_id, log in pending_tasks:
@@ -345,32 +366,8 @@ async def deploy_service_resolver(
         if not service:
             raise ValueError(f"Service definition {service_id} not found")
 
-        # Check requiresPort from service definition config
-        config = json.loads(service.config_json) if isinstance(service.config_json, str) else service.config_json
-        requires_port = config.get("requiresPort", True)
-        if requires_port and port_id is None:
-            raise ValueError("This service requires a port selection")
-        if not requires_port and port_id is not None:
-            raise ValueError("This service does not accept a port")
-
-        # Validate port
-        port = None
-        if port_id is not None:
-            port = (await db.execute(
-                select(DBPort).where(DBPort.id == port_id)
-            )).scalars().first()
-            if not port:
-                raise ValueError(f"Port {port_id} not found")
-            if port.server_id not in server_ids:
-                raise ValueError(f"Port does not belong to any of the target servers")
-            active_on_port = (await db.execute(
-                select(DBServerDeployment).where(
-                    DBServerDeployment.port_id == port_id,
-                    DBServerDeployment.is_active == True,
-                )
-            )).scalars().first()
-            if active_on_port:
-                raise ValueError(f"Port already has an active deployment")
+        requires_port = _parse_requires_port(service.config_json)
+        await _validate_port_for_deployment(db, port_id, server_ids, requires_port)
 
         for server_id in server_ids:
             # Upsert ServerDeployment by (service_id, server_id)
@@ -410,7 +407,10 @@ async def deploy_service_resolver(
             pending_tasks.append((deployment.id, log.id, log))
             results.append(deployment)
 
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError:
+            raise ValueError("Port is already in use by another deployment")
 
         # Dispatch Huey tasks after commit so workers can see the data
         for dep_id, log_id, log in pending_tasks:
