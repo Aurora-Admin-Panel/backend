@@ -113,9 +113,16 @@ def deploy_executable_task(deployment_id: int, log_id: int, task: Task):
         source_config = config_json.get("exec", {}).get("source") if config_json else None
 
     try:
+        # Build compilation context
+        compile_context = {"jobId": str(deployment_id)}
+        with db_session() as db:
+            dep = db.get(ServerDeployment, deployment_id)
+            if dep and dep.port_id and dep.port:
+                compile_context["port"] = dep.port.num
+
         # Compile the service definition
         result = compile_service_preview(
-            config_json, values, {"jobId": str(deployment_id)}
+            config_json, values, compile_context
         )
         if not result.get("ok"):
             error_msg = result.get("error", "Service compilation failed")
