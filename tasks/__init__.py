@@ -15,3 +15,4 @@ from .config import huey
 # from .test import *
 
 from tasks.server import server_usage_runner, servers_usage_runner, connect_runner2, server_cleanup
+from tasks.deployment import deploy_executable_task, stop_deployment_task, remove_deployment_task

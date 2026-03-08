@@ -81,6 +81,11 @@ class Server(Base):
         lazy="joined",
     )
     key_file = relationship("File", back_populates="servers")
+    deployments = relationship(
+        "ServerDeployment",
+        cascade="all,delete",
+        back_populates="server",
+    )
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}

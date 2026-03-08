@@ -1,8 +1,9 @@
 from datetime import datetime, UTC
 
-from sqlalchemy import Boolean, Column, Integer, String, Text, JSON, UniqueConstraint
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, JSON, UniqueConstraint
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy.orm import relationship
 
 from .base import Base
 
@@ -23,6 +24,7 @@ class ExecutableContract(Base):
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     schema_json = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
+    is_builtin = Column(Boolean, nullable=False, default=False)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(
         TIMESTAMP(timezone=True), default=datetime.now(UTC), nullable=False
@@ -32,5 +34,15 @@ class ExecutableContract(Base):
         default=datetime.now(UTC),
         nullable=False,
         onupdate=datetime.now(UTC),
+    )
+
+    file_bindings = relationship(
+        "FileContractBinding",
+        cascade="all,delete",
+        back_populates="contract",
+    )
+    deployments = relationship(
+        "ServerDeployment",
+        back_populates="contract",
     )
 

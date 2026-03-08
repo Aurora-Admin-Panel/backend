@@ -15,6 +15,8 @@ from tasks.utils.systemd import (
     ServiceEnableState,
 )
 from tasks.utils.packages import PackageResource, PackageState
+from tasks.utils.download import RemoteDownloadResource
+from tasks.utils.github import GitHubReleaseResource
 from tasks.utils.connection import AuroraConnection
 
 
@@ -158,6 +160,118 @@ class SystemOrchestrator:
             **kwargs,
         )
         return self._add_task(name, res)
+
+    def ensure_download(
+        self,
+        name: str,
+        url: str,
+        dest: str,
+        *,
+        mode: str = "0755",
+        extract_path: Optional[str] = None,
+        strip: int = 0,
+        **kwargs,
+    ) -> "SystemOrchestrator":
+        """Download a URL to a remote path."""
+        res = RemoteDownloadResource(
+            name,
+            self.connection,
+            url=url,
+            dest=dest,
+            mode=mode,
+            extract_path=extract_path,
+            strip=strip,
+            **kwargs,
+        )
+        return self._add_task(name, res)
+
+    def ensure_github_binary(
+        self,
+        name: str,
+        repo: str,
+        asset_pattern: str,
+        dest: str,
+        *,
+        tag: Optional[str] = None,
+        extract_path: Optional[str] = None,
+        strip: int = 0,
+        mode: str = "0755",
+        **kwargs,
+    ) -> "SystemOrchestrator":
+        """Download a binary from GitHub releases."""
+        res = GitHubReleaseResource(
+            name,
+            self.connection,
+            repo=repo,
+            asset_pattern=asset_pattern,
+            dest=dest,
+            tag=tag,
+            extract_path=extract_path,
+            strip=strip,
+            mode=mode,
+            **kwargs,
+        )
+        return self._add_task(name, res)
+
+    def ensure_binary(
+        self,
+        name: str,
+        bin_path: str,
+        *,
+        source_config: dict,
+        src: Optional[str] = None,
+        **kwargs,
+    ) -> "SystemOrchestrator":
+        """Dispatch to the right resource based on source_config['type'].
+
+        This is the high-level convenience method used by the deploy task.
+        """
+        stype = source_config.get("type")
+
+        if stype == "url":
+            # Resolve arch-specific URL if provided
+            arch_urls = source_config.get("arch")
+            url = source_config.get("url")
+            if arch_urls:
+                # Detect remote arch at dispatch time via a deferred resource
+                remote_arch = self.connection.run("uname -m", publish=False).strip()
+                arch_url = arch_urls.get(remote_arch)
+                if arch_url:
+                    url = arch_url
+            if not url:
+                raise ValueError("source_config.url is required for type='url'")
+            return self.ensure_download(
+                name,
+                url,
+                bin_path,
+                extract_path=source_config.get("extractPath"),
+                strip=source_config.get("strip", 0),
+                **kwargs,
+            )
+        elif stype == "github":
+            return self.ensure_github_binary(
+                name,
+                repo=source_config["repo"],
+                asset_pattern=source_config["assetPattern"],
+                dest=bin_path,
+                tag=source_config.get("tag"),
+                extract_path=source_config.get("extractPath"),
+                strip=source_config.get("strip", 0),
+                **kwargs,
+            )
+        elif stype == "package":
+            return self.ensure_package(
+                name,
+                source_config["packageName"],
+                state=PackageState.PRESENT,
+                **kwargs,
+            )
+        elif stype == "upload":
+            if not src:
+                raise ValueError("src is required for source type 'upload'")
+            return self.ensure_file(name, bin_path, src=src, mode="0755", **kwargs)
+        else:
+            raise ValueError(f"Unknown source type: {stype}")
 
     def custom_task(self, name: str, task: SystemResource) -> "SystemOrchestrator":
         """Add a pre‑constructed SystemResource."""

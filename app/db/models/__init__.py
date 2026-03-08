@@ -6,6 +6,14 @@ from .user import User
 from .file import File, FileTypeEnum
 from .metric import ServerMetric, DiskUsage, NetworkCounter
 from .executable_contract import ExecutableContract
+from .file_contract_binding import FileContractBinding
+from .server_deployment import (
+    ServerDeployment,
+    DeploymentLog,
+    DeploymentStatusEnum,
+    DeploymentActionEnum,
+    DeploymentLogStatusEnum,
+)
 
 __all__ = [
     "Base",
@@ -24,4 +32,10 @@ __all__ = [
     "File",
     "FileTypeEnum",
     "ExecutableContract",
+    "FileContractBinding",
+    "ServerDeployment",
+    "DeploymentLog",
+    "DeploymentStatusEnum",
+    "DeploymentActionEnum",
+    "DeploymentLogStatusEnum",
 ]

@@ -25,10 +25,18 @@ class ExecutableContract:
     version: int
     title: str
     description: Optional[str]
+    is_builtin: bool
     is_active: bool
     created_at: datetime
     updated_at: datetime
     schema_json: JSON
+
+    @strawberry.field
+    def has_source(self) -> bool:
+        """Whether this contract has an exec.source config."""
+        if not self.schema_json or not isinstance(self.schema_json, dict):
+            return False
+        return bool(self.schema_json.get("exec", {}).get("source"))
 
     @staticmethod
     async def get_executable_contract(

@@ -55,11 +55,40 @@ class ContractUI(BaseModel):
     grid: t.Optional[GridConfig]
 
 
+class ArchUrls(BaseModel):
+    x86_64: t.Optional[str] = None
+    aarch64: t.Optional[str] = None
+    armv7l: t.Optional[str] = None
+
+
+class SourceConfig(BaseModel):
+    type: str  # "upload" | "url" | "github" | "package"
+    # type=url
+    url: t.Optional[str] = None
+    arch: t.Optional[ArchUrls] = None
+    # type=github
+    repo: t.Optional[str] = None  # "owner/repo"
+    assetPattern: t.Optional[str] = None  # "gost-linux-{arch}-*"
+    tag: t.Optional[str] = None  # specific tag (default=latest)
+    # type=package
+    packageName: t.Optional[str] = None
+    # shared extraction
+    extractPath: t.Optional[str] = None  # path within archive to binary
+    strip: int = 0  # tar --strip-components
+
+    @validator("type")
+    def check_type(cls, v):
+        if v not in {"upload", "url", "github", "package"}:
+            raise ValueError(f"Invalid source type: {v}")
+        return v
+
+
 class ExecConfig(BaseModel):
     bin: str
     baseArgs: t.List[str] = Field(default_factory=list)
     workingDir: t.Optional[str]
     timeoutSeconds: t.Optional[int]
+    source: t.Optional[SourceConfig] = None
 
     @validator("bin")
     def check_bin(cls, v):

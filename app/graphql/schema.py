@@ -27,6 +27,17 @@ from .executable_contract import (
     compile_executable_contract_preview_resolver,
     compile_executable_contract_preview_by_id_resolver,
 )
+from .deployment import (
+    FileContractBinding,
+    ServerDeployment,
+    DeploymentLog,
+    deploy_executable_resolver,
+    deploy_contract_resolver,
+    redeploy_executable_resolver,
+    stop_deployment_resolver,
+    start_deployment_resolver,
+    remove_deployment_resolver,
+)
 
 
 @strawberry.type
@@ -94,6 +105,18 @@ class Query:
     )
     paginated_executable_contracts: PaginationWindow[ExecutableContract] = strawberry.field(
         resolver=ExecutableContract.get_paginated_executable_contracts,
+        permission_classes=[IsAdmin],
+    )
+    file_contract_bindings: List[FileContractBinding] = strawberry.field(
+        resolver=FileContractBinding.get_file_contract_bindings,
+        permission_classes=[IsAdmin],
+    )
+    server_deployment: Optional[ServerDeployment] = strawberry.field(
+        resolver=ServerDeployment.get_server_deployment,
+        permission_classes=[IsAdmin],
+    )
+    paginated_server_deployments: PaginationWindow[ServerDeployment] = strawberry.field(
+        resolver=ServerDeployment.get_paginated_server_deployments,
         permission_classes=[IsAdmin],
     )
 
@@ -170,6 +193,40 @@ class Mutation:
     )
     delete_executable_contract: bool = strawberry.field(
         resolver=ExecutableContract.delete_executable_contract,
+        permission_classes=[IsAdmin],
+    )
+    # --- Deployment bindings ---
+    create_file_contract_binding: FileContractBinding = strawberry.field(
+        resolver=FileContractBinding.create_file_contract_binding,
+        permission_classes=[IsAdmin],
+    )
+    delete_file_contract_binding: bool = strawberry.field(
+        resolver=FileContractBinding.delete_file_contract_binding,
+        permission_classes=[IsAdmin],
+    )
+    # --- Deployment lifecycle ---
+    deploy_executable: List[ServerDeployment] = strawberry.field(
+        resolver=deploy_executable_resolver,
+        permission_classes=[IsAdmin],
+    )
+    deploy_contract: List[ServerDeployment] = strawberry.field(
+        resolver=deploy_contract_resolver,
+        permission_classes=[IsAdmin],
+    )
+    redeploy_executable: DeploymentLog = strawberry.field(
+        resolver=redeploy_executable_resolver,
+        permission_classes=[IsAdmin],
+    )
+    stop_deployment: DeploymentLog = strawberry.field(
+        resolver=stop_deployment_resolver,
+        permission_classes=[IsAdmin],
+    )
+    start_deployment: DeploymentLog = strawberry.field(
+        resolver=start_deployment_resolver,
+        permission_classes=[IsAdmin],
+    )
+    remove_deployment: DeploymentLog = strawberry.field(
+        resolver=remove_deployment_resolver,
         permission_classes=[IsAdmin],
     )
 
