@@ -1,4 +1,4 @@
-from app.utils.executable_contract import compile_executable_contract_preview
+from app.utils.service_definition import compile_service_preview
 
 
 def test_compile_preview_builds_argv_env_and_redacts_secret():
@@ -41,7 +41,7 @@ def test_compile_preview_builds_argv_env_and_redacts_secret():
         ],
     }
 
-    result = compile_executable_contract_preview(
+    result = compile_service_preview(
         contract,
         {"mode": "tcp", "port": "5201", "udp": True, "password": "abc123"},
     )
@@ -71,7 +71,7 @@ def test_compile_preview_supports_file_and_stdin_emit():
                         "type": "string",
                         "label": "Host",
                         "required": True,
-                        "emit": {"arg": "--ignored"},  # nested emit unused in v1 compile unless nested field compiled directly
+                        "emit": {"arg": "--ignored"},
                     }
                 ],
                 "emit": {
@@ -90,7 +90,7 @@ def test_compile_preview_supports_file_and_stdin_emit():
         ],
     }
 
-    result = compile_executable_contract_preview(
+    result = compile_service_preview(
         contract,
         {"config": {"host": "example.com"}, "payload": "hello"},
         {"jobId": "job-1"},
@@ -114,7 +114,6 @@ def test_compile_preview_rejects_unknown_param():
         ],
     }
 
-    result = compile_executable_contract_preview(contract, {"unknown": "x"})
+    result = compile_service_preview(contract, {"unknown": "x"})
     assert result["ok"] is False
     assert "Unknown parameter" in result["error"]
-

@@ -5,8 +5,8 @@ from .port_forward import PortForwardRule, TypeEnum, MethodEnum
 from .user import User
 from .file import File, FileTypeEnum
 from .metric import ServerMetric, DiskUsage, NetworkCounter
-from .executable_contract import ExecutableContract
-from .file_contract_binding import FileContractBinding
+from .service_definition import ServiceDefinition
+from .service_binding import ServiceBinding
 from .server_deployment import (
     ServerDeployment,
     DeploymentLog,
@@ -31,8 +31,8 @@ __all__ = [
     "User",
     "File",
     "FileTypeEnum",
-    "ExecutableContract",
-    "FileContractBinding",
+    "ServiceDefinition",
+    "ServiceBinding",
     "ServerDeployment",
     "DeploymentLog",
     "DeploymentStatusEnum",

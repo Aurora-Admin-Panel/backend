@@ -45,8 +45,8 @@ class File(Base):
     )
 
     servers = relationship("Server", back_populates="key_file")
-    contract_bindings = relationship(
-        "FileContractBinding",
+    service_bindings = relationship(
+        "ServiceBinding",
         cascade="all,delete",
         back_populates="file",
     )

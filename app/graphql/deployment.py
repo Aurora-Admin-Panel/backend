@@ -9,8 +9,8 @@ from strawberry.types import Info
 
 from app.db.async_session import async_db_session
 from app.db.models import (
-    FileContractBinding as DBFileContractBinding,
-    ExecutableContract as DBExecutableContract,
+    ServiceBinding as DBServiceBinding,
+    ServiceDefinition as DBServiceDefinition,
     ServerDeployment as DBServerDeployment,
     DeploymentLog as DBDeploymentLog,
     DeploymentStatusEnum,
@@ -37,8 +37,8 @@ class DeploymentLog:
 @strawberry.type
 class ServerDeployment:
     id: int
-    binding_id: Optional[int]
-    contract_id: Optional[int]
+    service_binding_id: Optional[int]
+    service_id: Optional[int]
     server_id: int
     values_json: JSON
     status: str
@@ -58,40 +58,40 @@ class ServerDeployment:
         return result.scalars().all()
 
     @strawberry.field
-    async def binding(self) -> Optional["FileContractBinding"]:
-        if not self.binding_id:
+    async def service_binding(self) -> Optional["ServiceBindingType"]:
+        if not self.service_binding_id:
             return None
-        stmt = select(DBFileContractBinding).where(
-            DBFileContractBinding.id == self.binding_id
+        stmt = select(DBServiceBinding).where(
+            DBServiceBinding.id == self.service_binding_id
         )
         async with async_db_session() as db:
             result = await db.execute(stmt)
         return result.scalars().first()
 
     @strawberry.field
-    async def contract_title(self) -> Optional[str]:
-        """Resolve contract title for display, from binding or direct contract."""
-        cid = self.contract_id
-        if not cid and self.binding_id:
+    async def service_title(self) -> Optional[str]:
+        """Resolve service title for display, from binding or direct service."""
+        sid = self.service_id
+        if not sid and self.service_binding_id:
             async with async_db_session() as db:
                 binding = (
                     await db.execute(
-                        select(DBFileContractBinding).where(
-                            DBFileContractBinding.id == self.binding_id
+                        select(DBServiceBinding).where(
+                            DBServiceBinding.id == self.service_binding_id
                         )
                     )
                 ).scalars().first()
                 if binding:
-                    cid = binding.contract_id
-        if not cid:
+                    sid = binding.service_id
+        if not sid:
             return None
         async with async_db_session() as db:
-            contract = (
+            service = (
                 await db.execute(
-                    select(DBExecutableContract).where(DBExecutableContract.id == cid)
+                    select(DBServiceDefinition).where(DBServiceDefinition.id == sid)
                 )
             ).scalars().first()
-        return contract.title if contract else None
+        return service.title if service else None
 
     @staticmethod
     async def get_server_deployment(
@@ -108,7 +108,7 @@ class ServerDeployment:
         limit: int = 20,
         offset: int = 0,
         server_id: Optional[int] = None,
-        binding_id: Optional[int] = None,
+        service_binding_id: Optional[int] = None,
         status: Optional[str] = None,
     ) -> PaginationWindow["ServerDeployment"]:
         stmt = select(DBServerDeployment).order_by(
@@ -121,10 +121,10 @@ class ServerDeployment:
             count_stmt = count_stmt.where(
                 DBServerDeployment.server_id == server_id
             )
-        if binding_id is not None:
-            stmt = stmt.where(DBServerDeployment.binding_id == binding_id)
+        if service_binding_id is not None:
+            stmt = stmt.where(DBServerDeployment.service_binding_id == service_binding_id)
             count_stmt = count_stmt.where(
-                DBServerDeployment.binding_id == binding_id
+                DBServerDeployment.service_binding_id == service_binding_id
             )
         if status is not None:
             stmt = stmt.where(DBServerDeployment.status == status)
@@ -141,10 +141,10 @@ class ServerDeployment:
 
 
 @strawberry.type
-class FileContractBinding:
+class ServiceBindingType:
     id: int
     file_id: int
-    contract_id: int
+    service_id: int
     is_default: bool
     created_at: datetime
 
@@ -152,7 +152,7 @@ class FileContractBinding:
     async def deployments(self) -> List[ServerDeployment]:
         stmt = (
             select(DBServerDeployment)
-            .where(DBServerDeployment.binding_id == self.id)
+            .where(DBServerDeployment.service_binding_id == self.id)
             .order_by(DBServerDeployment.updated_at.desc())
         )
         async with async_db_session() as db:
@@ -160,32 +160,32 @@ class FileContractBinding:
         return result.scalars().all()
 
     @staticmethod
-    async def get_file_contract_bindings(
+    async def get_service_bindings(
         info: Info,
         file_id: Optional[int] = None,
-        contract_id: Optional[int] = None,
-    ) -> List["FileContractBinding"]:
-        stmt = select(DBFileContractBinding).order_by(
-            DBFileContractBinding.created_at.desc()
+        service_id: Optional[int] = None,
+    ) -> List["ServiceBindingType"]:
+        stmt = select(DBServiceBinding).order_by(
+            DBServiceBinding.created_at.desc()
         )
         if file_id is not None:
-            stmt = stmt.where(DBFileContractBinding.file_id == file_id)
-        if contract_id is not None:
-            stmt = stmt.where(DBFileContractBinding.contract_id == contract_id)
+            stmt = stmt.where(DBServiceBinding.file_id == file_id)
+        if service_id is not None:
+            stmt = stmt.where(DBServiceBinding.service_id == service_id)
         async with async_db_session() as db:
             result = await db.execute(stmt)
         return result.scalars().all()
 
     @staticmethod
-    async def create_file_contract_binding(
+    async def create_service_binding(
         info: Info,
         file_id: int,
-        contract_id: int,
+        service_id: int,
         is_default: bool = False,
-    ) -> "FileContractBinding":
-        row = DBFileContractBinding(
+    ) -> "ServiceBindingType":
+        row = DBServiceBinding(
             file_id=file_id,
-            contract_id=contract_id,
+            service_id=service_id,
             is_default=is_default,
         )
         async with async_db_session() as db:
@@ -195,8 +195,8 @@ class FileContractBinding:
         return row
 
     @staticmethod
-    async def delete_file_contract_binding(info: Info, id: int) -> bool:
-        stmt = delete(DBFileContractBinding).where(DBFileContractBinding.id == id)
+    async def delete_service_binding(info: Info, id: int) -> bool:
+        stmt = delete(DBServiceBinding).where(DBServiceBinding.id == id)
         async with async_db_session() as db:
             result = await db.execute(stmt)
             await db.commit()
@@ -209,7 +209,7 @@ class FileContractBinding:
 
 async def deploy_executable_resolver(
     info: Info,
-    binding_id: int,
+    service_binding_id: int,
     server_ids: List[int],
     values: JSON,
 ) -> List[ServerDeployment]:
@@ -217,12 +217,13 @@ async def deploy_executable_resolver(
 
     user = info.context["request"].state.user
     results = []
+    pending_tasks = []
 
     async with async_db_session() as db:
         for server_id in server_ids:
             # Upsert ServerDeployment
             existing_stmt = select(DBServerDeployment).where(
-                DBServerDeployment.binding_id == binding_id,
+                DBServerDeployment.service_binding_id == service_binding_id,
                 DBServerDeployment.server_id == server_id,
             )
             existing = (await db.execute(existing_stmt)).scalars().first()
@@ -234,7 +235,7 @@ async def deploy_executable_resolver(
                 deployment = existing
             else:
                 deployment = DBServerDeployment(
-                    binding_id=binding_id,
+                    service_binding_id=service_binding_id,
                     server_id=server_id,
                     values_json=values,
                     status=DeploymentStatusEnum.PENDING,
@@ -252,44 +253,50 @@ async def deploy_executable_resolver(
             db.add(log)
             await db.flush()
 
-            # Enqueue Huey task
-            task_result = deploy_executable_task(deployment.id, log.id)
-            log.task_id = task_result.id
+            pending_tasks.append((deployment.id, log.id, log))
             results.append(deployment)
 
         await db.commit()
+
+        # Dispatch Huey tasks after commit so workers can see the data
+        for dep_id, log_id, log in pending_tasks:
+            task_result = deploy_executable_task(dep_id, log_id)
+            log.task_id = task_result.id
+        await db.commit()
+
         for dep in results:
             await db.refresh(dep)
 
     return results
 
 
-async def deploy_contract_resolver(
+async def deploy_service_resolver(
     info: Info,
-    contract_id: int,
+    service_id: int,
     server_ids: List[int],
     values: JSON,
 ) -> List[ServerDeployment]:
-    """Deploy a contract directly (without a binding) to one or more servers."""
+    """Deploy a service directly (without a binding) to one or more servers."""
     from tasks.deployment import deploy_executable_task
 
     user = info.context["request"].state.user
     results = []
+    pending_tasks = []
 
     async with async_db_session() as db:
-        # Verify contract exists
-        contract = (
+        # Verify service exists
+        service = (
             await db.execute(
-                select(DBExecutableContract).where(DBExecutableContract.id == contract_id)
+                select(DBServiceDefinition).where(DBServiceDefinition.id == service_id)
             )
         ).scalars().first()
-        if not contract:
-            raise ValueError(f"Contract {contract_id} not found")
+        if not service:
+            raise ValueError(f"Service definition {service_id} not found")
 
         for server_id in server_ids:
-            # Upsert ServerDeployment by (contract_id, server_id)
+            # Upsert ServerDeployment by (service_id, server_id)
             existing_stmt = select(DBServerDeployment).where(
-                DBServerDeployment.contract_id == contract_id,
+                DBServerDeployment.service_id == service_id,
                 DBServerDeployment.server_id == server_id,
             )
             existing = (await db.execute(existing_stmt)).scalars().first()
@@ -301,7 +308,7 @@ async def deploy_contract_resolver(
                 deployment = existing
             else:
                 deployment = DBServerDeployment(
-                    contract_id=contract_id,
+                    service_id=service_id,
                     server_id=server_id,
                     values_json=values,
                     status=DeploymentStatusEnum.PENDING,
@@ -319,11 +326,17 @@ async def deploy_contract_resolver(
             db.add(log)
             await db.flush()
 
-            task_result = deploy_executable_task(deployment.id, log.id)
-            log.task_id = task_result.id
+            pending_tasks.append((deployment.id, log.id, log))
             results.append(deployment)
 
         await db.commit()
+
+        # Dispatch Huey tasks after commit so workers can see the data
+        for dep_id, log_id, log in pending_tasks:
+            task_result = deploy_executable_task(dep_id, log_id)
+            log.task_id = task_result.id
+        await db.commit()
+
         for dep in results:
             await db.refresh(dep)
 
@@ -364,10 +377,12 @@ async def redeploy_executable_resolver(
         )
         db.add(log)
         await db.flush()
+        dep_id, log_id = deployment.id, log.id
 
-        task_result = deploy_executable_task(deployment.id, log.id)
+        await db.commit()
+
+        task_result = deploy_executable_task(dep_id, log_id)
         log.task_id = task_result.id
-
         await db.commit()
         await db.refresh(log)
 
@@ -399,10 +414,12 @@ async def stop_deployment_resolver(info: Info, deployment_id: int) -> Deployment
         )
         db.add(log)
         await db.flush()
+        dep_id, log_id = deployment.id, log.id
 
-        task_result = stop_deployment_task(deployment.id, log.id)
+        await db.commit()
+
+        task_result = stop_deployment_task(dep_id, log_id)
         log.task_id = task_result.id
-
         await db.commit()
         await db.refresh(log)
 
@@ -436,10 +453,12 @@ async def start_deployment_resolver(info: Info, deployment_id: int) -> Deploymen
         )
         db.add(log)
         await db.flush()
+        dep_id, log_id = deployment.id, log.id
 
-        task_result = deploy_executable_task(deployment.id, log.id)
+        await db.commit()
+
+        task_result = deploy_executable_task(dep_id, log_id)
         log.task_id = task_result.id
-
         await db.commit()
         await db.refresh(log)
 
@@ -473,10 +492,12 @@ async def remove_deployment_resolver(info: Info, deployment_id: int) -> Deployme
         )
         db.add(log)
         await db.flush()
+        dep_id, log_id = deployment.id, log.id
 
-        task_result = remove_deployment_task(deployment.id, log.id)
+        await db.commit()
+
+        task_result = remove_deployment_task(dep_id, log_id)
         log.task_id = task_result.id
-
         await db.commit()
         await db.refresh(log)
 

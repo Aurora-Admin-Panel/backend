@@ -22,17 +22,17 @@ from .metric import (
 )
 from .task import task, task_stream
 from .utils import PaginationWindow
-from .executable_contract import (
-    ExecutableContract,
-    compile_executable_contract_preview_resolver,
-    compile_executable_contract_preview_by_id_resolver,
+from .service_definition import (
+    ServiceDefinitionType,
+    compile_service_preview_resolver,
+    compile_service_preview_by_id_resolver,
 )
 from .deployment import (
-    FileContractBinding,
+    ServiceBindingType,
     ServerDeployment,
     DeploymentLog,
     deploy_executable_resolver,
-    deploy_contract_resolver,
+    deploy_service_resolver,
     redeploy_executable_resolver,
     stop_deployment_resolver,
     start_deployment_resolver,
@@ -95,20 +95,20 @@ class Query:
         resolver=PortForwardRule.get_port_forward_rule,
         permission_classes=[IsAuthenticated],
     )
-    executable_contract: Optional[ExecutableContract] = strawberry.field(
-        resolver=ExecutableContract.get_executable_contract,
+    service_definition: Optional[ServiceDefinitionType] = strawberry.field(
+        resolver=ServiceDefinitionType.get_service_definition,
         permission_classes=[IsAdmin],
     )
-    executable_contracts: List[ExecutableContract] = strawberry.field(
-        resolver=ExecutableContract.get_executable_contracts,
+    service_definitions: List[ServiceDefinitionType] = strawberry.field(
+        resolver=ServiceDefinitionType.get_service_definitions,
         permission_classes=[IsAdmin],
     )
-    paginated_executable_contracts: PaginationWindow[ExecutableContract] = strawberry.field(
-        resolver=ExecutableContract.get_paginated_executable_contracts,
+    paginated_service_definitions: PaginationWindow[ServiceDefinitionType] = strawberry.field(
+        resolver=ServiceDefinitionType.get_paginated_service_definitions,
         permission_classes=[IsAdmin],
     )
-    file_contract_bindings: List[FileContractBinding] = strawberry.field(
-        resolver=FileContractBinding.get_file_contract_bindings,
+    service_bindings: List[ServiceBindingType] = strawberry.field(
+        resolver=ServiceBindingType.get_service_bindings,
         permission_classes=[IsAdmin],
     )
     server_deployment: Optional[ServerDeployment] = strawberry.field(
@@ -175,33 +175,33 @@ class Mutation:
     delete_port_user: bool = strawberry.field(
         resolver=PortUser.delete_port_user, permission_classes=[IsAdmin]
     )
-    compile_executable_contract_preview: JSON = strawberry.field(
-        resolver=compile_executable_contract_preview_resolver,
+    compile_service_preview: JSON = strawberry.field(
+        resolver=compile_service_preview_resolver,
         permission_classes=[IsAdmin],
     )
-    compile_executable_contract_preview_by_id: JSON = strawberry.field(
-        resolver=compile_executable_contract_preview_by_id_resolver,
+    compile_service_preview_by_id: JSON = strawberry.field(
+        resolver=compile_service_preview_by_id_resolver,
         permission_classes=[IsAdmin],
     )
-    create_executable_contract: ExecutableContract = strawberry.field(
-        resolver=ExecutableContract.create_executable_contract,
+    create_service_definition: ServiceDefinitionType = strawberry.field(
+        resolver=ServiceDefinitionType.create_service_definition,
         permission_classes=[IsAdmin],
     )
-    update_executable_contract: bool = strawberry.field(
-        resolver=ExecutableContract.update_executable_contract,
+    update_service_definition: bool = strawberry.field(
+        resolver=ServiceDefinitionType.update_service_definition,
         permission_classes=[IsAdmin],
     )
-    delete_executable_contract: bool = strawberry.field(
-        resolver=ExecutableContract.delete_executable_contract,
+    delete_service_definition: bool = strawberry.field(
+        resolver=ServiceDefinitionType.delete_service_definition,
         permission_classes=[IsAdmin],
     )
-    # --- Deployment bindings ---
-    create_file_contract_binding: FileContractBinding = strawberry.field(
-        resolver=FileContractBinding.create_file_contract_binding,
+    # --- Service bindings ---
+    create_service_binding: ServiceBindingType = strawberry.field(
+        resolver=ServiceBindingType.create_service_binding,
         permission_classes=[IsAdmin],
     )
-    delete_file_contract_binding: bool = strawberry.field(
-        resolver=FileContractBinding.delete_file_contract_binding,
+    delete_service_binding: bool = strawberry.field(
+        resolver=ServiceBindingType.delete_service_binding,
         permission_classes=[IsAdmin],
     )
     # --- Deployment lifecycle ---
@@ -209,8 +209,8 @@ class Mutation:
         resolver=deploy_executable_resolver,
         permission_classes=[IsAdmin],
     )
-    deploy_contract: List[ServerDeployment] = strawberry.field(
-        resolver=deploy_contract_resolver,
+    deploy_service: List[ServerDeployment] = strawberry.field(
+        resolver=deploy_service_resolver,
         permission_classes=[IsAdmin],
     )
     redeploy_executable: DeploymentLog = strawberry.field(

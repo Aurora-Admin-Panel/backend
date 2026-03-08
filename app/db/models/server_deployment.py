@@ -47,16 +47,16 @@ class ServerDeployment(Base):
     __tablename__ = "server_deployment"
 
     id = Column(Integer, primary_key=True, index=True)
-    binding_id = Column(
-        Integer, ForeignKey("file_contract_binding.id"), nullable=True
+    service_binding_id = Column(
+        Integer, ForeignKey("service_binding.id"), nullable=True
     )
-    contract_id = Column(
-        Integer, ForeignKey("executable_contract.id"), nullable=True
+    service_id = Column(
+        Integer, ForeignKey("service_definition.id"), nullable=True
     )
     server_id = Column(Integer, ForeignKey("server.id"), nullable=False)
     values_json = Column(MutableDict.as_mutable(JSON), nullable=False, default=lambda: {})
     status = Column(
-        Enum(DeploymentStatusEnum),
+        Enum(DeploymentStatusEnum, values_callable=lambda e: [x.value for x in e]),
         nullable=False,
         default=DeploymentStatusEnum.PENDING,
     )
@@ -71,8 +71,8 @@ class ServerDeployment(Base):
         onupdate=datetime.now(UTC),
     )
 
-    binding = relationship("FileContractBinding", back_populates="deployments")
-    contract = relationship("ExecutableContract", back_populates="deployments")
+    service_binding = relationship("ServiceBinding", back_populates="deployments")
+    service = relationship("ServiceDefinition", back_populates="deployments")
     server = relationship("Server", back_populates="deployments")
     logs = relationship(
         "DeploymentLog",
@@ -89,9 +89,9 @@ class DeploymentLog(Base):
     deployment_id = Column(
         Integer, ForeignKey("server_deployment.id"), nullable=False
     )
-    action = Column(Enum(DeploymentActionEnum), nullable=False)
+    action = Column(Enum(DeploymentActionEnum, values_callable=lambda e: [x.value for x in e]), nullable=False)
     status = Column(
-        Enum(DeploymentLogStatusEnum),
+        Enum(DeploymentLogStatusEnum, values_callable=lambda e: [x.value for x in e]),
         nullable=False,
         default=DeploymentLogStatusEnum.PENDING,
     )

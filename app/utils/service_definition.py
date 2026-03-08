@@ -5,14 +5,14 @@ import typing as t
 
 from pydantic import ValidationError
 
-from app.db.schemas.executable_contract import (
-    ExecutableContractAuthoringV1,
+from app.db.schemas.service_definition import (
+    ServiceDefinitionAuthoringV1,
     ExecutableParam,
     PATH_TEMPLATE_VAR_RE,
 )
 
 
-class ContractCompileError(ValueError):
+class ServiceCompileError(ValueError):
     pass
 
 
@@ -51,7 +51,7 @@ def _parse_bool(value: t.Any) -> bool:
             return False
     if isinstance(value, (int, float)) and value in {0, 1}:
         return bool(value)
-    raise ContractCompileError(f"Invalid boolean value: {value!r}")
+    raise ServiceCompileError(f"Invalid boolean value: {value!r}")
 
 
 def _eval_condition(cond, values: dict) -> bool:
@@ -108,32 +108,32 @@ def _apply_scalar_validation(param: ExecutableParam, value: t.Any) -> None:
         min_len = rules.get("minLength")
         max_len = rules.get("maxLength")
         if min_len is not None and len(value) < int(min_len):
-            raise ContractCompileError(f"{param.key} length must be >= {min_len}")
+            raise ServiceCompileError(f"{param.key} length must be >= {min_len}")
         if max_len is not None and len(value) > int(max_len):
-            raise ContractCompileError(f"{param.key} length must be <= {max_len}")
+            raise ServiceCompileError(f"{param.key} length must be <= {max_len}")
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         min_val = rules.get("min")
         max_val = rules.get("max")
         if min_val is not None and value < min_val:
-            raise ContractCompileError(f"{param.key} must be >= {min_val}")
+            raise ServiceCompileError(f"{param.key} must be >= {min_val}")
         if max_val is not None and value > max_val:
-            raise ContractCompileError(f"{param.key} must be <= {max_val}")
+            raise ServiceCompileError(f"{param.key} must be <= {max_val}")
     if isinstance(value, list):
         min_items = rules.get("minItems")
         max_items = rules.get("maxItems")
         if min_items is not None and len(value) < int(min_items):
-            raise ContractCompileError(f"{param.key} must have at least {min_items} items")
+            raise ServiceCompileError(f"{param.key} must have at least {min_items} items")
         if max_items is not None and len(value) > int(max_items):
-            raise ContractCompileError(f"{param.key} must have at most {max_items} items")
+            raise ServiceCompileError(f"{param.key} must have at most {max_items} items")
 
     pattern = rules.get("pattern")
     if pattern and isinstance(value, str):
         try:
             regex = re.compile(pattern)
         except re.error as exc:
-            raise ContractCompileError(f"{param.key} has invalid pattern: {exc}") from exc
+            raise ServiceCompileError(f"{param.key} has invalid pattern: {exc}") from exc
         if not regex.search(value):
-            raise ContractCompileError(f"{param.key} does not match required pattern")
+            raise ServiceCompileError(f"{param.key} does not match required pattern")
 
 
 def _coerce_value(param: ExecutableParam, raw: t.Any) -> t.Any:
@@ -146,20 +146,20 @@ def _coerce_value(param: ExecutableParam, raw: t.Any) -> t.Any:
         return value
     if ptype == "int":
         if isinstance(raw, bool):
-            raise ContractCompileError(f"{param.key} must be an integer")
+            raise ServiceCompileError(f"{param.key} must be an integer")
         try:
             value = int(raw)
         except (TypeError, ValueError) as exc:
-            raise ContractCompileError(f"{param.key} must be an integer") from exc
+            raise ServiceCompileError(f"{param.key} must be an integer") from exc
         _apply_scalar_validation(param, value)
         return value
     if ptype == "float":
         if isinstance(raw, bool):
-            raise ContractCompileError(f"{param.key} must be a float")
+            raise ServiceCompileError(f"{param.key} must be a float")
         try:
             value = float(raw)
         except (TypeError, ValueError) as exc:
-            raise ContractCompileError(f"{param.key} must be a float") from exc
+            raise ServiceCompileError(f"{param.key} must be a float") from exc
         _apply_scalar_validation(param, value)
         return value
     if ptype == "bool":
@@ -169,24 +169,24 @@ def _coerce_value(param: ExecutableParam, raw: t.Any) -> t.Any:
     if ptype == "enum":
         allowed = [opt.value for opt in (param.options or [])]
         if raw not in allowed:
-            raise ContractCompileError(f"{param.key} must be one of {allowed}")
+            raise ServiceCompileError(f"{param.key} must be one of {allowed}")
         _apply_scalar_validation(param, raw)
         return raw
     if ptype == "list":
         if not isinstance(raw, list):
-            raise ContractCompileError(f"{param.key} must be a list")
+            raise ServiceCompileError(f"{param.key} must be a list")
         item_param = param.items
         value = [_coerce_value(item_param, item) for item in raw]
         _apply_scalar_validation(param, value)
         return value
     if ptype == "object":
         if not isinstance(raw, dict):
-            raise ContractCompileError(f"{param.key} must be an object")
+            raise ServiceCompileError(f"{param.key} must be an object")
         return _validate_and_prepare_values(param.properties or [], raw)
     return raw
 
 
-def _normalize_path_context(contract: ExecutableContractAuthoringV1, context: dict, param_key: str):
+def _normalize_path_context(contract: ServiceDefinitionAuthoringV1, context: dict, param_key: str):
     return {
         "jobId": str((context or {}).get("jobId", "preview")),
         "contractKey": contract.contractKey,
@@ -223,7 +223,7 @@ def _validate_and_prepare_values(params: t.List[ExecutableParam], submitted: dic
     known_keys = {p.key for p in params}
     for key in submitted.keys():
         if key not in known_keys:
-            raise ContractCompileError(f"Unknown parameter: {key}")
+            raise ServiceCompileError(f"Unknown parameter: {key}")
 
     for param in params:
         active = True
@@ -249,7 +249,7 @@ def _validate_and_prepare_values(params: t.List[ExecutableParam], submitted: dic
                 raw_present = param.default is not None
 
         if required and (not raw_present or _is_empty(raw_value)):
-            raise ContractCompileError(f"Missing required parameter: {param.key}")
+            raise ServiceCompileError(f"Missing required parameter: {param.key}")
 
         if not raw_present:
             continue
@@ -261,7 +261,7 @@ def _validate_and_prepare_values(params: t.List[ExecutableParam], submitted: dic
 
 def _compile_param(
     *,
-    contract: ExecutableContractAuthoringV1,
+    contract: ServiceDefinitionAuthoringV1,
     param: ExecutableParam,
     value: t.Any,
     context: dict,
@@ -355,7 +355,7 @@ def _compile_param(
 
     if emit.stdin is not None:
         if stdin_holder.get("value") is not None:
-            raise ContractCompileError("Only one stdin emitter is allowed in v1")
+            raise ServiceCompileError("Only one stdin emitter is allowed in v1")
         stdin_holder["value"] = {
             "paramKey": param.key,
             "content": _serialize_for_emit(value, emit.stdin.format),
@@ -366,15 +366,15 @@ def _compile_param(
         return
 
 
-def compile_executable_contract_preview(
+def compile_service_preview(
     contract_payload: dict,
     values_payload: dict | None,
     context_payload: dict | None = None,
 ) -> dict:
     try:
-        contract = ExecutableContractAuthoringV1.parse_obj(contract_payload or {})
+        contract = ServiceDefinitionAuthoringV1.parse_obj(contract_payload or {})
     except ValidationError as exc:
-        return {"ok": False, "error": "Invalid contract schema", "details": exc.errors()}
+        return {"ok": False, "error": "Invalid service definition schema", "details": exc.errors()}
 
     if values_payload is None:
         values_payload = {}
@@ -464,5 +464,5 @@ def compile_executable_contract_preview(
             "shell": shlex.join([contract.exec.bin, *(contract.exec.baseArgs or []), *redacted_argv]),
         }
         return {"ok": True, "plan": plan, "preview": preview, "warnings": warnings}
-    except ContractCompileError as exc:
+    except ServiceCompileError as exc:
         return {"ok": False, "error": str(exc)}

@@ -1,12 +1,12 @@
-"""Seed built-in executable contracts.
+"""Seed built-in service definitions.
 
-Run via: docker-compose exec backend python3 app/seed_contracts.py
+Run via: docker-compose exec backend python3 app/seed_services.py
 """
 
 from app.db.session import db_session
-from app.db.models import ExecutableContract
+from app.db.models import ServiceDefinition
 
-BUILTIN_CONTRACTS = [
+BUILTIN_SERVICES = [
     {
         "schemaVersion": "aurora-exec/v1",
         "contractKey": "gost",
@@ -139,40 +139,40 @@ BUILTIN_CONTRACTS = [
 ]
 
 
-def seed_builtin_contracts():
-    """Upsert built-in contracts (idempotent by contract_key + version)."""
+def seed_builtin_services():
+    """Upsert built-in services (idempotent by service_key + version)."""
     with db_session() as db:
-        for contract_data in BUILTIN_CONTRACTS:
-            key = contract_data["contractKey"]
-            version = contract_data["version"]
+        for service_data in BUILTIN_SERVICES:
+            key = service_data["contractKey"]
+            version = service_data["version"]
 
             existing = (
-                db.query(ExecutableContract)
-                .filter_by(contract_key=key, version=version)
+                db.query(ServiceDefinition)
+                .filter_by(service_key=key, version=version)
                 .first()
             )
 
             if existing:
-                existing.title = contract_data["title"]
-                existing.description = contract_data.get("description")
-                existing.schema_json = contract_data
+                existing.title = service_data["title"]
+                existing.description = service_data.get("description")
+                existing.config_json = service_data
                 existing.is_builtin = True
                 existing.is_active = True
             else:
-                row = ExecutableContract(
-                    contract_key=key,
+                row = ServiceDefinition(
+                    service_key=key,
                     version=version,
-                    title=contract_data["title"],
-                    description=contract_data.get("description"),
-                    schema_json=contract_data,
+                    title=service_data["title"],
+                    description=service_data.get("description"),
+                    config_json=service_data,
                     is_builtin=True,
                     is_active=True,
                 )
                 db.add(row)
 
         db.commit()
-        print(f"Seeded {len(BUILTIN_CONTRACTS)} built-in contracts.")
+        print(f"Seeded {len(BUILTIN_SERVICES)} built-in services.")
 
 
 if __name__ == "__main__":
-    seed_builtin_contracts()
+    seed_builtin_services()

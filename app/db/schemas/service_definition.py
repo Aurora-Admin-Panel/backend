@@ -51,7 +51,7 @@ class ParamUI(BaseModel):
     advanced: t.Optional[bool]
 
 
-class ContractUI(BaseModel):
+class ServiceUI(BaseModel):
     grid: t.Optional[GridConfig]
 
 
@@ -286,14 +286,14 @@ class ExecutableParam(BaseModel):
 ExecutableParam.update_forward_refs()
 
 
-class ExecutableContractAuthoringV1(BaseModel):
+class ServiceDefinitionAuthoringV1(BaseModel):
     schemaVersion: str
     contractKey: str
     version: int
     title: str
     description: t.Optional[str]
     exec: ExecConfig
-    ui: t.Optional[ContractUI]
+    ui: t.Optional[ServiceUI]
     params: t.List[ExecutableParam]
 
     @validator("schemaVersion")

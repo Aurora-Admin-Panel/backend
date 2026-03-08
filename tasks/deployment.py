@@ -12,13 +12,13 @@ from app.db.session import db_session
 from app.db.models import (
     ServerDeployment,
     DeploymentLog,
-    FileContractBinding,
-    ExecutableContract,
+    ServiceBinding,
+    ServiceDefinition,
     DeploymentStatusEnum,
     DeploymentLogStatusEnum,
     DeploymentActionEnum,
 )
-from app.utils.executable_contract import compile_executable_contract_preview
+from app.utils.service_definition import compile_service_preview
 
 from .config import huey
 from tasks.utils.connect import connect
@@ -30,30 +30,30 @@ DEPLOY_BASE_DIR = "/usr/local/aurora/deployments"
 
 
 def _load_deployment(db, deployment_id: int):
-    """Load deployment and resolve contract/file.
+    """Load deployment and resolve service/file.
 
-    Returns (deployment, file_obj, contract) where file_obj may be None
-    for contract-direct deploys.
+    Returns (deployment, file_obj, service) where file_obj may be None
+    for service-direct deploys.
     """
     deployment = db.get(ServerDeployment, deployment_id)
     if not deployment:
         raise AuroraException(f"Deployment {deployment_id} not found")
 
-    if deployment.binding_id:
+    if deployment.service_binding_id:
         # Binding-based deploy
-        binding = db.get(FileContractBinding, deployment.binding_id)
+        binding = db.get(ServiceBinding, deployment.service_binding_id)
         if not binding:
-            raise AuroraException(f"Binding {deployment.binding_id} not found")
-        return deployment, binding.file, binding.contract
-    elif deployment.contract_id:
-        # Contract-direct deploy (no binding/file needed)
-        contract = db.get(ExecutableContract, deployment.contract_id)
-        if not contract:
-            raise AuroraException(f"Contract {deployment.contract_id} not found")
-        return deployment, None, contract
+            raise AuroraException(f"Service binding {deployment.service_binding_id} not found")
+        return deployment, binding.file, binding.service
+    elif deployment.service_id:
+        # Service-direct deploy (no binding/file needed)
+        service = db.get(ServiceDefinition, deployment.service_id)
+        if not service:
+            raise AuroraException(f"Service definition {deployment.service_id} not found")
+        return deployment, None, service
     else:
         raise AuroraException(
-            f"Deployment {deployment_id} has neither binding_id nor contract_id"
+            f"Deployment {deployment_id} has neither service_binding_id nor service_id"
         )
 
 
@@ -97,7 +97,7 @@ WantedBy=multi-user.target
 @huey.task(priority=3, context=True)
 def deploy_executable_task(deployment_id: int, log_id: int, task: Task):
     with db_session() as db:
-        deployment, file_obj, contract = _load_deployment(db, deployment_id)
+        deployment, file_obj, service = _load_deployment(db, deployment_id)
         log = db.get(DeploymentLog, log_id)
         if log:
             log.task_id = task.id
@@ -107,14 +107,18 @@ def deploy_executable_task(deployment_id: int, log_id: int, task: Task):
 
         values = dict(deployment.values_json or {})
         server_id = deployment.server_id
+        config_json = service.config_json
+        file_storage_path = file_obj.storage_path if file_obj else None
+        file_name = file_obj.name if file_obj else None
+        source_config = config_json.get("exec", {}).get("source") if config_json else None
 
     try:
-        # Compile the contract
-        result = compile_executable_contract_preview(
-            contract.schema_json, values, {"jobId": str(deployment_id)}
+        # Compile the service definition
+        result = compile_service_preview(
+            config_json, values, {"jobId": str(deployment_id)}
         )
         if not result.get("ok"):
-            error_msg = result.get("error", "Contract compilation failed")
+            error_msg = result.get("error", "Service compilation failed")
             with db_session() as db:
                 _update_log(
                     db, log_id,
@@ -143,26 +147,25 @@ def deploy_executable_task(deployment_id: int, log_id: int, task: Task):
 
             # 2. Acquire executable binary
             bin_path = plan["argv"][0] if plan["argv"] else None
-            source = contract.schema_json.get("exec", {}).get("source")
 
-            if source:
+            if source_config:
                 # Source-driven acquisition
                 remote_bin = f"{deploy_dir}/{bin_path.split('/')[-1]}" if bin_path else f"{deploy_dir}/binary"
                 orch.ensure_binary(
                     "acquire-binary",
                     remote_bin,
-                    source_config=source,
-                    src=file_obj.storage_path if file_obj else None,
+                    source_config=source_config,
+                    src=file_storage_path,
                 )
                 if bin_path:
                     plan["argv"][0] = remote_bin
-            elif file_obj and file_obj.storage_path:
+            elif file_storage_path:
                 # Legacy: no source config, just upload the file
-                remote_bin = f"{deploy_dir}/{file_obj.name}"
+                remote_bin = f"{deploy_dir}/{file_name}"
                 orch.ensure_file(
                     "upload-binary",
                     remote_bin,
-                    src=file_obj.storage_path,
+                    src=file_storage_path,
                     mode="0755",
                 )
                 if bin_path:
