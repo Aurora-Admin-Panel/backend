@@ -237,7 +237,18 @@ fi
                     with tempfile.NamedTemporaryFile(delete=False, mode="w") as tmp:
                         tmp.write(self.content)
                         tmp_local = tmp.name
-                    self.connection.put(tmp_local, str(self.path))
+                    tmp_remote = self.connection.mktemp()
+                    self.connection.put(tmp_local, tmp_remote)
+                    install_cmd = f"install -D -m {self.mode if self.mode else self.DEFAULT_MODE} {q(tmp_remote)} {q(self.path)}"
+                    install_res = self.connection.execute(install_cmd)
+                    if install_res.failed:
+                        return OperationResult(
+                            name=self.name,
+                            state=StateResult.FAILED,
+                            message="Failed to transfer inline content",
+                            stderr=install_res.stderr,
+                        )
+                    self.connection.execute(f"rm -f {q(tmp_remote)}")
                 except Exception as exc:
                     return OperationResult(
                         name=self.name,
