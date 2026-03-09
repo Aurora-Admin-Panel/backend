@@ -103,6 +103,32 @@ def server_cleanup(server_id: int):
     logger.info(f"Cleaned up server {server_id}")
 
 
+def _publish_offline_metric(server_id: int):
+    """Publish a minimal is_online=False metric so subscribers know the server is down."""
+    try:
+        from app.db.models import ServerMetric
+
+        metric = ServerMetric(
+            time=datetime.now(UTC),
+            server_id=server_id,
+            is_online=False,
+            cpu_util_pct=0,
+            load_1m=0,
+            load_5m=0,
+            load_15m=0,
+            mem_used_bytes=0,
+            swap_used_bytes=0,
+            fs_root_used_bytes=0,
+        )
+        with get_redis() as r:
+            r.publish(
+                Keys.server_metric_pubsub(),
+                codec.dumps(to_json(metric)),
+            )
+    except Exception as e:
+        logger.debug(f"Failed to publish offline metric for server {server_id}: {e}")
+
+
 @huey.task(priority=10, context=True)
 def server_usage_runner(server_id: int, task: Task):
     try:
@@ -137,9 +163,10 @@ def server_usage_runner(server_id: int, task: Task):
                 )
     except AuroraException as e:
         logger.debug(str(e))
+        _publish_offline_metric(server_id)
     except Exception as e:
-        # TODO: handle exception
         logger.exception(e)
+        _publish_offline_metric(server_id)
     finally:
         last_seen = None
         with db_session() as db:
