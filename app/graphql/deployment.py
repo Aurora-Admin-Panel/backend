@@ -12,6 +12,7 @@ from strawberry.types import Info
 
 from app.db.async_session import async_db_session
 from app.db.models import (
+    File as DBFile,
     Port as DBPort,
     ServiceBinding as DBServiceBinding,
     ServiceDefinition as DBServiceDefinition,
@@ -161,6 +162,29 @@ class ServiceBindingType:
     service_id: int
     is_default: bool
     created_at: datetime
+
+    @strawberry.field
+    async def file(self) -> Optional[Annotated["File", strawberry.lazy(".file")]]:
+        stmt = select(DBFile).where(DBFile.id == self.file_id)
+        async with async_db_session() as db:
+            result = await db.execute(stmt)
+        return result.scalars().first()
+
+    @strawberry.field
+    async def service(
+        self,
+    ) -> Optional[
+        Annotated[
+            "ServiceDefinitionType",
+            strawberry.lazy(".service_definition"),
+        ]
+    ]:
+        stmt = select(DBServiceDefinition).where(
+            DBServiceDefinition.id == self.service_id
+        )
+        async with async_db_session() as db:
+            result = await db.execute(stmt)
+        return result.scalars().first()
 
     @strawberry.field
     async def deployments(self) -> List[ServerDeployment]:
