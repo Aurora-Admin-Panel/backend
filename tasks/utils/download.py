@@ -69,8 +69,8 @@ class RemoteDownloadResource(SystemResource):
                 stderr=conn.strip_stdout(dl_res) if hasattr(dl_res, 'stdout') else str(dl_res),
             )
 
-        # 2. Detect file type
-        file_type = conn.run(f"file -b {q(tmp)}", publish=False).strip().lower()
+        # 2. Detect file type (no `file` command needed — not on all minimal images)
+        file_type = self._detect_file_type(conn, tmp)
 
         try:
             # Ensure parent directory exists
@@ -78,9 +78,9 @@ class RemoteDownloadResource(SystemResource):
             parent = str(PurePosixPath(self.dest).parent)
             conn.run(f"mkdir -p {q(parent)}", publish=False)
 
-            if "gzip" in file_type or "tar" in file_type or "xz" in file_type:
+            if file_type in ("gzip", "xz", "bzip2", "tar"):
                 self._extract_tar(conn, tmp)
-            elif "zip" in file_type:
+            elif file_type == "zip":
                 self._extract_zip(conn, tmp)
             else:
                 # Raw binary
@@ -100,6 +100,35 @@ class RemoteDownloadResource(SystemResource):
             changed=True,
             details={"url": self.url, "dest": self.dest},
         )
+
+    def _detect_file_type(self, conn, tmp: str) -> str:
+        """Detect file type via URL extension, falling back to magic bytes (od)."""
+        url_path = self.url.lower().split("?")[0].split("#")[0].rstrip("/")
+        if url_path.endswith((".tar.gz", ".tgz")):
+            return "gzip"
+        if url_path.endswith((".tar.xz", ".txz")):
+            return "xz"
+        if url_path.endswith((".tar.bz2", ".tbz2")):
+            return "bzip2"
+        if url_path.endswith(".tar"):
+            return "tar"
+        if url_path.endswith(".zip"):
+            return "zip"
+
+        # Read first 6 bytes as hex via od (coreutils — always available)
+        hdr = conn.run(
+            f"od -A n -t x1 -N 6 {q(tmp)} | tr -d ' \\n'",
+            publish=False,
+        ).strip().lower()
+        if hdr.startswith("1f8b"):
+            return "gzip"
+        if hdr.startswith("504b0304"):
+            return "zip"
+        if hdr.startswith("fd377a585a00"):
+            return "xz"
+        if hdr.startswith("425a"):
+            return "bzip2"
+        return "binary"
 
     def _extract_tar(self, conn, tmp: str) -> None:
         extract_dir = conn.run("mktemp -d", publish=False).strip()
