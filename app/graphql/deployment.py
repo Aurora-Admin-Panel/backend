@@ -283,40 +283,67 @@ async def _validate_port_for_deployment(db, port_id: Optional[int], server_ids: 
 # Deployment lifecycle mutations
 # ---------------------------------------------------------------------------
 
-async def deploy_executable_resolver(
+async def deploy_service_resolver(
     info: Info,
-    service_binding_id: int,
     server_ids: List[int],
     values: JSON,
+    service_id: Optional[int] = None,
+    service_binding_id: Optional[int] = None,
     port_id: Optional[int] = None,
 ) -> List[ServerDeployment]:
+    """Deploy a service to one or more servers.
+
+    Exactly one of ``service_id`` or ``service_binding_id`` must be provided.
+    If ``service_binding_id`` is given the service definition is resolved via
+    the binding; otherwise ``service_id`` is used directly.
+    """
     from tasks.deployment import deploy_executable_task
+
+    # --- Validate exactly one source ---
+    if service_id is None and service_binding_id is None:
+        raise ValueError("Exactly one of service_id or service_binding_id must be provided")
+    if service_id is not None and service_binding_id is not None:
+        raise ValueError("Exactly one of service_id or service_binding_id must be provided")
 
     user = info.context["request"].state.user
     results = []
     pending_tasks = []
 
     async with async_db_session() as db:
-        # Resolve requiresPort via binding -> service definition
-        binding = (await db.execute(
-            select(DBServiceBinding).where(DBServiceBinding.id == service_binding_id)
-        )).scalars().first()
-        if not binding:
-            raise ValueError(f"Service binding {service_binding_id} not found")
-        service_def = (await db.execute(
-            select(DBServiceDefinition).where(DBServiceDefinition.id == binding.service_id)
-        )).scalars().first()
-        if not service_def:
-            raise ValueError(f"Service definition for binding {service_binding_id} not found")
+        # --- Resolve service definition ---
+        if service_binding_id is not None:
+            binding = (await db.execute(
+                select(DBServiceBinding).where(DBServiceBinding.id == service_binding_id)
+            )).scalars().first()
+            if not binding:
+                raise ValueError(f"Service binding {service_binding_id} not found")
+            service_def = (await db.execute(
+                select(DBServiceDefinition).where(DBServiceDefinition.id == binding.service_id)
+            )).scalars().first()
+            if not service_def:
+                raise ValueError(f"Service definition for binding {service_binding_id} not found")
+        else:
+            service_def = (await db.execute(
+                select(DBServiceDefinition).where(DBServiceDefinition.id == service_id)
+            )).scalars().first()
+            if not service_def:
+                raise ValueError(f"Service definition {service_id} not found")
+
         requires_port = _parse_requires_port(service_def.config_json)
         await _validate_port_for_deployment(db, port_id, server_ids, requires_port)
 
         for server_id in server_ids:
-            # Upsert ServerDeployment
-            existing_stmt = select(DBServerDeployment).where(
-                DBServerDeployment.service_binding_id == service_binding_id,
-                DBServerDeployment.server_id == server_id,
-            )
+            # Upsert ServerDeployment keyed on whichever source was provided
+            if service_binding_id is not None:
+                existing_stmt = select(DBServerDeployment).where(
+                    DBServerDeployment.service_binding_id == service_binding_id,
+                    DBServerDeployment.server_id == server_id,
+                )
+            else:
+                existing_stmt = select(DBServerDeployment).where(
+                    DBServerDeployment.service_id == service_id,
+                    DBServerDeployment.server_id == server_id,
+                )
             existing = (await db.execute(existing_stmt)).scalars().first()
 
             if existing:
@@ -328,87 +355,6 @@ async def deploy_executable_resolver(
             else:
                 deployment = DBServerDeployment(
                     service_binding_id=service_binding_id,
-                    server_id=server_id,
-                    values_json=values,
-                    status=DeploymentStatusEnum.PENDING,
-                    port_id=port_id,
-                )
-                db.add(deployment)
-
-            await db.flush()
-
-            log = DBDeploymentLog(
-                deployment_id=deployment.id,
-                action=DeploymentActionEnum.DEPLOY,
-                status=DeploymentLogStatusEnum.PENDING,
-                created_by_id=user.id if user else None,
-            )
-            db.add(log)
-            await db.flush()
-
-            pending_tasks.append((deployment.id, log.id, log))
-            results.append(deployment)
-
-        try:
-            await db.commit()
-        except IntegrityError:
-            raise ValueError("Port is already in use by another deployment")
-
-        # Dispatch Huey tasks after commit so workers can see the data
-        for dep_id, log_id, log in pending_tasks:
-            task_result = deploy_executable_task(dep_id, log_id)
-            log.task_id = task_result.id
-        await db.commit()
-
-        for dep in results:
-            await db.refresh(dep)
-
-    return results
-
-
-async def deploy_service_resolver(
-    info: Info,
-    service_id: int,
-    server_ids: List[int],
-    values: JSON,
-    port_id: Optional[int] = None,
-) -> List[ServerDeployment]:
-    """Deploy a service directly (without a binding) to one or more servers."""
-    from tasks.deployment import deploy_executable_task
-
-    user = info.context["request"].state.user
-    results = []
-    pending_tasks = []
-
-    async with async_db_session() as db:
-        # Verify service exists
-        service = (
-            await db.execute(
-                select(DBServiceDefinition).where(DBServiceDefinition.id == service_id)
-            )
-        ).scalars().first()
-        if not service:
-            raise ValueError(f"Service definition {service_id} not found")
-
-        requires_port = _parse_requires_port(service.config_json)
-        await _validate_port_for_deployment(db, port_id, server_ids, requires_port)
-
-        for server_id in server_ids:
-            # Upsert ServerDeployment by (service_id, server_id)
-            existing_stmt = select(DBServerDeployment).where(
-                DBServerDeployment.service_id == service_id,
-                DBServerDeployment.server_id == server_id,
-            )
-            existing = (await db.execute(existing_stmt)).scalars().first()
-
-            if existing:
-                existing.values_json = values
-                existing.status = DeploymentStatusEnum.PENDING
-                existing.is_active = True
-                existing.port_id = port_id
-                deployment = existing
-            else:
-                deployment = DBServerDeployment(
                     service_id=service_id,
                     server_id=server_id,
                     values_json=values,

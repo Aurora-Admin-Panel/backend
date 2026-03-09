@@ -31,7 +31,6 @@ from .deployment import (
     ServiceBindingType,
     ServerDeployment,
     DeploymentLog,
-    deploy_executable_resolver,
     deploy_service_resolver,
     redeploy_executable_resolver,
     stop_deployment_resolver,
@@ -209,10 +208,6 @@ class Mutation:
         permission_classes=[IsAdmin],
     )
     # --- Deployment lifecycle ---
-    deploy_executable: List[ServerDeployment] = strawberry.field(
-        resolver=deploy_executable_resolver,
-        permission_classes=[IsAdmin],
-    )
     deploy_service: List[ServerDeployment] = strawberry.field(
         resolver=deploy_service_resolver,
         permission_classes=[IsAdmin],
