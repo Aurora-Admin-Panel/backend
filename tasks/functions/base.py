@@ -1,8 +1,8 @@
 from __future__ import annotations
 from sqlalchemy.orm import Session
 
-from app.db.models.port import Port
-from app.db.models.port_forward import MethodEnum
+from app.db.models import Port
+from app.db.models import MethodEnum
 
 
 class ConfigMount(type):

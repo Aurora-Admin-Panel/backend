@@ -1,9 +1,6 @@
-from sqlalchemy.orm import Session
-
-from app.db.models.port import Port
-
-from app.db.models.port_forward import MethodEnum
+from app.db.models import MethodEnum, Port
 from app.utils.caddy import generate_caddy_config
+from sqlalchemy.orm import Session
 from tasks.functions.base import AppConfig
 
 

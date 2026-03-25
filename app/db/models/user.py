@@ -1,7 +1,11 @@
+from typing import TYPE_CHECKING
 from sqlalchemy.orm import relationship
 from sqlalchemy import Boolean, Column, Integer, String, Text
 
 from .base import Base
+
+if TYPE_CHECKING:
+    from .server import Server
 
 
 class User(Base):
@@ -24,9 +28,21 @@ class User(Base):
         "PortUser", cascade="all,delete", back_populates="user"
     )
     servers = relationship(
-        "Server", secondary="server_user", back_populates="users"
+        "Server",
+        secondary="server_user",
+        back_populates="users",
+        viewonly=True,
+        collection_class=list,
+        order_by="Server.name",
     )
-    ports = relationship("Port", secondary="port_user", back_populates="users")
+    ports = relationship(
+        "Port",
+        secondary="port_user",
+        back_populates="users",
+        viewonly=True,
+        collection_class=list,
+        order_by="Port.server_id, Port.external_num, Port.num",
+    )
 
     def is_admin(self) -> bool:
         return self.is_ops or self.is_superuser

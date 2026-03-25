@@ -1,0 +1,52 @@
+import enum
+from datetime import datetime, UTC
+from typing import TYPE_CHECKING
+from sqlalchemy.orm import relationship
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Integer,
+    String,
+    Text,
+    Enum,
+    BigInteger,
+    DateTime,
+)
+from sqlalchemy.dialects.postgresql import TIMESTAMP
+from .base import Base
+
+
+class FileTypeEnum(str, enum.Enum):
+    TEXT = "text"
+    IMAGE = "image"
+    VIDEO = "video"
+    SECRET = "secret"
+    EXECUTABLE = "executable"
+
+
+class File(Base):
+    __tablename__ = "file"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    type = Column(Enum(FileTypeEnum), nullable=False)
+    size = Column(BigInteger, nullable=False)
+    storage_path = Column(String, nullable=False)
+    version = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(
+        TIMESTAMP(timezone=True), default=datetime.now(UTC), nullable=False
+    )
+    updated_at = Column(
+        TIMESTAMP(timezone=True),
+        default=datetime.now(UTC),
+        nullable=False,
+        onupdate=datetime.now(UTC),
+    )
+
+    servers = relationship("Server", back_populates="key_file")
+    service_bindings = relationship(
+        "ServiceBinding",
+        cascade="all,delete",
+        back_populates="file",
+    )

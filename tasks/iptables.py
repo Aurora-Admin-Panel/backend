@@ -2,7 +2,7 @@ import traceback
 from huey import crontab
 
 from app.db.session import db_session
-from app.db.models.port_forward import MethodEnum
+from app.db.models import MethodEnum
 from app.db.crud.server import (
     get_server,
     get_server_with_ports_usage,
@@ -48,7 +48,7 @@ def iptables_runner(
             server = get_server_with_ports_usage(db, server_id)
 
         extravars = {
-            "host": server.ansible_name,
+            "host": server.name,
             "local_port": local_port,
             "iptables_args": args,
         }
@@ -85,7 +85,7 @@ def iptables_reset_runner(
     with db_session() as db:
         server = get_server(db, server_id)
     extravars = {
-        "host": server.ansible_name,
+        "host": server.name,
         "local_port": port_num,
         "iptables_args": f" reset {port_num}",
     }

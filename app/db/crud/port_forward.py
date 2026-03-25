@@ -4,16 +4,13 @@ from sqlalchemy.orm import Session, joinedload
 from urllib.parse import urlparse
 from fastapi import HTTPException, status
 
-from app.db.models.user import User
-from app.db.models.server import Server
+from app.db.models import User, Server, Port, PortUser, PortForwardRule, MethodEnum
 from app.db.schemas.port_forward import (
     PortForwardRuleBase,
     PortForwardRuleOut,
     PortForwardRuleCreate,
     PortForwardRuleEdit,
 )
-from app.db.models.port import Port, PortUser
-from app.db.models.port_forward import PortForwardRule, TypeEnum, MethodEnum
 
 
 def get_forward_rule(

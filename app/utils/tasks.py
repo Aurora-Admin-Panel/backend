@@ -1,8 +1,8 @@
 from fastapi.encoders import jsonable_encoder
 
-from app.db.models.port import Port
-from app.db.models.server import Server
-from app.db.models.port_forward import PortForwardRule, MethodEnum
+from app.db.models import Port
+from app.db.models import Server
+from app.db.models import PortForwardRule, MethodEnum
 from app.db.schemas.server import ServerEdit
 
 from tasks.ansible import ansible_hosts_runner
@@ -71,11 +71,6 @@ def remove_tc(server_id: int, port_num: int):
     }
     print(f"Sending tc_runner task, kwargs: {kwargs}")
     tc_runner(**kwargs)
-
-
-def trigger_ansible_hosts():
-    print("Sending ansible_hosts_runner task")
-    ansible_hosts_runner()
 
 
 def trigger_iptables_reset(port: Port):

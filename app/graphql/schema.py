@@ -1,0 +1,260 @@
+import asyncio
+from typing import AsyncGenerator, List, Optional, Dict
+
+from invoke.util import task_name_sort_key
+import strawberry
+import redis.asyncio as redis
+from strawberry.types import Info
+from strawberry.scalars import JSON
+
+from .auth import IsAuthenticated, IsAdmin, IsSuperUser, EnsureUser
+from .file import File
+from .port import Port, PortUser
+from .port_forward import PortForwardRule
+from .server import Server, ServerUser
+from .user import User
+from .metric import (
+    DiskSeries,
+    IfaceSeries,
+    PairPoint,
+    ServerMetricSnapshot,
+    ServerMetricPoint,
+)
+from .task import task, task_stream
+from .utils import PaginationWindow
+from .service_definition import (
+    ServiceDefinitionType,
+    compile_service_preview_resolver,
+    compile_service_preview_by_id_resolver,
+)
+from .deployment import (
+    ServiceBindingType,
+    ServerDeployment,
+    DeploymentLog,
+    deploy_service_resolver,
+    redeploy_executable_resolver,
+    stop_deployment_resolver,
+    start_deployment_resolver,
+    remove_deployment_resolver,
+)
+
+
+@strawberry.type
+class Query:
+    user: Optional[User] = strawberry.field(
+        resolver=User.get_user, permission_classes=[IsAuthenticated]
+    )
+    users: List[User] = strawberry.field(
+        resolver=User.get_users, permission_classes=[IsAuthenticated]
+    )
+    paginated_users: PaginationWindow[User] = strawberry.field(
+        resolver=User.get_paginated_users, permission_classes=[IsAuthenticated]
+    )
+    files: List[File] = strawberry.field(
+        resolver=File.get_files, permission_classes=[IsAuthenticated]
+    )
+    paginated_files: PaginationWindow[File] = strawberry.field(
+        resolver=File.get_paginated_files, permission_classes=[IsAuthenticated]
+    )
+    port: Optional[Port] = strawberry.field(
+        resolver=Port.get_port, permission_classes=[IsAuthenticated]
+    )
+    ports: List[Port] = strawberry.field(
+        resolver=Port.get_ports, permission_classes=[IsAuthenticated]
+    )
+    paginated_ports: PaginationWindow[Port] = strawberry.field(
+        resolver=Port.get_paginated_ports, permission_classes=[IsAuthenticated]
+    )
+    rule_options: List[str] = strawberry.field(
+        resolver=Port.get_rule_options, permission_classes=[IsAuthenticated]
+    )
+    server: Optional[Server] = strawberry.field(
+        resolver=Server.get_server, permission_classes=[IsAuthenticated]
+    )
+    servers: List[Server] = strawberry.field(
+        resolver=Server.get_servers, permission_classes=[IsAuthenticated]
+    )
+    paginated_servers: PaginationWindow[Server] = strawberry.field(
+        resolver=Server.get_paginated_servers,
+        permission_classes=[IsAuthenticated],
+    )
+    server_metric_series: List[ServerMetricPoint] = strawberry.field(
+        resolver=ServerMetricPoint.get_server_metric_series,
+        permission_classes=[],
+    )
+    disk_usage_series: List[DiskSeries] = strawberry.field(
+        resolver=DiskSeries.disk_usage_series,
+        permission_classes=[],
+    )
+    network_speed_series: List[IfaceSeries] = strawberry.field(
+        resolver=IfaceSeries.network_speed_series,
+        permission_classes=[],
+    )
+    port_forward_rule: Optional[PortForwardRule] = strawberry.field(
+        resolver=PortForwardRule.get_port_forward_rule,
+        permission_classes=[IsAuthenticated],
+    )
+    service_definition: Optional[ServiceDefinitionType] = strawberry.field(
+        resolver=ServiceDefinitionType.get_service_definition,
+        permission_classes=[IsAdmin],
+    )
+    service_definitions: List[ServiceDefinitionType] = strawberry.field(
+        resolver=ServiceDefinitionType.get_service_definitions,
+        permission_classes=[IsAdmin],
+    )
+    paginated_service_definitions: PaginationWindow[ServiceDefinitionType] = strawberry.field(
+        resolver=ServiceDefinitionType.get_paginated_service_definitions,
+        permission_classes=[IsAdmin],
+    )
+    service_bindings: List[ServiceBindingType] = strawberry.field(
+        resolver=ServiceBindingType.get_service_bindings,
+        permission_classes=[IsAdmin],
+    )
+    server_deployment: Optional[ServerDeployment] = strawberry.field(
+        resolver=ServerDeployment.get_server_deployment,
+        permission_classes=[IsAdmin],
+    )
+    paginated_server_deployments: PaginationWindow[ServerDeployment] = strawberry.field(
+        resolver=ServerDeployment.get_paginated_server_deployments,
+        permission_classes=[IsAdmin],
+    )
+    available_ports_for_deployment: List[Port] = strawberry.field(
+        resolver=Port.get_available_ports_for_deployment,
+        permission_classes=[IsAuthenticated],
+    )
+
+
+@strawberry.type
+class Mutation:
+    create_user: User = strawberry.field(resolver=User.create_user)
+    update_user: bool = strawberry.field(
+        resolver=User.update_user, permission_classes=[IsSuperUser]
+    )
+    delete_user: bool = strawberry.field(
+        resolver=User.delete_user, permission_classes=[IsSuperUser]
+    )
+    upload_file: File = strawberry.field(
+        resolver=File.upload_file, permission_classes=[IsSuperUser]
+    )
+    update_file: bool = strawberry.field(
+        resolver=File.update_file, permission_classes=[IsSuperUser]
+    )
+    delete_file: bool = strawberry.field(
+        resolver=File.delete_file, permission_classes=[IsSuperUser]
+    )
+    add_server: bool = strawberry.field(
+        resolver=Server.add_server, permission_classes=[IsSuperUser]
+    )
+    update_server: bool = strawberry.field(
+        resolver=Server.update_server, permission_classes=[IsSuperUser]
+    )
+    delete_server: bool = strawberry.field(
+        resolver=Server.delete_server, permission_classes=[IsSuperUser]
+    )
+    add_server_user: bool = strawberry.field(
+        resolver=ServerUser.add_server_user, permission_classes=[IsSuperUser]
+    )
+    update_server_user: bool = strawberry.field(
+        resolver=ServerUser.update_server_user, permission_classes=[IsSuperUser]
+    )
+    delete_server_user: bool = strawberry.field(
+        resolver=ServerUser.delete_server_user, permission_classes=[IsSuperUser]
+    )
+    add_port: bool = strawberry.field(
+        resolver=Port.add_port, permission_classes=[IsAdmin]
+    )
+    update_port: bool = strawberry.field(
+        resolver=Port.update_port, permission_classes=[IsAdmin]
+    )
+    delete_port: bool = strawberry.field(
+        resolver=Port.delete_port, permission_classes=[IsAdmin]
+    )
+    add_port_user: bool = strawberry.field(
+        resolver=PortUser.add_port_user, permission_classes=[IsAdmin]
+    )
+    update_port_user: bool = strawberry.field(
+        resolver=PortUser.update_port_user, permission_classes=[IsAdmin]
+    )
+    delete_port_user: bool = strawberry.field(
+        resolver=PortUser.delete_port_user, permission_classes=[IsAdmin]
+    )
+    compile_service_preview: JSON = strawberry.field(
+        resolver=compile_service_preview_resolver,
+        permission_classes=[IsAdmin],
+    )
+    compile_service_preview_by_id: JSON = strawberry.field(
+        resolver=compile_service_preview_by_id_resolver,
+        permission_classes=[IsAdmin],
+    )
+    create_service_definition: ServiceDefinitionType = strawberry.field(
+        resolver=ServiceDefinitionType.create_service_definition,
+        permission_classes=[IsAdmin],
+    )
+    update_service_definition: bool = strawberry.field(
+        resolver=ServiceDefinitionType.update_service_definition,
+        permission_classes=[IsAdmin],
+    )
+    delete_service_definition: bool = strawberry.field(
+        resolver=ServiceDefinitionType.delete_service_definition,
+        permission_classes=[IsAdmin],
+    )
+    # --- Service bindings ---
+    create_service_binding: ServiceBindingType = strawberry.field(
+        resolver=ServiceBindingType.create_service_binding,
+        permission_classes=[IsAdmin],
+    )
+    delete_service_binding: bool = strawberry.field(
+        resolver=ServiceBindingType.delete_service_binding,
+        permission_classes=[IsAdmin],
+    )
+    # --- Deployment lifecycle ---
+    deploy_service: List[ServerDeployment] = strawberry.field(
+        resolver=deploy_service_resolver,
+        permission_classes=[IsAdmin],
+    )
+    redeploy_executable: DeploymentLog = strawberry.field(
+        resolver=redeploy_executable_resolver,
+        permission_classes=[IsAdmin],
+    )
+    stop_deployment: DeploymentLog = strawberry.field(
+        resolver=stop_deployment_resolver,
+        permission_classes=[IsAdmin],
+    )
+    start_deployment: DeploymentLog = strawberry.field(
+        resolver=start_deployment_resolver,
+        permission_classes=[IsAdmin],
+    )
+    remove_deployment: DeploymentLog = strawberry.field(
+        resolver=remove_deployment_resolver,
+        permission_classes=[IsAdmin],
+    )
+
+
+async def count(info: Info, target: int = 1) -> AsyncGenerator[int, None]:
+    for i in range(target):
+        yield i
+        await asyncio.sleep(0.5)
+
+
+@strawberry.type
+class Subscription:
+    task_stream: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=task_stream, permission_classes=[]
+    )
+    task: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=task, permission_classes=[]
+    )
+    count: AsyncGenerator[int, None] = strawberry.subscription(
+        resolver=count, permission_classes=[]
+    )
+    server_metric: AsyncGenerator[ServerMetricSnapshot | None, None] = (
+        strawberry.subscription(
+            resolver=Server.subscribe_metrics, permission_classes=[]
+        )
+    )
+    connect_server: AsyncGenerator[JSON, None] = strawberry.subscription(
+        resolver=Server.connect_server, permission_classes=[IsAuthenticated]
+    )
+
+
+schema = strawberry.Schema(query=Query, mutation=Mutation, subscription=Subscription)

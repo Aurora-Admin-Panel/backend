@@ -1,39 +1,37 @@
 import typing as t
-from fastapi import HTTPException, status
-from fastapi import APIRouter, Request, Depends, Response
-from fastapi.encoders import jsonable_encoder
-from fastapi_pagination import pagination_params, Page
-from fastapi_pagination.paginator import paginate
 
+from app.core.auth import get_current_active_admin, get_current_active_user
 from app.core.security import verify_password
-from app.db.session import get_db
+from app.db.crud.port_forward import (
+    delete_forward_rule_by_id,
+    get_forward_rule_for_user,
+)
 from app.db.crud.user import (
-    get_users,
-    get_user,
     create_user,
     delete_user,
-    edit_user,
     edit_me,
-    get_user_servers,
+    edit_user,
+    get_user,
     get_user_ports,
-)
-from app.db.crud.port_forward import (
-    get_forward_rule_for_user,
-    delete_forward_rule_by_id,
+    get_user_servers,
+    get_users,
 )
 from app.db.schemas.user import (
-    UserCreate,
-    UserEdit,
-    UserDelete,
-    User,
-    UserOut,
-    UserOpsOut,
     MeEdit,
+    User,
+    UserCreate,
+    UserDelete,
+    UserEdit,
+    UserOpsOut,
+    UserOut,
     UserServerOut,
 )
-from app.core.auth import get_current_active_user, get_current_active_admin
+from app.db.session import get_db
 from app.utils.size import get_readable_size
 from app.utils.tasks import trigger_port_clean
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi_pagination import Page, add_pagination, paginate
 
 users_v2_router = r = APIRouter()
 
@@ -42,7 +40,6 @@ users_v2_router = r = APIRouter()
     "/users",
     response_model=Page[UserOut],
     response_model_exclude_none=True,
-    dependencies=[Depends(pagination_params)],
 )
 async def users_list(
     response: Response,
@@ -54,3 +51,6 @@ async def users_list(
     Search all users
     """
     return paginate(get_users(db, query=query, user=current_user))
+
+
+add_pagination(users_v2_router)

@@ -24,5 +24,5 @@ def tc_runner(
     run(
         server=server,
         playbook="tc.yml",
-        extravars={"host": server.ansible_name, "tc_args": args},
+        extravars={"host": server.name, "tc_args": args},
     )

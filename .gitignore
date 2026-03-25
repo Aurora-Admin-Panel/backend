@@ -128,7 +128,8 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.idea
+# JetBrains
+.idea/
 
 # Local files
 huey.db*
@@ -138,4 +139,5 @@ ansible/env/ssh_key
 ansible/inventory/hosts
 ansible/priv_data_dirs/*
 ansible/project/roles/**/files/*
-files/*
+files/**/*
+test_*.py

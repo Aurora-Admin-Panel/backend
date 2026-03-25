@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from pydantic import BaseModel, validator
 
-from app.db.models.port_forward import MethodEnum, TypeEnum
+from app.db.models import MethodEnum, TypeEnum
 from app.utils.ip import is_ip, is_ipv6
 
 

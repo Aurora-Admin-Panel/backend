@@ -3,7 +3,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 
-from app.db.models.user import User
+from app.db.models import User, Server, ServerUser, Port
 from app.db.schemas.server import (
     ServerCreate,
     ServerEdit,
@@ -11,8 +11,6 @@ from app.db.schemas.server import (
     ServerUserEdit,
     ServerUserCreate,
 )
-from app.db.models.server import Server, ServerUser
-from app.db.models.port import Port
 
 
 def get_servers(db: Session, user: User = None) -> t.List[Server]:
@@ -43,6 +41,7 @@ def get_server(db: Session, server_id: int) -> Server:
     return (
         db.query(Server)
         .filter(and_(Server.id == server_id, Server.is_active == True))
+        .options(joinedload(Server.key_file))
         .options(joinedload(Server.ports).joinedload(Port.allowed_users))
         .first()
     )
@@ -79,9 +78,9 @@ def edit_server(
         reset_system
         or server.sudo_password
         or server.ssh_password
-        or server.ansible_host
-        or server.ansible_user
-        or server.ansible_port
+        or server.host
+        or server.user
+        or server.port
     ):
         db_server.config["system"] = None
 

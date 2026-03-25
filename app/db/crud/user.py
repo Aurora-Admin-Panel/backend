@@ -6,9 +6,7 @@ from sqlalchemy import func
 from sqlalchemy import and_, or_
 
 from app.core.security import get_password_hash
-from app.db.models.port import Port, PortUser
-from app.db.models.server import Server, ServerUser
-from app.db.models.user import User
+from app.db.models import Port, PortUser, ServerUser, User
 from app.db.schemas.user import (
     UserCreate,
     UserEdit,

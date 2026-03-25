@@ -1,8 +1,20 @@
 import os
 import typing as t
+from typing import Optional
+from dataclasses import dataclass
 from shutil import copytree
 
-from app.db.models.server import Server
+from sqlalchemy.orm import Session
+from app.db.models import Server
+
+
+@dataclass
+class ServerFacts:
+    mem_total: Optional[int] = None
+    swap_total: Optional[int] = None
+    root_total: Optional[int] = None
+    os_release: Optional[str] = None
+    probe_version: Optional[str] = None
 
 
 def prepare_priv_dir_dict(server: t.Dict) -> str:
@@ -35,3 +47,24 @@ def prepare_priv_dir_dict(server: t.Dict) -> str:
 
 def prepare_priv_dir(server: Server) -> str:
     return prepare_priv_dir_dict(server.__dict__)
+
+
+def update_facts(db: Session, server: Server, facts: ServerFacts):
+    facts_match = True
+    if facts.mem_total is not None and server.mem_total != facts.mem_total:
+        facts_match = False
+        server.mem_total = facts.mem_total
+    if facts.swap_total is not None and server.swap_total != facts.swap_total:
+        facts_match = False
+        server.swap_total = facts.swap_total
+    if facts.root_total is not None and server.root_total != facts.root_total:
+        facts_match = False
+        server.root_total = facts.root_total
+    if facts.os_release is not None and server.os_release != facts.os_release:
+        facts_match = False
+        server.os_release = facts.os_release
+    if facts.probe_version is not None and server.probe_version != facts.probe_version:
+        facts_match = False
+        server.probe_version = facts.probe_version
+    if not facts_match:
+        db.add(server)

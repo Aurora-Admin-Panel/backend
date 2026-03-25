@@ -1,8 +1,8 @@
 import json
 from sqlalchemy.orm import Session
 
-from app.db.models.port import Port
-from app.db.models.port_forward import MethodEnum
+from app.db.models import Port
+from app.db.models import MethodEnum
 from app.utils.v2ray import generate_v2ray_config
 
 from tasks.functions.base import AppConfig

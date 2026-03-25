@@ -8,7 +8,7 @@ from app.db.schemas.port_usage import (
     PortUsageEdit,
     PortUsageOut
 )
-from app.db.models.port import PortUsage
+from app.db.models import PortUsage
 
 
 def get_port_usage(db: Session, port_id: int) -> PortUsage:

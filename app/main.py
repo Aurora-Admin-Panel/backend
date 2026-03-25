@@ -1,121 +1,78 @@
-import uvicorn
-import typing as t
-from sqlalchemy.exc import IntegrityError
-from fastapi.responses import JSONResponse
-from fastapi import FastAPI, Depends, Request
-from fastapi.encoders import jsonable_encoder
-from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
-from app.api.v1.auth import auth_router
-from app.api.v1.users import users_router
-from app.api.v1.servers import servers_router
-from app.api.v1.ports import ports_router
-from app.api.v1.forward_rule import forward_rule_router
-from app.api.v2.servers import servers_v2_router
-from app.api.v2.ports import ports_v2_router
-from app.api.v2.users import users_v2_router
-from app.db.crud.server import get_server, get_server_with_ports_usage
+import uvicorn
+from fastapi import FastAPI, WebSocket
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware import Middleware
+from strawberry.fastapi import GraphQLRouter
+from strawberry.subscriptions import (
+    GRAPHQL_TRANSPORT_WS_PROTOCOL,
+    GRAPHQL_WS_PROTOCOL,
+)
+from loguru import logger
+
+from app.api.auth import auth_router
 from app.core import config
-from app.db.session import db_session
-from app.core.auth import get_current_active_user
-from app.utils.ip import get_external_ip
+from app.graphql.schema import schema
+from app.websocket.handler import handler
+from tasks.server import servers_usage_runner
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Starting lifespan")
+    logger.info("Starting servers usage runner")
+    servers_usage_runner.schedule(delay=0)
+    yield
 
 
 app = FastAPI(
     title=config.PROJECT_NAME,
+    lifespan=lifespan,
     docs_url="/api/docs",
     openapi_url="/api",
     version=config.BACKEND_VERSION,
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        ),
+    ],
 )
-origins = ["*"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.middleware("http")
-async def sentry_exception(request: Request, call_next):
-    try:
-        response = await call_next(request)
-        return response
-    except Exception as e:
-        if config.ENABLE_SENTRY:
-            with sentry_sdk.push_scope() as scope:
-                scope.set_context("request", request)
-                scope.user = {"ip_address": request.client.host}
-                sentry_sdk.capture_exception(e)
-        raise e
-
-
-@app.middleware("http")
-async def db_session_middleware(request: Request, call_next):
-    with db_session() as db:
-        request.state.db = db
-        try:
-            response = await call_next(request)
-            return response
-        except IntegrityError as e:
-            return JSONResponse(
-                status_code=400,
-                content={"detail": str(e.orig)})
 
 
 @app.get("/api/v1")
-async def root():
-    with db_session() as db:
-        server = get_server_with_ports_usage(db, 34)
-    print([p for p in server.ports])
-    return {"message": "Hello World"}
+async def root(server_id: int):
+    pass
 
 
-# Routers
-app.include_router(
-    users_router,
-    prefix="/api/v1",
-    tags=["v1.users"],
-    dependencies=[Depends(get_current_active_user)],
+app.mount(
+    "/api/files",
+    StaticFiles(directory=config.FILE_STORAGE_PATH, check_dir=False),
+    name="files",
 )
-app.include_router(
-    users_v2_router,
-    prefix="/api/v2",
-    tags=["v2.users"],
-    dependencies=[Depends(get_current_active_user)],
+
+
+@app.websocket("/api/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await handler.init(websocket)
+    await handler.run_forever(websocket)
+
+
+graphql_app = GraphQLRouter(
+    schema,
+    subscription_protocols=[
+        GRAPHQL_WS_PROTOCOL,
+        GRAPHQL_TRANSPORT_WS_PROTOCOL,
+    ],
 )
-app.include_router(
-    servers_router,
-    prefix="/api/v1",
-    tags=["v1.servers"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    servers_v2_router,
-    prefix="/api/v2",
-    tags=["v2.servers"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    ports_router,
-    prefix="/api/v1",
-    tags=["v1.ports"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    ports_v2_router,
-    prefix="/api/v2",
-    tags=["v2.ports"],
-    dependencies=[Depends(get_current_active_user)],
-)
-app.include_router(
-    forward_rule_router,
-    prefix="/api/v1",
-    tags=["v1.port_rule"],
-    dependencies=[Depends(get_current_active_user)],
-)
+app.include_router(graphql_app, prefix="/api/graphql")
 app.include_router(auth_router, prefix="/api", tags=["auth"])
+
 
 if __name__ == "__main__":
     uvicorn.run(
